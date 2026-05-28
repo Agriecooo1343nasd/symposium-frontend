@@ -32,9 +32,9 @@ export function PortalShell({ title, subtitle, nav, children }: { title: string;
   const activeItem = [...nav].reverse().find((n) => n.exact ? pathname === n.to : pathname.startsWith(n.to));
 
   return (
-    <div className="min-h-screen bg-secondary/40 flex">
+    <div className="min-h-screen bg-secondary/40">
       <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 z-40 w-64 gradient-navy text-white flex flex-col transition-transform lg:translate-x-0",
+        "fixed inset-y-0 left-0 z-40 w-64 gradient-navy text-white flex flex-col transition-transform lg:translate-x-0",
         mobileOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-5 border-b border-white/10 flex items-center justify-between">
@@ -75,7 +75,7 @@ export function PortalShell({ title, subtitle, nav, children }: { title: string;
 
       {mobileOpen && <div onClick={() => setMobileOpen(false)} className="fixed inset-0 z-30 bg-black/50 lg:hidden" />}
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex min-h-screen flex-1 flex-col min-w-0 lg:ml-64">
         <header className="bg-card border-b border-border h-16 flex items-center gap-3 px-4 lg:px-8 sticky top-0 z-20">
           <button className="lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></button>
           <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">

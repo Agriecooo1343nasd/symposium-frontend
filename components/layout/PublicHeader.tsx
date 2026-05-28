@@ -40,10 +40,9 @@ export function PublicHeader() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => setOpen(false), [pathname]);
-
-  const isAuthPage = ["/login"].includes(pathname || "");
-  if (isAuthPage) return null;
+  const hiddenPrefixes = ["/login", "/dashboard", "/admin", "/desk", "/moderator", "/speaker", "/exhibitor"];
+  const isHiddenPage = hiddenPrefixes.some((p) => pathname === p || pathname?.startsWith(p + "/"));
+  if (isHiddenPage) return null;
 
   const initials = session?.name?.split(" ").map((w) => w[0]).slice(0, 2).join("") ?? "";
   const dashboardPath = session ? dashboardPathForRole(session.role) : "/dashboard";

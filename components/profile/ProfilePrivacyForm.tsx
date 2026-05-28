@@ -19,7 +19,6 @@ type Props = {
 };
 
 export function ProfilePrivacyForm({ email, defaultName, defaultOrg = "", defaultCountry = "Rwanda" }: Props) {
-  const existing = getProfile(email);
   const [form, setForm] = useState({
     name: defaultName,
     title: "",
@@ -35,6 +34,7 @@ export function ProfilePrivacyForm({ email, defaultName, defaultOrg = "", defaul
   });
 
   useEffect(() => {
+    const existing = getProfile(email);
     if (existing) {
       setForm({
         name: existing.name,
@@ -49,8 +49,15 @@ export function ProfilePrivacyForm({ email, defaultName, defaultOrg = "", defaul
         allowExhibitorContact: existing.allowExhibitorContact ?? true,
         subThemeInterests: existing.subThemeInterests,
       });
+      return;
     }
-  }, [email, existing]);
+    setForm((prev) => ({
+      ...prev,
+      name: defaultName,
+      org: defaultOrg,
+      country: defaultCountry,
+    }));
+  }, [email, defaultName, defaultOrg, defaultCountry]);
 
   const readPhoto = (file: File) => {
     const r = new FileReader();

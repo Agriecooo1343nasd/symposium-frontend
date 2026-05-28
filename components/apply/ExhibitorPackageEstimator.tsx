@@ -24,9 +24,9 @@ export function ExhibitorPackageEstimator({ store, participation, tier, staffCou
           <DollarSign className="h-5 w-5 text-accent" />
         </div>
         <div>
-          <h3 className="font-serif font-bold">Package estimate (admin-configured)</h3>
+          <h3 className="font-serif font-bold">Package estimate</h3>
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-            Per SRS: your organization pays one sponsorship/booth fee. <strong>Exhibitor staff passes are bundled</strong> — invited
+            your organization pays one sponsorship/booth fee. <strong>Exhibitor staff passes are bundled</strong> — invited
             colleagues check in with comp QR codes and do not pay individually.
           </p>
         </div>

@@ -28,9 +28,11 @@ type Props = {
   userEmail: string;
   userName: string;
   subtitle?: string;
+  activeTab?: "directory" | "requests" | "connections" | "messages";
+  onTabChange?: (tab: "directory" | "requests" | "connections" | "messages") => void;
 };
 
-export function NetworkingModule({ userEmail, userName, subtitle }: Props) {
+export function NetworkingModule({ userEmail, userName, subtitle, activeTab = "directory", onTabChange }: Props) {
   const store = useStore();
   const [q, setQ] = useState("");
   const [country, setCountry] = useState("All");
@@ -38,7 +40,7 @@ export function NetworkingModule({ userEmail, userName, subtitle }: Props) {
   const [connectOpen, setConnectOpen] = useState<{ email: string; name: string } | null>(null);
   const [connectMsg, setConnectMsg] = useState("");
   const [activeChat, setActiveChat] = useState<{ email: string; name: string } | null>(null);
-  const [activeTab, setActiveTab] = useState("discover");
+  const [messageQ, setMessageQ] = useState("");
   const [draft, setDraft] = useState("");
   const [image, setImage] = useState<{ dataUrl: string; name: string } | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -108,6 +110,14 @@ export function NetworkingModule({ userEmail, userName, subtitle }: Props) {
     r.readAsDataURL(file);
   };
 
+  const filteredConversations = useMemo(() => {
+    const q = messageQ.trim().toLowerCase();
+    if (!q) return conversations;
+    return conversations.filter((c) =>
+      [c.name, c.profile?.org, c.profile?.title, c.lastMessage?.body].some((v) => v?.toLowerCase().includes(q)),
+    );
+  }, [conversations, messageQ]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -117,15 +127,18 @@ export function NetworkingModule({ userEmail, userName, subtitle }: Props) {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => onTabChange?.(v as "directory" | "requests" | "connections" | "messages")}
+      >
         <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="discover">Directory</TabsTrigger>
+          <TabsTrigger value="directory">Directory</TabsTrigger>
           <TabsTrigger value="requests">Requests ({incoming.filter((r) => r.status === "pending").length})</TabsTrigger>
           <TabsTrigger value="connections">Connected ({connections.length})</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="discover" className="mt-6">
+        <TabsContent value="directory" className="mt-6">
           <div className="flex flex-col lg:flex-row gap-3 mb-6">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -171,7 +184,7 @@ export function NetworkingModule({ userEmail, userName, subtitle }: Props) {
                     onClick={() => {
                       if (connected) {
                         setActiveChat({ email: p.email, name: p.name });
-                        setActiveTab("messages");
+                        onTabChange?.("messages");
                         return;
                       }
                       setConnectOpen({ email: p.email, name: p.name });
@@ -292,7 +305,7 @@ export function NetworkingModule({ userEmail, userName, subtitle }: Props) {
                   type="button"
                   onClick={() => {
                     setActiveChat({ email: c.email, name: c.name });
-                    setActiveTab("messages");
+                    onTabChange?.("messages");
                   }}
                   className="rounded-xl border bg-card p-4 text-left hover:border-accent transition-colors"
                 >
@@ -319,11 +332,22 @@ export function NetworkingModule({ userEmail, userName, subtitle }: Props) {
         </TabsContent>
 
         <TabsContent value="messages" className="mt-6">
-          <div className="flex flex-col lg:flex-row min-h-[480px] rounded-2xl border bg-card overflow-hidden shadow-sm">
-            <aside className="lg:w-72 border-b lg:border-b-0 lg:border-r bg-secondary/20 flex flex-col max-h-[220px] lg:max-h-[520px]">
-              <div className="px-4 py-3 border-b font-semibold text-sm shrink-0">Conversations</div>
+          <div className="flex flex-col lg:flex-row h-[72vh] min-h-[520px] rounded-2xl border bg-card overflow-hidden shadow-sm">
+            <aside className="lg:w-80 border-b lg:border-b-0 lg:border-r bg-secondary/20 flex flex-col">
+              <div className="px-4 py-3 border-b shrink-0 space-y-2">
+                <div className="font-semibold text-sm">Conversations</div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={messageQ}
+                    onChange={(e) => setMessageQ(e.target.value)}
+                    placeholder="Search people..."
+                    className="pl-9 h-9 bg-background"
+                  />
+                </div>
+              </div>
               <div className="flex-1 overflow-y-auto p-2">
-                {conversations.map((c) => {
+                {filteredConversations.map((c) => {
                   const preview =
                     c.lastMessage?.body ??
                     (c.lastMessage?.fromEmail === userEmail ? "You sent an attachment" : "No messages yet");
@@ -360,12 +384,12 @@ export function NetworkingModule({ userEmail, userName, subtitle }: Props) {
                     </button>
                   );
                 })}
-                {connections.length === 0 && (
+                {filteredConversations.length === 0 && (
                   <p className="text-xs text-muted-foreground p-3 text-center">Accept a connection request to start messaging.</p>
                 )}
               </div>
             </aside>
-            <div className="flex-1 flex flex-col min-h-[360px]">
+            <div className="flex-1 flex flex-col min-h-0">
               {activeChat ? (
                 <>
                   <div className="px-4 py-3 border-b flex items-center gap-3 bg-card/80">
