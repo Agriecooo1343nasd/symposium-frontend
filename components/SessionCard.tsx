@@ -28,11 +28,6 @@ export function SessionCard({ session, expandable = true, onSave }: { session: S
           {session.type}
         </span>
         <SubThemeBadge theme={session.subTheme} />
-        {session.trending && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 text-rose-700 border border-rose-300 px-2 py-0.5 text-xs font-semibold">
-            <Flame className="h-3 w-3" /> Trending
-          </span>
-        )}
       </div>
 
       <h3 className="font-serif text-lg sm:text-xl font-bold leading-snug mb-2 text-foreground group-hover:text-accent transition-colors">

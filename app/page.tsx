@@ -21,7 +21,7 @@ export default function Home() {
       {/* HERO */}
       <section className="relative overflow-hidden gradient-navy grain-overlay text-white">
         <div className="absolute inset-0">
-          <img src="/assets/hero.jpg" alt="Rwandan agroecological landscape" className="h-full w-full object-cover opacity-30" />
+          <img src="/assets/image.png" alt="Rwandan agroecological landscape" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-br from-navy/90 via-navy/70 to-navy/40" />
         </div>
         <div className="absolute inset-0 leaf-texture opacity-40" />

@@ -1,8 +1,13 @@
+"use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Leaf, Mail, MapPin, Globe } from "lucide-react";
 import { EVENT } from "@/lib/mock-data";
 
 export function PublicFooter() {
+  const pathname = usePathname();
+  const isAuthPage = ["/login"].includes(pathname || "");
+  if (isAuthPage) return null;
   return (
     <footer className="gradient-navy grain-overlay text-primary-foreground mt-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">

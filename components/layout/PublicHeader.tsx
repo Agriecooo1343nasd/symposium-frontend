@@ -42,6 +42,9 @@ export function PublicHeader() {
 
   useEffect(() => setOpen(false), [pathname]);
 
+  const isAuthPage = ["/login"].includes(pathname || "");
+  if (isAuthPage) return null;
+
   const initials = session?.name?.split(" ").map((w) => w[0]).slice(0, 2).join("") ?? "";
   const dashboardPath = session ? dashboardPathForRole(session.role) : "/dashboard";
 
