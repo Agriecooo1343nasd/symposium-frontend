@@ -15,7 +15,20 @@ export function syncRunOfShowFromSession(session: Session): RunOfShowItem {
   };
 }
 
-export function upsertSession(session: Session, store?: AppStore): AppStore {
+export type RunOfShowExtras = Partial<
+  Pick<RunOfShowItem, "notes" | "ownerName" | "ownerEmail" | "status" | "dependsOn">
+>;
+
+export function saveSessionAndRunOfShow(session: Session, rosExtras?: RunOfShowExtras, existingRosId?: string) {
+  return upsertSession(session, undefined, rosExtras, existingRosId);
+}
+
+export function upsertSession(
+  session: Session,
+  store?: AppStore,
+  rosExtras?: RunOfShowExtras,
+  existingRosId?: string,
+): AppStore {
   let result!: AppStore;
   patchStore((s) => {
     const exists = s.sessions.some((x) => x.id === session.id);
@@ -25,24 +38,35 @@ export function upsertSession(session: Session, store?: AppStore): AppStore {
 
     let runOfShow = [...s.runOfShow];
     const rosId = `ros-${session.id}`;
-    const existingRos = runOfShow.find((r) => r.sessionId === session.id || r.id === rosId);
+    const targetRosId = existingRosId ?? rosId;
+    const existingRos = runOfShow.find(
+      (r) => r.id === targetRosId || r.sessionId === session.id || r.id === rosId,
+    );
 
     if (existingRos) {
       runOfShow = runOfShow.map((r) =>
-        r.sessionId === session.id || r.id === rosId
+        r.id === existingRos.id || r.sessionId === session.id || r.id === rosId
           ? {
               ...r,
               title: session.title,
               startTime: session.start,
               endTime: session.end,
               day: session.day,
+              sessionId: session.id,
+              type: "session" as const,
+              ...rosExtras,
             }
           : r,
       );
     } else {
       const dayItems = runOfShow.filter((r) => r.day === session.day);
       const maxOrder = dayItems.reduce((m, r) => Math.max(m, r.order), 0);
-      runOfShow.push({ ...syncRunOfShowFromSession(session), order: maxOrder + 1 });
+      runOfShow.push({
+        ...syncRunOfShowFromSession(session),
+        order: maxOrder + 1,
+        ...rosExtras,
+        id: existingRosId ?? rosId,
+      });
     }
 
     result = { ...s, sessions, runOfShow };
@@ -63,9 +87,13 @@ export function deleteSession(sessionId: string) {
 export function upsertRunOfShowItem(item: RunOfShowItem) {
   patchStore((s) => {
     const exists = s.runOfShow.some((r) => r.id === item.id);
-    const runOfShow = exists
-      ? s.runOfShow.map((r) => (r.id === item.id ? item : r))
-      : [...s.runOfShow, item];
+    let next = item;
+    if (!exists) {
+      const dayItems = s.runOfShow.filter((r) => r.day === item.day);
+      const maxOrder = dayItems.reduce((m, r) => Math.max(m, r.order), 0);
+      next = { ...item, order: item.order > 0 ? item.order : maxOrder + 1 };
+    }
+    const runOfShow = exists ? s.runOfShow.map((r) => (r.id === item.id ? next : r)) : [...s.runOfShow, next];
     return { ...s, runOfShow };
   });
 }

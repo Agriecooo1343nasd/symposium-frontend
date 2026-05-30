@@ -81,6 +81,9 @@ export const SPEAKERS: Speaker[] = [
   { id: "s12", name: "Ferdinand Habimana", title: "Founder", org: "Green Pastures Cooperative", country: "Rwanda", flag: "🇷🇼", bio: "Cooperative founder turning 1,200 smallholders toward organic certification.", photo: "https://i.pravatar.cc/400?img=15", sessions: ["ss10"] },
 ];
 
+/** Public = listed on /programme for everyone. Subscribers = paid delegates & portal roles only. */
+export type SessionVisibility = "public" | "subscribers";
+
 export type Session = {
   id: string;
   day: 1 | 2;
@@ -96,6 +99,7 @@ export type Session = {
   learningObjectives?: string[];
   prerequisites?: string;
   capacity?: number;
+  visibility?: SessionVisibility;
 };
 
 export const SESSIONS: Session[] = [

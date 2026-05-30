@@ -1,13 +1,14 @@
 "use client";
 import { useParams, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Clock, MapPin, Users, Target, BookOpen, BookmarkPlus } from "lucide-react";
+import { ArrowLeft, Clock, MapPin, Users, Target, BookOpen, BookmarkPlus, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SubThemeBadge } from "@/components/SubThemeBadge";
 import { SessionMaterialsPanel } from "@/components/session/SessionMaterialsPanel";
 import { SessionRatingPanel } from "@/components/session/SessionRatingPanel";
 import { SPEAKERS } from "@/lib/mock-data";
-import { getSessionById, getSessions } from "@/lib/sessions";
+import { getSessionById, getProgrammeSessions } from "@/lib/sessions";
+import { canViewSessionProgramme } from "@/lib/access";
 import { toast } from "sonner";
 
 export default function SessionDetail() {
@@ -19,8 +20,31 @@ export default function SessionDetail() {
     notFound();
   }
 
+  if (!canViewSessionProgramme(session)) {
+    return (
+      <section className="mx-auto max-w-lg px-4 py-24 text-center">
+        <Lock className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+        <h1 className="font-serif text-2xl font-bold mb-2">Subscribers-only session</h1>
+        <p className="text-muted-foreground mb-6">
+          This session is not on the public programme. Sign in with a paid delegate pass or staff account to view
+          details.
+        </p>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button asChild className="gradient-blue text-accent-foreground">
+            <Link href="/login">Sign in</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/programme">Back to programme</Link>
+          </Button>
+        </div>
+      </section>
+    );
+  }
+
   const speakers = session.speakers.map((sId) => SPEAKERS.find((s) => s.id === sId)!).filter(Boolean);
-  const related = getSessions().filter((s) => s.id !== session.id && s.subTheme === session.subTheme).slice(0, 3);
+  const related = getProgrammeSessions()
+    .filter((s) => s.id !== session.id && s.subTheme === session.subTheme)
+    .slice(0, 3);
 
   return (
     <>

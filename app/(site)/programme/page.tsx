@@ -4,7 +4,7 @@ import { Filter } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SessionCard } from "@/components/SessionCard";
 import { SUB_THEMES, type Session } from "@/lib/mock-data";
-import { getSessions } from "@/lib/sessions";
+import { getProgrammeSessions } from "@/lib/sessions";
 import { useStore } from "@/hooks/use-store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ const TYPES: Session["type"][] = ["Keynote", "Plenary", "Panel", "Workshop", "Fi
 
 export default function Programme() {
   useStore();
-  const allSessions = getSessions();
+  const allSessions = getProgrammeSessions();
   const [theme, setTheme] = useState<string>("All");
   const [type, setType] = useState<string>("All");
 
