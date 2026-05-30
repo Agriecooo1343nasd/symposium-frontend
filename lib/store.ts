@@ -274,6 +274,8 @@ export type OrganizationApplication = {
   boothPreference?: string;
   logoFileName?: string;
   staffCount?: number;
+  /** Booth team invite emails (manual onboarding / edits) */
+  staffMemberEmails?: string[];
   quotedFeeUsd?: number;
   status: "pending" | "approved" | "rejected";
   paymentStatus: "unpaid" | "paid" | "comp";
@@ -503,6 +505,12 @@ export type CertificateSignature = {
   imageUrl?: string;
 };
 
+export type CertificateStyle = {
+  primaryColor: string;
+  accentColor: string;
+  showQr: boolean;
+};
+
 export type CertificateTemplate = {
   headline: string;
   subheadline: string;
@@ -511,6 +519,11 @@ export type CertificateTemplate = {
   backgroundImageUrl?: string;
   logoUrl?: string;
   signatures: CertificateSignature[];
+  style?: CertificateStyle;
+  /** Live preview on admin designer */
+  previewName?: string;
+  previewCategory?: string;
+  previewTicketId?: string;
 };
 
 export type SurveyResponse = {
@@ -1744,6 +1757,10 @@ function seedCertificateTemplate(): CertificateTemplate {
       { name: "Hon. Geraldine Mukeshimana", title: "Minister of Agriculture, MINAGRI" },
       { name: "Dr. Mukeshimana Solange", title: "Director General, RAB" },
     ],
+    style: { primaryColor: "#0f3d2e", accentColor: "#c9a227", showQr: true },
+    previewName: "Jean Uwimana",
+    previewCategory: "International Delegate",
+    previewTicketId: "NAS26-DEMO-4821",
   };
 }
 
@@ -2077,9 +2094,13 @@ export function getSpeakerApplicationForEmail(email: string): SpeakerApplication
 
 export function upgradeUserToSpeaker(email: string, name: string) {
   patchStore((s) => {
-    const existing = s.users.find((u) => u.email === email);
+    const existing = s.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
     const users = existing
-      ? s.users.map((u) => (u.email === email ? { ...u, role: "speaker" as Role, status: "active" as UserStatus } : u))
+      ? s.users.map((u) =>
+          u.email.toLowerCase() === email.toLowerCase()
+            ? { ...u, role: "speaker" as Role, status: "active" as UserStatus, name }
+            : u,
+        )
       : [
           ...s.users,
           {
@@ -2087,6 +2108,29 @@ export function upgradeUserToSpeaker(email: string, name: string) {
             name,
             email,
             role: "speaker" as Role,
+            status: "active" as UserStatus,
+            lastLogin: "Never",
+          },
+        ];
+    return { ...s, users };
+  });
+}
+
+export function upgradeUserToExhibitor(email: string, name: string) {
+  patchStore((s) => {
+    const key = email.toLowerCase();
+    const existing = s.users.find((u) => u.email.toLowerCase() === key);
+    const users = existing
+      ? s.users.map((u) =>
+          u.email.toLowerCase() === key ? { ...u, role: "exhibitor" as Role, status: "active" as UserStatus, name } : u,
+        )
+      : [
+          ...s.users,
+          {
+            id: uid("u"),
+            name,
+            email,
+            role: "exhibitor" as Role,
             status: "active" as UserStatus,
             lastLogin: "Never",
           },

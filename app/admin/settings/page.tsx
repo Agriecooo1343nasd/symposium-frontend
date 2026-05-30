@@ -1,0 +1,139 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { useStore } from "@/hooks/use-store";
+import { patchStore, appendAudit, type PlatformSettings, type FeatureFlags } from "@/lib/store";
+import { getSession } from "@/lib/auth";
+import { toast } from "sonner";
+
+
+const PHASE_GROUPS: { phase: string; keys: (keyof FeatureFlags)[]; labels: Record<string, string> }[] = [
+  {
+    phase: "Phase 1 — Registration & payments",
+    keys: ["registration", "payments", "ticketPlans"],
+    labels: { registration: "Registration open", payments: "Payment processing", ticketPlans: "Ticket plans visible" },
+  },
+  {
+    phase: "Phase 2 — Programme & portals",
+    keys: ["abstracts", "speakerPortal", "exhibitorPortal", "programmePublished"],
+    labels: {
+      abstracts: "Abstract / speaker applications",
+      speakerPortal: "Speaker portal",
+      exhibitorPortal: "Exhibitor portal",
+      programmePublished: "Public programme published",
+    },
+  },
+  {
+    phase: "Phase 3 — Live event",
+    keys: ["liveStream", "remoteQueue", "checkIn", "networking"],
+    labels: {
+      liveStream: "Live streaming",
+      remoteQueue: "Remote Q&A queue",
+      checkIn: "QR check-in",
+      networking: "Networking directory",
+    },
+  },
+  {
+    phase: "Phase 4 — Post-event",
+    keys: ["certificates", "survey", "resourceRepository"],
+    labels: {
+      certificates: "Certificates",
+      survey: "Post-event survey",
+      resourceRepository: "Resource repository",
+    },
+  },
+];
+
+export default function Page() {
+  const store = useStore();
+  const [settings, setSettings] = useState<PlatformSettings>(store.platformSettings);
+  const [countryInput, setCountryInput] = useState("");
+
+  const save = (e: React.FormEvent) => {
+    e.preventDefault();
+    patchStore((s) => ({ ...s, platformSettings: settings }));
+    appendAudit(getSession()?.name ?? "Admin", "Updated platform settings", settings.eventName);
+    toast.success("Settings saved — countdown and feature gates updated");
+  };
+
+  const toggleFeature = (key: keyof FeatureFlags, v: boolean) => {
+    setSettings((s) => ({ ...s, features: { ...s.features, [key]: v } }));
+  };
+
+  const addCountry = () => {
+    const c = countryInput.trim();
+    if (!c || settings.countries.includes(c)) return;
+    setSettings((s) => ({ ...s, countries: [...s.countries, c] }));
+    setCountryInput("");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-serif text-3xl font-bold">Platform settings</h1>
+        <p className="text-muted-foreground">Event dates drive the homepage countdown. Feature flags match SRS delivery phases.</p>
+      </div>
+
+      <form onSubmit={save} className="space-y-6">
+        <section className="rounded-2xl bg-card border border-border p-6 space-y-4">
+          <h2 className="font-serif font-bold">Event details</h2>
+          <div><Label>Event name</Label><Input value={settings.eventName} onChange={(e) => setSettings({ ...settings, eventName: e.target.value })} className="mt-1" /></div>
+          <div><Label>Theme</Label><Input value={settings.theme} onChange={(e) => setSettings({ ...settings, theme: e.target.value })} className="mt-1" /></div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div><Label>Start date</Label><Input type="date" value={settings.startDate} onChange={(e) => setSettings({ ...settings, startDate: e.target.value })} className="mt-1" /></div>
+            <div><Label>End date</Label><Input type="date" value={settings.endDate} onChange={(e) => setSettings({ ...settings, endDate: e.target.value })} className="mt-1" /></div>
+          </div>
+          <div><Label>Venue</Label><Input value={settings.venue} onChange={(e) => setSettings({ ...settings, venue: e.target.value })} className="mt-1" /></div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div><Label>USD → RWF rate</Label><Input type="number" value={settings.exchangeRate} onChange={(e) => setSettings({ ...settings, exchangeRate: Number(e.target.value) })} className="mt-1" /></div>
+            <div><Label>Timezone</Label><Input value={settings.timezone} onChange={(e) => setSettings({ ...settings, timezone: e.target.value })} className="mt-1" /></div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl bg-card border border-border p-6 space-y-4">
+          <h2 className="font-serif font-bold">Registration countries</h2>
+          <div className="flex gap-2">
+            <Input placeholder="Add country" value={countryInput} onChange={(e) => setCountryInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCountry())} />
+            <Button type="button" variant="outline" onClick={addCountry}>Add</Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {settings.countries.map((c) => (
+              <span key={c} className="text-xs px-2 py-1 rounded-full bg-secondary flex items-center gap-1">
+                {c}
+                <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => setSettings((s) => ({ ...s, countries: s.countries.filter((x) => x !== c) }))}>×</button>
+              </span>
+            ))}
+          </div>
+        </section>
+
+        {PHASE_GROUPS.map((g) => (
+          <section key={g.phase} className="rounded-2xl bg-card border border-border p-6 space-y-3">
+            <h2 className="font-serif font-bold text-sm">{g.phase}</h2>
+            {g.keys.map((key) => (
+              <div key={key} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
+                <span className="text-sm font-medium">{g.labels[key] ?? key}</span>
+                <Switch checked={settings.features[key]} onCheckedChange={(v) => toggleFeature(key, v)} />
+              </div>
+            ))}
+          </section>
+        ))}
+
+        <section className="rounded-2xl bg-card border border-border p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium text-sm">Maintenance mode</div>
+              <div className="text-xs text-muted-foreground">Shows banner on public site; blocks most features</div>
+            </div>
+            <Switch checked={settings.features.maintenanceMode} onCheckedChange={(v) => toggleFeature("maintenanceMode", v)} />
+          </div>
+        </section>
+
+        <Button type="submit" className="gradient-blue text-accent-foreground">Save all changes</Button>
+      </form>
+    </div>
+  );
+}

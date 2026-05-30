@@ -52,7 +52,8 @@ export default function DeskOverviewPage() {
             {[
               { to: "/desk/registrations", label: "View registrations", icon: Users },
               { to: "/desk/verifications", label: "Verify documents", icon: FileCheck },
-              { to: "/desk/applications", label: "Review applications", icon: Mic },
+              { to: "/desk/applications", label: "Speaker applications", icon: Mic },
+            { to: "/desk/exhibitors", label: "Exhibitors & sponsors", icon: Store },
               { to: "/desk/checkin", label: "Scan badges", icon: ScanLine },
             ].map((a) => (
               <Link
@@ -89,16 +90,12 @@ export default function DeskOverviewPage() {
         )}
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { to: "/desk/registrations", label: "Registrations", value: paidRegs.length, icon: Users },
           { to: "/desk/verifications", label: "Verifications", value: pendingVerifications.length, icon: FileCheck },
-          {
-            to: "/desk/applications",
-            label: "Applications",
-            value: pendingSpeakers.length + pendingOrgs.length,
-            icon: Store,
-          },
+          { to: "/desk/applications", label: "Speaker apps", value: pendingSpeakers.length, icon: Mic },
+          { to: "/desk/exhibitors/applications", label: "Exhibitor apps", value: pendingOrgs.length, icon: Store },
         ].map((c) => (
           <Link key={c.to} href={c.to} className="rounded-md bg-card border border-border p-5 hover-lift">
             <c.icon className="h-6 w-6 text-blue mb-2" />

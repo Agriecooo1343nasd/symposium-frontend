@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutDashboard, Users, FileCheck, Inbox, ScanLine, Radio } from "lucide-react";
+import { LayoutDashboard, Users, FileCheck, Inbox, ScanLine, Radio, Mic, Store } from "lucide-react";
 import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell";
 import { useAuth } from "@/hooks/use-auth";
 import { canAccessPortal } from "@/lib/permissions";
@@ -11,7 +11,9 @@ const NAV: readonly PortalNavItem[] = [
   { to: "/desk", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/desk/registrations", label: "Registrations", icon: Users },
   { to: "/desk/verifications", label: "Verifications", icon: FileCheck },
-  { to: "/desk/applications", label: "Applications", icon: Inbox },
+  { to: "/desk/applications", label: "Speaker apps", icon: Inbox },
+  { to: "/desk/exhibitors", label: "Exhibitors", icon: Store },
+  { to: "/desk/speakers", label: "Speakers", icon: Mic },
   { to: "/desk/checkin", label: "Check-in", icon: ScanLine },
   { to: "/desk/live", label: "Live stream", icon: Radio },
 ];
