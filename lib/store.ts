@@ -21,7 +21,7 @@ import {
 import type { ZoomMeeting } from "./zoom-mock";
 
 const STORE_KEY = "nas2026_data";
-const STORE_VERSION = 14;
+const STORE_VERSION = 15;
 
 const LISTENERS = new Set<() => void>();
 
