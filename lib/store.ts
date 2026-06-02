@@ -1476,36 +1476,89 @@ function seedPlatformSettings(): PlatformSettings {
   };
 }
 
+/** Array fields on AppStore — backfilled from seed when missing in localStorage. */
+const STORE_ARRAY_KEYS = [
+  "users",
+  "invites",
+  "auditLog",
+  "ticketPlans",
+  "registrations",
+  "groupRegistrations",
+  "documentVerifications",
+  "speakerApplications",
+  "mediaApplications",
+  "organizationApplications",
+  "approvedOrganizations",
+  "sponsorshipTiers",
+  "sponsorshipDeliverables",
+  "sessionRatings",
+  "sponsorshipInvoices",
+  "runOfShow",
+  "zoomMeetings",
+  "remoteInteractions",
+  "recordings",
+  "exhibitorLeads",
+  "exhibitorStaff",
+  "checkInScans",
+  "speakerAbstracts",
+  "sessions",
+  "sessionMaterials",
+  "speakerAvRequirements",
+  "speakerDecks",
+  "surveyResponses",
+  "announcements",
+  "announcementDismissals",
+  "newsPosts",
+  "committeeMembers",
+  "galleryImages",
+  "previousPresentations",
+  "rooms",
+  "booths",
+  "speakerProfiles",
+  "cancellationRequests",
+  "waitlist",
+  "attendeeProfiles",
+  "connectionRequests",
+  "chatMessages",
+  "livePolls",
+  "pollVotes",
+] as const satisfies readonly (keyof AppStore)[];
+
+function storeNeedsRepair(store: AppStore): boolean {
+  if (!store.platformSettings?.groupRegistration) return true;
+  if (!store.exhibitorBoothPackage || !store.certificateTemplate || !store.platformSettings) return true;
+  return STORE_ARRAY_KEYS.some((key) => store[key] == null);
+}
+
 function repairStore(store: AppStore): AppStore {
-  const seedSettings = seedPlatformSettings();
-  const groupRegistration: GroupRegistrationSettings = {
-    ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
-    ...store.platformSettings?.groupRegistration,
-  };
-  const platformSettings: PlatformSettings = {
-    ...seedSettings,
+  if (!storeNeedsRepair(store)) return store;
+
+  const seed = createSeed();
+  const repaired = { ...store, version: STORE_VERSION } as AppStore;
+
+  for (const key of STORE_ARRAY_KEYS) {
+    if (repaired[key] == null) {
+      Object.assign(repaired, { [key]: seed[key] });
+    }
+  }
+
+  repaired.exhibitorBoothPackage = store.exhibitorBoothPackage ?? seed.exhibitorBoothPackage;
+  repaired.certificateTemplate = store.certificateTemplate ?? seed.certificateTemplate;
+  repaired.platformSettings = {
+    ...seed.platformSettings,
     ...store.platformSettings,
-    groupRegistration,
+    features: {
+      ...seed.platformSettings.features,
+      ...store.platformSettings?.features,
+    },
+    countries: store.platformSettings?.countries ?? seed.platformSettings.countries,
+    groupRegistration: {
+      ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
+      ...store.platformSettings?.groupRegistration,
+    },
   };
-  const groupRegistrations = store.groupRegistrations ?? [];
-  const livePolls = store.livePolls ?? [];
-  const pollVotes = store.pollVotes ?? [];
 
-  const needsRepair =
-    !store.platformSettings?.groupRegistration ||
-    store.groupRegistrations == null ||
-    store.livePolls == null ||
-    store.pollVotes == null;
-
-  if (!needsRepair) return store;
-
-  return {
-    ...store,
-    platformSettings,
-    groupRegistrations,
-    livePolls,
-    pollVotes,
-  };
+  return repaired;
 }
 
 function seedGroupRegistrations(baseRegs: StoreRegistration[]): {
@@ -1551,7 +1604,7 @@ function seedGroupRegistrations(baseRegs: StoreRegistration[]): {
         roleNote: "group-member",
       },
     },
-    {
+    { 
       id: "r-grp-3",
       name: "Grace Mukamana",
       email: "grace.mukamana@coop.rw",

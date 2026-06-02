@@ -21,7 +21,7 @@ export default function AdminOverview() {
   const [annOpen, setAnnOpen] = useState(false);
   const [regOpen, setRegOpen] = useState(false);
 
-  const regs = store.registrations;
+  const regs = store.registrations ?? [];
   const paid = regs.filter((r) => r.status === "paid" || r.status === "comp");
   const pending = regs.filter((r) => r.status === "pending");
   const revenue = paid.reduce((a, b) => a + b.amountUsd, 0);
