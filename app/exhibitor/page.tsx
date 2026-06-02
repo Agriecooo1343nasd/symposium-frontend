@@ -214,9 +214,6 @@ function SponsorPanel({ orgId }: { orgId: string }) {
 function BecomeSponsorCTA() {
   return (
     <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-      <div className="h-12 w-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-        <Sparkles className="h-6 w-6 text-amber-700" />
-      </div>
       <div className="flex-1">
         <h3 className="font-serif font-bold text-amber-900">Become a sponsor — amplify your reach</h3>
         <p className="text-sm text-amber-800 mt-1 leading-relaxed">

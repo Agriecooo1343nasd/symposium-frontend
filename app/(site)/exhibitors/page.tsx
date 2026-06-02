@@ -70,7 +70,7 @@ export default function Exhibitors() {
             </Button>
             <Button asChild variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white">
               <Link href="/dashboard/apply">
-                Become a sponsor <Sparkles className="ml-1 h-4 w-4" />
+                Become a sponsor
               </Link>
             </Button>
           </div>
@@ -130,7 +130,7 @@ export default function Exhibitors() {
           <div className="flex flex-wrap gap-3 justify-center mt-8">
             <Button asChild size="lg" className="bg-gold hover:bg-gold/90 text-navy font-semibold">
               <Link href="/dashboard/apply">
-                Become a sponsor <Sparkles className="ml-1 h-4 w-4" />
+                Become a sponsor
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">

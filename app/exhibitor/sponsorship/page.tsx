@@ -122,7 +122,7 @@ function SponsorshipApplyPanel() {
   }
 
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8">
       <div>
         <h1 className="font-serif text-3xl font-bold mb-2">Become a sponsor</h1>
         <p className="text-muted-foreground">
@@ -237,7 +237,7 @@ export default function Page() {
   if (!isSponsor) return <SponsorshipApplyPanel />;
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8">
       <div className="rounded-3xl gradient-navy grain-overlay text-white p-6 sm:p-8 relative overflow-hidden">
         <div className="absolute inset-0 leaf-texture opacity-40" />
         <div className="relative flex flex-wrap items-start justify-between gap-4">
@@ -250,7 +250,7 @@ export default function Page() {
               </span>
             </div>
             <h1 className="font-serif text-3xl sm:text-4xl font-bold">{org?.name}</h1>
-            <p className="text-white/85 text-sm mt-2 max-w-xl">
+            <p className="text-white/85 text-sm mt-2">
               Admin-approved {tierName} package · booth {org?.booth}. Benefits below are set by the organizing committee
               in the admin tier editor (SRS appendix matrix).
             </p>
