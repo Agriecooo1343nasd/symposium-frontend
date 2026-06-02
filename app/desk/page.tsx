@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Users, FileCheck, Mic, ScanLine, Store, CheckCircle } from "lucide-react";
+import { Users, FileCheck, Mic, ScanLine, Store, CheckCircle, Newspaper } from "lucide-react";
 import { useStore } from "@/hooks/use-store";
 
 export default function DeskOverviewPage() {
@@ -9,6 +9,7 @@ export default function DeskOverviewPage() {
   const pendingVerifications = store.documentVerifications.filter((d) => d.status === "pending");
   const pendingSpeakers = store.speakerApplications.filter((s) => s.status === "pending");
   const pendingOrgs = store.organizationApplications.filter((o) => o.status === "pending");
+  const pendingMedia = store.mediaApplications.filter((m) => m.status === "pending");
   const paidRegs = store.registrations.filter((r) => r.status === "paid");
   const checkedIn = store.registrations.filter((r) => r.checkedIn).length;
   const todayScans = store.checkInScans.length;
@@ -20,11 +21,12 @@ export default function DeskOverviewPage() {
         <p className="text-muted-foreground">Registrations, document verification, applications, and venue check-in.</p>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: "Paid registrations", value: paidRegs.length, sub: `${checkedIn} checked in` },
           { label: "Pending verifications", value: pendingVerifications.length, sub: "Student & farmer docs" },
           { label: "Speaker applications", value: pendingSpeakers.length, sub: "Awaiting review" },
+          { label: "Media accreditation", value: pendingMedia.length, sub: "Press pending review" },
           { label: "Org applications", value: pendingOrgs.length, sub: "Exhibitor & sponsor" },
         ].map((s) => (
           <div key={s.label} className="rounded-md bg-card border border-border p-4">
@@ -53,6 +55,7 @@ export default function DeskOverviewPage() {
               { to: "/desk/registrations", label: "View registrations", icon: Users },
               { to: "/desk/verifications", label: "Verify documents", icon: FileCheck },
               { to: "/desk/applications", label: "Speaker applications", icon: Mic },
+            { to: "/desk/media", label: "Media accreditation", icon: Newspaper },
             { to: "/desk/exhibitors", label: "Exhibitors & sponsors", icon: Store },
               { to: "/desk/checkin", label: "Scan badges", icon: ScanLine },
             ].map((a) => (
@@ -90,9 +93,10 @@ export default function DeskOverviewPage() {
         )}
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { to: "/desk/registrations", label: "Registrations", value: paidRegs.length, icon: Users },
+          { to: "/desk/media", label: "Media apps", value: pendingMedia.length, icon: Newspaper },
           { to: "/desk/verifications", label: "Verifications", value: pendingVerifications.length, icon: FileCheck },
           { to: "/desk/applications", label: "Speaker apps", value: pendingSpeakers.length, icon: Mic },
           { to: "/desk/exhibitors/applications", label: "Exhibitor apps", value: pendingOrgs.length, icon: Store },

@@ -7,9 +7,22 @@ import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { SessionCard } from "@/components/SessionCard";
 import { StatTile } from "@/components/layout/PortalShell";
-import { SESSIONS, DEMO_USER, NOTIFICATIONS } from "@/lib/mock-data";
+import { SESSIONS, NOTIFICATIONS } from "@/lib/mock-data";
+import { useAuth } from "@/hooks/use-auth";
+import { useStore } from "@/hooks/use-store";
+import { GroupDelegationPanel } from "@/components/group/GroupDelegationPanel";
+import { getGroupByRepresentativeEmail } from "@/lib/group-registration";
+import { loadStore } from "@/lib/store";
 
 export default function OverviewPage() {
+  const { session } = useAuth();
+  useStore();
+  const reg = session ? loadStore().registrations.find((r) => r.email === session.email) : undefined;
+  const displayName = session?.name ?? "Delegate";
+  const category = reg?.category ?? session?.category ?? "Delegate";
+  const isRep = session ? !!getGroupByRepresentativeEmail(session.email) : false;
+  const isMember = !!reg?.groupId && reg.groupRole === "member";
+
   const [now] = useState(() => Date.now());
   const upcoming = SESSIONS.slice(0, 3);
   const next = SESSIONS[0];
@@ -22,9 +35,11 @@ export default function OverviewPage() {
         <div className="relative flex flex-wrap gap-6 justify-between items-end">
           <div>
             <div className="text-xs uppercase tracking-widest text-gold mb-1">Welcome back</div>
-            <h1 className="font-serif text-3xl sm:text-4xl font-bold">{DEMO_USER.name.split(" ")[0]} 👋</h1>
+            <h1 className="font-serif text-3xl sm:text-4xl font-bold">{displayName.split(" ")[0]} 👋</h1>
             <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-green/20 text-white px-3 py-1 text-xs font-semibold">
-              {DEMO_USER.category} · Confirmed
+              {category} · Confirmed
+              {isRep && " · Group rep"}
+              {isMember && " · Group member"}
             </div>
             <div className="flex flex-wrap gap-4 mt-4 text-sm text-white/80">
               <span className="inline-flex items-center gap-1.5">
@@ -38,6 +53,13 @@ export default function OverviewPage() {
           <CountdownTimer light compact />
         </div>
       </div>
+
+      {session && (isRep || isMember) && (
+        <GroupDelegationPanel
+          email={session.email}
+          variant={isRep ? "representative" : "member"}
+        />
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile label="Sessions saved" value={6} hint="of 12 available" accent />

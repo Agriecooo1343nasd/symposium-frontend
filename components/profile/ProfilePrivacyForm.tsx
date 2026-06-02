@@ -101,12 +101,12 @@ export function ProfilePrivacyForm({ email, defaultName, defaultOrg = "", defaul
         </div>
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
-        <div><Label>Full name</Label><Input placeholder="Input your full names" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1" required /></div>
-        <div><Label>Title</Label><Input placeholder="Input your title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1" /></div>
-        <div><Label>Organization</Label><Input placeholder="Input your organization" value={form.org} onChange={(e) => setForm({ ...form, org: e.target.value })} className="mt-1" /></div>
-        <div><Label>Country</Label><Input placeholder="Input your country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className="mt-1" /></div>
-        <div className="sm:col-span-2"><Label>LinkedIn</Label><Input placeholder="Input your linked-in profile url" value={form.linkedin} onChange={(e) => setForm({ ...form, linkedin: e.target.value })} className="mt-1" /></div>
-        <div className="sm:col-span-2"><Label>Bio</Label><Textarea placeholder="Input your bio" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} rows={3} className="mt-1 resize-y" /></div>
+        <div><Label>Full name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1" required /></div>
+        <div><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1" /></div>
+        <div><Label>Organization</Label><Input value={form.org} onChange={(e) => setForm({ ...form, org: e.target.value })} className="mt-1" /></div>
+        <div><Label>Country</Label><Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className="mt-1" /></div>
+        <div className="sm:col-span-2"><Label>LinkedIn</Label><Input value={form.linkedin} onChange={(e) => setForm({ ...form, linkedin: e.target.value })} className="mt-1" /></div>
+        <div className="sm:col-span-2"><Label>Bio</Label><Textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} rows={3} className="mt-1 resize-y" /></div>
         <div className="sm:col-span-2">
           <Label>Sub-theme interests</Label>
           <div className="flex flex-wrap gap-2 mt-2">

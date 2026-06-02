@@ -7,16 +7,14 @@ import { SubThemeBadge } from "@/components/SubThemeBadge";
 import { SessionMaterialsPanel } from "@/components/session/SessionMaterialsPanel";
 import { SessionRatingPanel } from "@/components/session/SessionRatingPanel";
 import { SPEAKERS } from "@/lib/mock-data";
-import { getProgrammeSessions } from "@/lib/sessions";
+import { getSessionById, getProgrammeSessions } from "@/lib/sessions";
 import { canViewSessionProgramme } from "@/lib/access";
-import { useStore } from "@/hooks/use-store";
 import { toast } from "sonner";
 
 export default function SessionDetail() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
-  const store = useStore();
-  const session = store.sessions.find((s) => s.id === id);
+  const session = getSessionById(id);
 
   if (!session) {
     notFound();

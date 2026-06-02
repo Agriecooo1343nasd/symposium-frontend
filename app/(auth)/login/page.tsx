@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
     Leaf, Mail, Lock, ArrowRight, Store, Sparkles,
-    LayoutDashboard, Mic, MonitorPlay, Clipboard,
+    LayoutDashboard, Mic, MonitorPlay, Clipboard, UsersRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signIn, dashboardPathForRole } from "@/lib/auth";
+import { loadStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { MockSession } from "@/lib/mock-data";
@@ -19,6 +20,7 @@ type DemoVariant = {
     icon: React.ElementType;
     role: MockSession["role"];
     participation?: MockSession["participation"];
+    groupDemo?: "representative" | "member";
     description: string;
     color: string;
 };
@@ -29,6 +31,22 @@ const DEMO_VARIANTS: DemoVariant[] = [
         icon: LayoutDashboard,
         role: "attendee",
         description: "Schedule, networking, e-ticket",
+        color: "border-border hover:border-accent/60",
+    },
+    {
+        label: "Group representative",
+        icon: UsersRound,
+        role: "attendee",
+        groupDemo: "representative",
+        description: "Delegation roster & check-in tracking",
+        color: "border-emerald-300/60 hover:border-emerald-400 bg-emerald-50/40",
+    },
+    {
+        label: "Group member",
+        icon: UsersRound,
+        role: "attendee",
+        groupDemo: "member",
+        description: "Individual ticket within a group",
         color: "border-border hover:border-accent/60",
     },
     {
@@ -97,6 +115,36 @@ export default function Login() {
     };
 
     const demoLogin = (variant: DemoVariant) => {
+        if (variant.groupDemo === "representative") {
+            const store = loadStore();
+            const group = store.groupRegistrations[0];
+            const rep = store.registrations.find((r) => r.id === group?.representativeRegistrationId);
+            const session = signIn("attendee", {
+                name: rep?.name ?? "John Okello",
+                email: rep?.email ?? "j.okello@example.ug",
+                category: rep?.category ?? "NGO / CSO / Private Sector",
+                ticketId: rep?.details?.ticketId ?? "NAS26-R2-1001",
+                isGroupRepresentative: true,
+                groupId: group?.id,
+            });
+            toast.success(`Signed in as ${variant.label}`);
+            router.push(dashboardPathForRole(session.role));
+            return;
+        }
+        if (variant.groupDemo === "member") {
+            const store = loadStore();
+            const member = store.registrations.find((r) => r.groupRole === "member" && r.groupId);
+            const session = signIn("attendee", {
+                name: member?.name ?? "Grace Mukamana",
+                email: member?.email ?? "grace.mukamana@coop.rw",
+                category: member?.category ?? "NGO / CSO / Private Sector",
+                ticketId: member?.details?.ticketId ?? "NAS26-GRP-2003",
+                groupId: member?.groupId,
+            });
+            toast.success(`Signed in as ${variant.label}`);
+            router.push(dashboardPathForRole(session.role));
+            return;
+        }
         const session = signIn(variant.role, { participation: variant.participation });
         toast.success(`Signed in as ${variant.label}`);
         router.push(dashboardPathForRole(session.role));

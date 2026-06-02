@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -13,22 +13,22 @@ import {
   Bell,
   ClipboardCheck,
   Mic,
-  Store,
   Radio,
   RotateCcw,
 } from "lucide-react";
 import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell";
 import { useAuth } from "@/hooks/use-auth";
 import { canAccessPortal } from "@/lib/permissions";
+import { useStore } from "@/hooks/use-store";
+import { getGroupByRepresentativeEmail } from "@/lib/group-registration";
 
-const NAV: readonly PortalNavItem[] = [
+const BASE_NAV: readonly PortalNavItem[] = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/dashboard/live", label: "Live session", icon: Radio, exact: false },
   { to: "/dashboard/ticket", label: "My Ticket", icon: Ticket, exact: false },
   { to: "/dashboard/refunds", label: "Refunds & transfer", icon: RotateCcw, exact: false },
   { to: "/dashboard/schedule", label: "My Schedule", icon: Calendar, exact: false },
   { to: "/dashboard/apply", label: "Apply to speak", icon: Mic, exact: false },
-  { to: "/dashboard/apply-exhibit", label: "Apply to exhibit", icon: Store, exact: false },
   { to: "/dashboard/networking", label: "Networking", icon: Users, exact: false },
   { to: "/dashboard/materials", label: "Materials", icon: FileText, exact: false },
   { to: "/dashboard/notifications", label: "Notifications", icon: Bell, exact: false },
@@ -40,6 +40,13 @@ const NAV: readonly PortalNavItem[] = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { session, ready } = useAuth();
+  useStore();
+  const nav = useMemo(() => {
+    if (!session) return BASE_NAV;
+    if (!getGroupByRepresentativeEmail(session.email)) return BASE_NAV;
+    const delegation: PortalNavItem = { to: "/dashboard/group", label: "My delegation", icon: Users };
+    return [BASE_NAV[0], delegation, ...BASE_NAV.slice(1)];
+  }, [session?.email]);
 
   useEffect(() => {
     if (!ready) return;
@@ -53,7 +60,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <PortalShell title="Attendee Dashboard" subtitle="Attendee Portal" nav={NAV}>
+    <PortalShell title="Attendee Dashboard" subtitle="Attendee Portal" nav={nav}>
       {children}
     </PortalShell>
   );

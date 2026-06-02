@@ -176,6 +176,7 @@ export default function AdminOverview() {
             <li className="flex justify-between"><span>Pending bank transfers</span><Link href="/admin/finance" className="font-bold text-amber-900">{pending.length} →</Link></li>
             <li className="flex justify-between"><span>Speaker applications</span><Link href="/admin/abstracts" className="font-bold text-amber-900">{pendingApps} →</Link></li>
             <li className="flex justify-between"><span>Exhibitor applications</span><Link href="/admin/exhibitors/applications" className="font-bold text-amber-900">{store.organizationApplications.filter((a) => a.status === "pending").length} →</Link></li>
+            <li className="flex justify-between"><span>Media accreditation</span><Link href="/admin/media" className="font-bold text-amber-900">{store.mediaApplications.filter((a) => a.status === "pending").length} →</Link></li>
             <li className="flex justify-between"><span>Abstracts under review</span><Link href="/admin/abstracts" className="font-bold text-amber-900">{reviewAbs} →</Link></li>
           </ul>
           <Button asChild className="w-full mt-4 gradient-blue text-accent-foreground" size="sm"><Link href="/admin/checkin"><ScanLine className="h-3.5 w-3.5 mr-1" /> Open check-in</Link></Button>

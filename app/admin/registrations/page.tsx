@@ -5,7 +5,9 @@ import { Search, Download, UserPlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/hooks/use-store";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManualRegistrationDialog } from "@/components/admin/ManualRegistrationDialog";
+import { GroupRegistrationsManager } from "@/components/group/GroupRegistrationsManager";
 
 
 export default function Page() {
@@ -15,6 +17,7 @@ export default function Page() {
   const [filterVer, setFilterVer] = useState<"all" | "pending">("all");
 
   const rows = store.registrations.filter((r) => {
+    if (r.groupId) return false;
     const matchQ = !q || [r.name, r.email, r.country, r.category].some((v) => v.toLowerCase().includes(q.toLowerCase()));
     const matchV = filterVer === "all" || r.verificationStatus === "pending";
     return matchQ && matchV;
@@ -59,6 +62,15 @@ export default function Page() {
       </div>
       <ManualRegistrationDialog open={manualOpen} onOpenChange={setManualOpen} />
 
+      <Tabs defaultValue="individual" className="mt-4">
+        <TabsList>
+          <TabsTrigger value="individual">Individual ({store.registrations.filter((r) => !r.groupId).length})</TabsTrigger>
+          <TabsTrigger value="groups">Groups ({store.groupRegistrations.length})</TabsTrigger>
+        </TabsList>
+        <TabsContent value="groups" className="mt-6">
+          <GroupRegistrationsManager basePath="/admin/registrations" />
+        </TabsContent>
+        <TabsContent value="individual" className="mt-6 space-y-4">
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="relative max-w-md flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -87,6 +99,9 @@ export default function Page() {
                 <td className="px-4 py-3">
                   <div className="font-medium">{r.name}</div>
                   <div className="text-xs text-muted-foreground">{r.email}</div>
+                  {r.groupId && (
+                    <span className="text-[10px] text-accent font-mono">{r.groupRole}</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell text-xs">{r.category}</td>
                 <td className="px-4 py-3 hidden sm:table-cell text-xs">{r.country}</td>
@@ -104,6 +119,8 @@ export default function Page() {
           </tbody>
         </table>
       </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

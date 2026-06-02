@@ -18,12 +18,14 @@ import {
   Shield,
   Settings,
   Ticket,
+  ClipboardList,
   Award,
   ClipboardCheck,
   UserCircle,
   Newspaper,
   RotateCcw,
   MessageCircle,
+  Camera,
 } from "lucide-react";
 import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,6 +34,7 @@ import { canAccessPortal } from "@/lib/permissions";
 const NAV: readonly PortalNavItem[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/admin/registrations", label: "Registrations", icon: Users },
+  { to: "/admin/media", label: "Media / Press", icon: Camera },
   { to: "/admin/refunds", label: "Refunds & waitlist", icon: RotateCcw },
   { to: "/admin/ticket-plans", label: "Pass plans", icon: Ticket },
   { to: "/admin/finance", label: "Finance", icon: DollarSign },
@@ -49,6 +52,7 @@ const NAV: readonly PortalNavItem[] = [
   { to: "/admin/content", label: "Content", icon: FileText },
   { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/admin/users", label: "Users & Roles", icon: Shield },
+  { to: "/admin/desk", label: "Desk audit", icon: ClipboardList },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

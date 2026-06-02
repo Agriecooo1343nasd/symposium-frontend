@@ -199,8 +199,8 @@ export default function ApplyExhibitPage() {
                             <CheckCircle2 className="h-4 w-4 text-accent flex-shrink-0" />
                             <span>
                                 Preferred: <strong className="font-mono">{pickedBooth.code}</strong>
+                                {pickedBooth.location && <span className="text-muted-foreground"> · {pickedBooth.location}</span>}
                                 {pickedBooth.dimensions && <span className="text-muted-foreground"> · {pickedBooth.dimensions}</span>}
-                                {pickedBooth.floor && <span className="text-muted-foreground"> · {pickedBooth.floor}</span>}
                             </span>
                             <button
                                 type="button"

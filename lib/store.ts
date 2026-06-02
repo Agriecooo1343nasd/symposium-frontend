@@ -21,7 +21,7 @@ import {
 import type { ZoomMeeting } from "./zoom-mock";
 
 const STORE_KEY = "nas2026_data";
-const STORE_VERSION = 18;
+const STORE_VERSION = 17;
 
 const LISTENERS = new Set<() => void>();
 
@@ -59,10 +59,43 @@ export type AuditEntry = {
 export type TicketPlan = TicketCategory & {
   subtitle?: string;
   requiresVerification?: "student" | "farmer" | null;
+  /** Complimentary press accreditation — no payment step */
+  isMediaAccreditation?: boolean;
   /** Max paid/comp seats; waitlist when full */
   capacity: number;
   /** Force sold-out regardless of count */
   soldOutOverride?: boolean;
+};
+
+export type MediaPressType = "tv" | "radio" | "print" | "digital" | "photo" | "other";
+
+export type MediaApplication = {
+  id: string;
+  registrationId: string;
+  name: string;
+  email: string;
+  phone: string;
+  country: string;
+  jobTitle: string;
+  pressName: string;
+  pressType: MediaPressType;
+  pressWebsite: string;
+  pressCountry: string;
+  editorName?: string;
+  editorEmail?: string;
+  coverageBrief: string;
+  socialHandle?: string;
+  credentialFileName: string;
+  credentialDataUrl?: string;
+  letterFileName: string;
+  letterDataUrl?: string;
+  assignmentFileName?: string;
+  assignmentDataUrl?: string;
+  status: "pending" | "approved" | "rejected";
+  reviewMessage?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  submittedAt: string;
 };
 
 export type RegistrationDetails = {
@@ -76,6 +109,7 @@ export type RegistrationDetails = {
   linkedin?: string;
   interests?: string[];
   paymentMethod?: string;
+  roleNote?: string;
 };
 
 export type StoreRegistration = {
@@ -94,6 +128,39 @@ export type StoreRegistration = {
   checkedInAt?: string;
   checkInType?: "delegate" | "exhibitor_staff" | "booth_comp";
   certificateGranted?: boolean;
+  /** Group registration (FR-2.3) */
+  groupId?: string;
+  groupRole?: "representative" | "member";
+};
+
+export type GroupRegistrationSettings = {
+  enabled: boolean;
+  minSize: number;
+  tier5to9Percent: number;
+  tier10PlusPercent: number;
+  maxSize: number;
+};
+
+export type GroupRegistration = {
+  id: string;
+  code: string;
+  orgName: string;
+  representativeRegistrationId: string;
+  representativeEmail: string;
+  representativeName: string;
+  country: string;
+  categoryId: string;
+  categoryName: string;
+  memberCount: number;
+  memberRegistrationIds: string[];
+  pricePerSeatUsd: number;
+  subtotalUsd: number;
+  discountPercent: number;
+  discountUsd: number;
+  totalUsd: number;
+  status: "paid" | "pending" | "comp";
+  paymentMethod?: string;
+  createdAt: string;
 };
 
 export type ExhibitorLeadStatus = "None" | "Contacted" | "In Discussion" | "Converted";
@@ -425,6 +492,7 @@ export type PlatformSettings = {
   features: FeatureFlags;
   cancellationPolicyText: string;
   refundProcessingDays: number;
+  groupRegistration: GroupRegistrationSettings;
 };
 
 export type CancellationRequestType = "refund" | "transfer";
@@ -499,28 +567,6 @@ export type ChatMessage = {
   sentAt: string;
 };
 
-export type GalleryImage = {
-  id: string;
-  src: string;
-  caption: string;
-  event: string;
-  year: string;
-  order: number;
-  uploadedAt: string;
-};
-
-export type PreviousPresentation = {
-  id: string;
-  title: string;
-  presenter: string;
-  event: string;
-  year: string;
-  fileUrl: string;
-  fileName: string;
-  order: number;
-  uploadedAt: string;
-};
-
 export type CertificateSignature = {
   name: string;
   title: string;
@@ -586,6 +632,24 @@ export type CommitteeMember = {
   order: number;
 };
 
+export type GalleryImage = {
+  id: string;
+  src: string;
+  caption: string;
+  event: string;
+  year: number;
+  order: number;
+};
+
+export type PreviousPresentation = {
+  id: string;
+  title: string;
+  presenter: string;
+  fileName: string;
+  fileUrl: string;
+  order: number;
+};
+
 export type VenueRoom = {
   id: string;
   name: string;
@@ -605,10 +669,8 @@ export type Booth = {
   location: string;
   assignedOrgId?: string;
   status: BoothStatus;
-  /** e.g. "3m × 3m" */
   dimensions?: string;
   floor?: string;
-  /** What's physically included in the booth */
   includes?: string[];
   setupWindow?: string;
   breakdownWindow?: string;
@@ -636,8 +698,10 @@ export type AppStore = {
   auditLog: AuditEntry[];
   ticketPlans: TicketPlan[];
   registrations: StoreRegistration[];
+  groupRegistrations: GroupRegistration[];
   documentVerifications: DocumentVerification[];
   speakerApplications: SpeakerApplication[];
+  mediaApplications: MediaApplication[];
   organizationApplications: OrganizationApplication[];
   approvedOrganizations: ApprovedOrganization[];
   sponsorshipTiers: SponsorshipTierConfig[];
@@ -664,6 +728,8 @@ export type AppStore = {
   announcementDismissals: AnnouncementDismissal[];
   newsPosts: NewsPost[];
   committeeMembers: CommitteeMember[];
+  galleryImages: GalleryImage[];
+  previousPresentations: PreviousPresentation[];
   rooms: VenueRoom[];
   booths: Booth[];
   speakerProfiles: SpeakerProfile[];
@@ -672,8 +738,6 @@ export type AppStore = {
   attendeeProfiles: AttendeeProfile[];
   connectionRequests: StoreConnectionRequest[];
   chatMessages: ChatMessage[];
-  galleryImages: GalleryImage[];
-  previousPresentations: PreviousPresentation[];
 };
 
 function uid(prefix = "id") {
@@ -1354,7 +1418,166 @@ function seedPlatformSettings(): PlatformSettings {
     cancellationPolicyText:
       "Cancellations received more than 30 days before NAS 2026 (before 14 July 2026) qualify for a full refund minus a 5% processing fee. Between 14–31 July, 50% refund. No refund after 31 July except documented emergencies (medical, visa denial) reviewed by the secretariat. Registration transfers to another named delegate require admin approval and are free of charge. Refunds are processed manually within 14 business days to the original payment method.",
     refundProcessingDays: 14,
+    groupRegistration: {
+      enabled: true,
+      minSize: 5,
+      tier5to9Percent: 10,
+      tier10PlusPercent: 15,
+      maxSize: 30,
+    },
   };
+}
+
+function seedGroupRegistrations(baseRegs: StoreRegistration[]): {
+  groups: GroupRegistration[];
+  registrations: StoreRegistration[];
+} {
+  const john = baseRegs.find((r) => r.email === "j.okello@example.ug");
+  if (!john) return { groups: [], registrations: baseRegs };
+
+  const groupId = "grp-demo";
+  const planUsd = john.amountUsd || 150;
+  const memberCount = 5;
+  const pricing = {
+    subtotalUsd: planUsd * memberCount,
+    discountPercent: 10,
+    discountUsd: planUsd * memberCount * 0.1,
+    totalUsd: planUsd * memberCount * 0.9,
+  };
+
+  const extraMembers: StoreRegistration[] = [
+    {
+      id: "r-grp-2",
+      name: "Claude Nshimiyimana",
+      email: "claude.nshimiyimana@minagri.gov.rw",
+      country: "Rwanda",
+      category: john.category,
+      categoryId: john.categoryId,
+      amountUsd: pricing.totalUsd / memberCount,
+      status: "paid",
+      verificationStatus: "none",
+      createdAt: "2026-04-10",
+      checkedIn: true,
+      checkedInAt: "2026-08-13T08:15:00.000Z",
+      groupId,
+      groupRole: "member",
+      details: {
+        ticketId: "NAS26-GRP-2002",
+        title: "Programme Officer",
+        org: "MINAGRI Rwanda",
+        phone: "+250 788 111 222",
+        hear: "Group registration",
+        paymentMethod: "bank",
+        roleNote: "group-member",
+      },
+    },
+    {
+      id: "r-grp-3",
+      name: "Grace Mukamana",
+      email: "grace.mukamana@coop.rw",
+      country: "Rwanda",
+      category: john.category,
+      categoryId: john.categoryId,
+      amountUsd: pricing.totalUsd / memberCount,
+      status: "paid",
+      verificationStatus: "none",
+      createdAt: "2026-04-10",
+      checkedIn: false,
+      groupId,
+      groupRole: "member",
+      details: {
+        ticketId: "NAS26-GRP-2003",
+        title: "Field Officer",
+        org: "Imbaraga Farmers Federation",
+        hear: "Group registration",
+        paymentMethod: "bank",
+        roleNote: "group-member",
+      },
+    },
+    {
+      id: "r-grp-4",
+      name: "Patrick Habimana",
+      email: "patrick.h@coop.rw",
+      country: "Rwanda",
+      category: john.category,
+      categoryId: john.categoryId,
+      amountUsd: pricing.totalUsd / memberCount,
+      status: "paid",
+      verificationStatus: "none",
+      createdAt: "2026-04-10",
+      checkedIn: false,
+      groupId,
+      groupRole: "member",
+      details: {
+        ticketId: "NAS26-GRP-2004",
+        title: "Cooperative Lead",
+        org: "Imbaraga Farmers Federation",
+        hear: "Group registration",
+        paymentMethod: "bank",
+        roleNote: "group-member",
+      },
+    },
+    {
+      id: "r-grp-5",
+      name: "Eric Niyonsenga",
+      email: "eric.n@coop.rw",
+      country: "Rwanda",
+      category: john.category,
+      categoryId: john.categoryId,
+      amountUsd: pricing.totalUsd / memberCount,
+      status: "paid",
+      verificationStatus: "none",
+      createdAt: "2026-04-10",
+      checkedIn: false,
+      groupId,
+      groupRole: "member",
+      details: {
+        ticketId: "NAS26-GRP-2005",
+        title: "Youth Delegate",
+        org: "Imbaraga Farmers Federation",
+        hear: "Group registration",
+        paymentMethod: "bank",
+        roleNote: "group-member",
+      },
+    },
+  ];
+
+  const johnPatched: StoreRegistration = {
+    ...john,
+    groupId,
+    groupRole: "representative",
+    amountUsd: pricing.totalUsd / memberCount,
+    details: {
+      ...john.details!,
+      roleNote: "group-representative",
+    },
+  };
+
+  const allIds = [johnPatched.id, ...extraMembers.map((m) => m.id)];
+  const group: GroupRegistration = {
+    id: groupId,
+    code: "GRP-DEMO01",
+    orgName: "Imbaraga Farmers Federation",
+    representativeRegistrationId: john.id,
+    representativeEmail: john.email,
+    representativeName: john.name,
+    country: john.country,
+    categoryId: john.categoryId,
+    categoryName: john.category,
+    memberCount,
+    memberRegistrationIds: allIds,
+    pricePerSeatUsd: planUsd,
+    subtotalUsd: pricing.subtotalUsd,
+    discountPercent: pricing.discountPercent,
+    discountUsd: pricing.discountUsd,
+    totalUsd: pricing.totalUsd,
+    status: "paid",
+    paymentMethod: "bank",
+    createdAt: "2026-04-10",
+  };
+
+  const registrations = baseRegs.map((r) => (r.id === john.id ? johnPatched : r));
+  return { groups: [group], registrations: [...extraMembers, ...registrations] };
 }
 
 const DEFAULT_PLAN_CAPACITY: Record<string, number> = {
@@ -1364,7 +1587,55 @@ const DEFAULT_PLAN_CAPACITY: Record<string, number> = {
   student: 1,
   farmer: 60,
   virtual: 500,
+  media: 60,
 };
+
+function seedMediaApplications(regs: StoreRegistration[]): MediaApplication[] {
+  const pendingReg = regs.find((r) => r.categoryId === "media" && r.status === "pending");
+  return [
+    {
+      id: "ma-demo-pending",
+      registrationId: pendingReg?.id ?? "r-media-pending",
+      name: "Claudine Uwase",
+      email: "c.uwase@kigalitoday.rw",
+      phone: "+250 788 555 010",
+      country: "Rwanda",
+      jobTitle: "Senior Reporter",
+      pressName: "Kigali Today",
+      pressType: "digital",
+      pressWebsite: "https://kigalitoday.rw",
+      pressCountry: "Rwanda",
+      editorName: "Jean-Paul Habimana",
+      editorEmail: "editor@kigalitoday.rw",
+      coverageBrief: "Daily coverage of plenary sessions and farmer innovation zone for online readers.",
+      socialHandle: "@kigalitoday",
+      credentialFileName: "press-card-claudine.pdf",
+      letterFileName: "assignment-letter-kigalitoday.pdf",
+      status: "pending",
+      submittedAt: "2026-05-18",
+    },
+    {
+      id: "ma-demo-approved",
+      registrationId: "r-media-approved",
+      name: "Sarah Mensah",
+      email: "s.mensah@africanews.com",
+      phone: "+233 24 000 1234",
+      country: "Ghana",
+      jobTitle: "Correspondent",
+      pressName: "Africa News Network",
+      pressType: "tv",
+      pressWebsite: "https://africanews.com",
+      pressCountry: "Ghana",
+      coverageBrief: "Broadcast features on agroecology policy and East Africa pavilion.",
+      credentialFileName: "press-id-sarah.pdf",
+      letterFileName: "outlet-letter-africanews.pdf",
+      status: "approved",
+      reviewedBy: "Registration Desk",
+      reviewedAt: "2026-05-20T10:00:00.000Z",
+      submittedAt: "2026-05-12",
+    },
+  ];
+}
 
 const ADMIN_NETWORKING_EMAIL = "admin@nas2026.rw";
 
@@ -1764,143 +2035,6 @@ function seedChatMessages(): ChatMessage[] {
   ];
 }
 
-function seedGalleryImages(): GalleryImage[] {
-  return [
-    {
-      id: "gi1",
-      src: "https://picsum.photos/seed/nas-gallery-1/800/600",
-      caption: "Opening ceremony of the 2nd National Agroecology Symposium",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      order: 1,
-      uploadedAt: "2024-09-01",
-    },
-    {
-      id: "gi2",
-      src: "https://picsum.photos/seed/nas-gallery-2/800/600",
-      caption: "Ministerial address by the Minister of Agriculture at the 2nd NAS",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      order: 2,
-      uploadedAt: "2024-09-01",
-    },
-    {
-      id: "gi3",
-      src: "https://picsum.photos/seed/nas-gallery-3/800/600",
-      caption: "Farmer-led panel featuring cooperative leaders from across Rwanda",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      order: 3,
-      uploadedAt: "2024-09-01",
-    },
-    {
-      id: "gi4",
-      src: "https://picsum.photos/seed/nas-gallery-4/800/600",
-      caption: "Field visit to the Bugesera demonstration farm — soil health workshop",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      order: 4,
-      uploadedAt: "2024-09-02",
-    },
-    {
-      id: "gi5",
-      src: "https://picsum.photos/seed/nas-gallery-5/800/600",
-      caption: "Kigali Roadmap signing ceremony — day 2 closing session",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      order: 5,
-      uploadedAt: "2024-09-02",
-    },
-    {
-      id: "gi6",
-      src: "https://picsum.photos/seed/nas-gallery-6/800/600",
-      caption: "Exhibitor showcase — 20+ organizations presenting agroecological innovations",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      order: 6,
-      uploadedAt: "2024-09-02",
-    },
-    {
-      id: "gi7",
-      src: "https://picsum.photos/seed/nas-gallery-7/800/600",
-      caption: "Networking reception with delegates from 14 countries",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      order: 7,
-      uploadedAt: "2024-09-02",
-    },
-    {
-      id: "gi8",
-      src: "https://picsum.photos/seed/nas-gallery-8/800/600",
-      caption: "Youth delegates presenting research findings at the science track",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      order: 8,
-      uploadedAt: "2024-09-03",
-    },
-  ];
-}
-
-function seedPreviousPresentations(): PreviousPresentation[] {
-  return [
-    {
-      id: "pp1",
-      title: "Scaling Agroecology in Rwanda's Hillside Systems",
-      presenter: "Dr. Mukeshimana Solange",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      fileUrl: "#",
-      fileName: "nas2024-opening-plenary-mukeshimana.pdf",
-      order: 1,
-      uploadedAt: "2024-09-05",
-    },
-    {
-      id: "pp2",
-      title: "National Agroecology Roadmap 2024–2028",
-      presenter: "MINAGRI Rwanda",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      fileUrl: "#",
-      fileName: "nas2024-roadmap-minagri.pdf",
-      order: 2,
-      uploadedAt: "2024-09-05",
-    },
-    {
-      id: "pp3",
-      title: "Participatory Research & Farmer Co-Designers",
-      presenter: "Jean-Baptiste Habimana",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      fileUrl: "#",
-      fileName: "nas2024-participatory-research-habimana.pdf",
-      order: 3,
-      uploadedAt: "2024-09-06",
-    },
-    {
-      id: "pp4",
-      title: "Soil Health Indicators for Hillside Cooperatives",
-      presenter: "Prof. Esther Wanjiru",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      fileUrl: "#",
-      fileName: "nas2024-soil-health-wanjiru.pdf",
-      order: 4,
-      uploadedAt: "2024-09-06",
-    },
-    {
-      id: "pp5",
-      title: "Financing Agroecological Transitions — Donor Perspectives",
-      presenter: "GIZ Rwanda",
-      event: "2nd National Agroecology Symposium",
-      year: "2024",
-      fileUrl: "#",
-      fileName: "nas2024-financing-giz.pdf",
-      order: 5,
-      uploadedAt: "2024-09-06",
-    },
-  ];
-}
-
 function seedWaitlist(): WaitlistEntry[] {
   return [
     {
@@ -1945,6 +2079,66 @@ function seedCommittee(): CommitteeMember[] {
   ];
 }
 
+function seedGalleryImages(): GalleryImage[] {
+  const captions = [
+    "Opening plenary — 2nd NAS, Kigali 2024",
+    "Farmer innovation showcase",
+    "Panel: scaling agroecology in East Africa",
+    "Exhibition hall networking",
+    "Youth delegates workshop",
+    "Field visit — Bugesera demonstration farm",
+    "Closing ceremony — roadmap adoption",
+    "Ministerial roundtable",
+    "Exhibitor booth demonstrations",
+    "Delegate networking reception",
+  ];
+  return captions.map((caption, i) => ({
+    id: `gal-${i + 1}`,
+    src: `https://picsum.photos/seed/nas2-gallery-${i + 1}/800/600`,
+    caption,
+    event: "2nd National Agroecology Symposium",
+    year: 2024,
+    order: i + 1,
+  }));
+}
+
+function seedPreviousPresentations(): PreviousPresentation[] {
+  return [
+    {
+      id: "pres-1",
+      title: "National agroecology roadmap — progress report",
+      presenter: "Dr. Mukeshimana Solange",
+      fileName: "NAS2024-roadmap-progress.pdf",
+      fileUrl: "#",
+      order: 1,
+    },
+    {
+      id: "pres-2",
+      title: "Farmer-led soil health monitoring in hillside systems",
+      presenter: "Jean-Baptiste Habimana",
+      fileName: "NAS2024-soil-health-farmers.pdf",
+      fileUrl: "#",
+      order: 2,
+    },
+    {
+      id: "pres-3",
+      title: "Youth entrepreneurship in agroecological value chains",
+      presenter: "Youth in Agribusiness Forum",
+      fileName: "NAS2024-youth-value-chains.pdf",
+      fileUrl: "#",
+      order: 3,
+    },
+    {
+      id: "pres-4",
+      title: "Policy enablers for organic certification at scale",
+      presenter: "MINAGRI Policy Unit",
+      fileName: "NAS2024-organic-certification.pdf",
+      fileUrl: "#",
+      order: 4,
+    },
+  ];
+}
+
 function seedRooms(): VenueRoom[] {
   return ROOMS.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity, floor: r.floor, av: r.av }));
 }
@@ -1952,14 +2146,6 @@ function seedRooms(): VenueRoom[] {
 function seedBooths(): Booth[] {
   const booths: Booth[] = [];
   const rows = ["A", "B", "C", "D"];
-  const DEFAULT_INCLUDES = [
-    "1× rectangular display table (180×60cm)",
-    "2× chairs",
-    "2× 220V power outlets",
-    "Dedicated 50 Mbps wifi",
-    "Booth signage with your logo",
-    "Daily cleaning service",
-  ];
   let n = 1;
   for (let r = 0; r < 4; r++) {
     for (let c = 0; c < 6; c++) {
@@ -1976,11 +2162,17 @@ function seedBooths(): Booth[] {
         status: assigned ? "occupied" : "available",
         dimensions: "3m × 3m",
         floor: "Ground floor",
-        includes: DEFAULT_INCLUDES,
+        includes: [
+          "1× rectangular display table (180×60cm)",
+          "2× chairs",
+          "2× 220V power outlets",
+          "Dedicated 50 Mbps wifi",
+          "Booth signage with your logo",
+          "Daily cleaning service",
+        ],
         setupWindow: "12 Aug · 14:00–18:00",
         breakdownWindow: "14 Aug · 18:00–20:00",
         onSiteContact: "Thierry Niyonsenga · +250 788 000 000",
-        notes: "",
       });
       n++;
     }
@@ -2096,7 +2288,8 @@ function seedCancellationRequests(registrations: StoreRegistration[]): Cancellat
 }
 
 function createSeed(): AppStore {
-  const registrations = seedRegistrations();
+  const baseRegs = seedRegistrations();
+  const { groups, registrations } = seedGroupRegistrations(baseRegs);
   return {
     version: STORE_VERSION,
     users: seedUsers(),
@@ -2106,12 +2299,58 @@ function createSeed(): AppStore {
       ...t,
       subtitle: t.description.slice(0, 60),
       requiresVerification: t.id === "student" ? "student" : t.id === "farmer" ? "farmer" : null,
+      isMediaAccreditation: t.id === "media",
       capacity: DEFAULT_PLAN_CAPACITY[t.id] ?? 100,
       soldOutOverride: false,
     })),
-    registrations,
+    groupRegistrations: groups,
+    registrations: [
+      ...registrations,
+      {
+        id: "r-media-pending",
+        name: "Claudine Uwase",
+        email: "c.uwase@kigalitoday.rw",
+        country: "Rwanda",
+        category: "Media / Press",
+        categoryId: "media",
+        amountUsd: 0,
+        status: "pending" as const,
+        verificationStatus: "none" as const,
+        createdAt: "2026-05-18",
+        details: {
+          ticketId: "NAS26-MEDIA-1001",
+          title: "Senior Reporter",
+          org: "Kigali Today",
+          phone: "+250 788 555 010",
+          hear: "Press invitation",
+          roleNote: "media",
+        },
+      },
+      {
+        id: "r-media-approved",
+        name: "Sarah Mensah",
+        email: "s.mensah@africanews.com",
+        country: "Ghana",
+        category: "Media / Press",
+        categoryId: "media",
+        amountUsd: 0,
+        status: "comp" as const,
+        verificationStatus: "none" as const,
+        createdAt: "2026-05-12",
+        checkedIn: false,
+        details: {
+          ticketId: "NAS26-MEDIA-1002",
+          title: "Correspondent",
+          org: "Africa News Network",
+          phone: "+233 24 000 1234",
+          hear: "MINAGRI press list",
+          roleNote: "media",
+        },
+      },
+    ],
     documentVerifications: seedDocumentVerifications(),
     speakerApplications: seedSpeakerApplications(),
+    mediaApplications: seedMediaApplications(registrations),
     organizationApplications: seedOrgApplications(),
     approvedOrganizations: seedApprovedOrgs(),
     sponsorshipTiers: seedSponsorshipTiers(),
@@ -2153,6 +2392,8 @@ function createSeed(): AppStore {
     announcementDismissals: [],
     newsPosts: NEWS.map((n) => ({ ...n })),
     committeeMembers: seedCommittee(),
+    galleryImages: seedGalleryImages(),
+    previousPresentations: seedPreviousPresentations(),
     rooms: seedRooms(),
     booths: seedBooths(),
     speakerProfiles: seedSpeakerProfiles(),
@@ -2161,8 +2402,6 @@ function createSeed(): AppStore {
     attendeeProfiles: seedAttendeeProfiles(registrations),
     connectionRequests: seedConnectionRequests(),
     chatMessages: seedChatMessages(),
-    galleryImages: seedGalleryImages(),
-    previousPresentations: seedPreviousPresentations(),
   };
 }
 

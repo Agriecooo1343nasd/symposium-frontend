@@ -51,6 +51,14 @@ export const TICKET_CATEGORIES: TicketCategory[] = [
   { id: "student", name: "Student", usd: 25, description: "Discounted student pass.", features: ["Both event days", "All sessions", "Student mixer"], note: "Requires valid student ID" },
   { id: "farmer", name: "Farmer / Farmer Org.", usd: 40, description: "For practicing farmers and farmer cooperatives.", features: ["Both event days", "Field visit included", "Farmer-led workshops"], note: "Requires organization letter" },
   { id: "virtual", name: "Virtual Attendee", usd: 20, description: "Online access only.", features: ["Live stream all plenaries", "Selected workshops", "Digital materials"] },
+  {
+    id: "media",
+    name: "Media / Press",
+    usd: 0,
+    description: "Accredited journalists and content creators covering NAS 2026 — no registration fee.",
+    features: ["Press briefing access", "Media workspace", "Interview coordination", "Event photography zones"],
+    note: "Requires press credentials & outlet verification",
+  },
 ];
 
 export type Speaker = {
@@ -181,6 +189,8 @@ export type Role =
   | "exhibitor"
   | "speaker";
 
+export type ParticipationKind = "exhibitor" | "sponsor" | "both";
+
 export type MockSession = {
   email: string;
   name: string;
@@ -188,8 +198,11 @@ export type MockSession = {
   category: string;
   ticketId: string;
   avatar?: string;
-  /** For exhibitor role — distinguishes exhibitor-only / sponsor-only / both */
-  participation?: "exhibitor" | "sponsor" | "both";
+  /** Exhibitor portal: booth-only vs sponsor package */
+  participation?: ParticipationKind;
+  /** Group registration (FR-2.3) */
+  groupId?: string;
+  isGroupRepresentative?: boolean;
 };
 
 export const DEMO_USER: MockSession = {

@@ -11,11 +11,19 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Resp
 import { StatTile } from "@/components/layout/PortalShell";
 import { TRANSACTIONS, DAILY_REGS, REGISTRATIONS, EVENT, TICKET_CATEGORIES } from "@/lib/mock-data";
 import { toast } from "sonner";
+import { useStore } from "@/hooks/use-store";
+import { patchStore } from "@/lib/store";
 
 
 const COLORS = ["hsl(var(--blue))", "hsl(var(--green))", "hsl(var(--gold))", "hsl(var(--navy))"];
 
 export default function Page() {
+  const store = useStore();
+  const grp = store.platformSettings.groupRegistration;
+  const [tier59, setTier59] = useState(String(grp.tier5to9Percent));
+  const [tier10, setTier10] = useState(String(grp.tier10PlusPercent));
+  const [minGroup, setMinGroup] = useState(String(grp.minSize));
+
   const completed = TRANSACTIONS.filter((t) => t.status === "completed");
   const gross = completed.reduce((a, b) => a + b.amountUsd, 0);
   const refunded = TRANSACTIONS.filter((t) => t.status === "refunded").reduce((a, b) => a + b.amountUsd, 0);
@@ -156,10 +164,30 @@ export default function Page() {
             <div className="grid sm:grid-cols-2 gap-4">
               <div><Label>VAT rate (%)</Label><Input defaultValue="18" className="mt-1" /></div>
               <div><Label>USD → RWF rate</Label><Input defaultValue={EVENT.exchangeRate} className="mt-1" /></div>
-              <div><Label>Group discount 5-9</Label><Input defaultValue="10" className="mt-1" /></div>
-              <div><Label>Group discount 10+</Label><Input defaultValue="15" className="mt-1" /></div>
+              <div><Label>Group discount {minGroup}–9 (%)</Label><Input type="number" value={tier59} onChange={(e) => setTier59(e.target.value)} className="mt-1" /></div>
+              <div><Label>Group discount 10+ (%)</Label><Input type="number" value={tier10} onChange={(e) => setTier10(e.target.value)} className="mt-1" /></div>
+              <div><Label>Minimum group size</Label><Input type="number" value={minGroup} onChange={(e) => setMinGroup(e.target.value)} className="mt-1" /></div>
             </div>
-            <Button className="gradient-blue text-accent-foreground" onClick={() => toast.success("Saved")}>Save changes</Button>
+            <Button
+              className="gradient-blue text-accent-foreground"
+              onClick={() => {
+                patchStore((s) => ({
+                  ...s,
+                  platformSettings: {
+                    ...s.platformSettings,
+                    groupRegistration: {
+                      ...s.platformSettings.groupRegistration,
+                      minSize: Number(minGroup) || 5,
+                      tier5to9Percent: Number(tier59) || 10,
+                      tier10PlusPercent: Number(tier10) || 15,
+                    },
+                  },
+                }));
+                toast.success("Group registration settings saved");
+              }}
+            >
+              Save changes
+            </Button>
           </div>
         </TabsContent>
       </Tabs>
