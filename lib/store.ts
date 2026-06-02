@@ -21,7 +21,7 @@ import {
 import type { ZoomMeeting } from "./zoom-mock";
 
 const STORE_KEY = "nas2026_data";
-const STORE_VERSION = 17;
+const STORE_VERSION = 18;
 
 const LISTENERS = new Set<() => void>();
 
@@ -605,6 +605,15 @@ export type Booth = {
   location: string;
   assignedOrgId?: string;
   status: BoothStatus;
+  /** e.g. "3m × 3m" */
+  dimensions?: string;
+  floor?: string;
+  /** What's physically included in the booth */
+  includes?: string[];
+  setupWindow?: string;
+  breakdownWindow?: string;
+  onSiteContact?: string;
+  notes?: string;
 };
 
 export type SpeakerProfile = {
@@ -1943,6 +1952,14 @@ function seedRooms(): VenueRoom[] {
 function seedBooths(): Booth[] {
   const booths: Booth[] = [];
   const rows = ["A", "B", "C", "D"];
+  const DEFAULT_INCLUDES = [
+    "1× rectangular display table (180×60cm)",
+    "2× chairs",
+    "2× 220V power outlets",
+    "Dedicated 50 Mbps wifi",
+    "Booth signage with your logo",
+    "Daily cleaning service",
+  ];
   let n = 1;
   for (let r = 0; r < 4; r++) {
     for (let c = 0; c < 6; c++) {
@@ -1957,6 +1974,13 @@ function seedBooths(): Booth[] {
         location: `Main exhibition hall · Row ${rows[r]} · Bay ${c + 1}`,
         assignedOrgId: assigned?.id,
         status: assigned ? "occupied" : "available",
+        dimensions: "3m × 3m",
+        floor: "Ground floor",
+        includes: DEFAULT_INCLUDES,
+        setupWindow: "12 Aug · 14:00–18:00",
+        breakdownWindow: "14 Aug · 18:00–20:00",
+        onSiteContact: "Thierry Niyonsenga · +250 788 000 000",
+        notes: "",
       });
       n++;
     }
