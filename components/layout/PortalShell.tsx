@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ComponentType } from "react";
@@ -8,6 +10,7 @@ import { getSession, signOut } from "@/lib/auth";
 import type { MockSession } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { AnnouncementBanner } from "@/components/admin/AnnouncementBanner";
+import { PortalNotesWidget } from "@/components/notes/PortalNotesWidget";
 
 export type PortalNavItem = {
   to: string;
@@ -32,6 +35,7 @@ export function PortalShell({ title, subtitle, nav, children }: { title: string;
   const activeItem = [...nav].reverse().find((n) => n.exact ? pathname === n.to : pathname.startsWith(n.to));
 
   return (
+    <PortalNotesWidget>
     <div className="min-h-screen bg-secondary/40">
       <aside className={cn(
         "fixed inset-y-0 left-0 z-40 w-64 gradient-navy text-white flex flex-col transition-transform lg:translate-x-0",
@@ -114,6 +118,7 @@ export function PortalShell({ title, subtitle, nav, children }: { title: string;
         </main>
       </div>
     </div>
+    </PortalNotesWidget>
   );
 }
 
