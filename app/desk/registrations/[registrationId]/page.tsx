@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useParams, notFound } from "next/navigation";
-import { ArrowLeft, FileCheck, ExternalLink } from "lucide-react";
+import { ArrowLeft, FileCheck } from "lucide-react";
+import { FileViewButton } from "@/components/file-viewer";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/hooks/use-store";
 import { TICKET_CATEGORIES } from "@/lib/mock-data";
@@ -95,17 +96,23 @@ export default function DeskRegistrationDetailPage() {
 
       {verification?.fileDataUrl && (
         <div className="rounded-md bg-card border border-border p-5">
-          <h3 className="font-serif font-bold text-sm mb-3 flex items-center gap-2">
-            Uploaded proof <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-          </h3>
-          <img
+          <h3 className="font-serif font-bold text-sm mb-3">Uploaded proof</h3>
+          {verification.fileDataUrl.startsWith("data:image") ? (
+            <img
+              src={verification.fileDataUrl}
+              alt={verification.fileName}
+              className="max-h-64 rounded-md border border-border object-contain"
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground mb-2">{verification.fileName}</p>
+          )}
+          <FileViewButton
             src={verification.fileDataUrl}
-            alt={verification.fileName}
-            className="max-h-64 rounded-md border border-border object-contain"
+            fileName={verification.fileName}
+            label="View full screen"
+            className="mt-2"
           />
-          <p className="text-xs text-muted-foreground mt-2">
-            {verification.fileName} · {verification.status}
-          </p>
+          <p className="text-xs text-muted-foreground mt-2">{verification.status}</p>
         </div>
       )}
     </div>

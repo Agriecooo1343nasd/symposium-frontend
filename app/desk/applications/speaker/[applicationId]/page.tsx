@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/hooks/use-store";
 import { SpeakerAppReviewList } from "@/components/desk/SpeakerAppReview";
+import { FileViewLink } from "@/components/file-viewer";
 
 export default function DeskSpeakerApplicationDetailPage() {
   const params = useParams();
@@ -67,14 +68,7 @@ export default function DeskSpeakerApplicationDetailPage() {
             <dt className="text-xs text-muted-foreground uppercase mb-2">
               Abstract document ({app.documentName})
             </dt>
-            <a
-              href={app.documentDataUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-accent text-sm font-semibold hover:underline"
-            >
-              Open uploaded file
-            </a>
+            <FileViewLink src={app.documentDataUrl} fileName={app.documentName ?? "abstract.pdf"} />
           </div>
         )}
       </div>

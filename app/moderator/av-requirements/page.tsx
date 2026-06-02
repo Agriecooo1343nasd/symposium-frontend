@@ -13,6 +13,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FileViewLink } from "@/components/file-viewer";
 import { useStore } from "@/hooks/use-store";
 import { getSessions } from "@/lib/sessions";
 import { SPEAKERS } from "@/lib/mock-data";
@@ -187,15 +188,14 @@ export default function ModeratorAvRequirementsPage() {
                       <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">
                         Uploaded deck
                       </h3>
-                      {deck ? (
-                        <a
-                          href={deck.fileDataUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-2 text-sm text-accent font-medium hover:underline"
-                        >
-                          <FileText className="h-4 w-4" /> {deck.fileName}
-                        </a>
+                      {deck?.fileDataUrl ? (
+                        <FileViewLink
+                          src={deck.fileDataUrl}
+                          fileName={deck.fileName}
+                          className="inline-flex items-center gap-2 text-sm font-medium"
+                        />
+                      ) : deck ? (
+                        <span className="text-sm text-muted-foreground">{deck.fileName}</span>
                       ) : (
                         <p className="text-sm text-muted-foreground">No presentation file uploaded yet.</p>
                       )}

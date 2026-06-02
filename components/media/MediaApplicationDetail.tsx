@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Check, X, FileText, ExternalLink } from "lucide-react";
+import { ArrowLeft, Check, X, FileText } from "lucide-react";
+import { FileViewLink } from "@/components/file-viewer";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/hooks/use-store";
 import { MEDIA_PRESS_TYPE_LABELS, approveMediaApplication, rejectMediaApplication } from "@/lib/media-registration";
@@ -44,10 +45,7 @@ export function MediaApplicationDetail({ applicationId, backHref, readOnly = fal
 
   const docLink = (name?: string, url?: string) =>
     url ? (
-      <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent text-sm font-medium hover:underline">
-        <FileText className="h-3.5 w-3.5" /> {name}
-        <ExternalLink className="h-3 w-3" />
-      </a>
+      <FileViewLink src={url} fileName={name ?? "document"} className="inline-flex items-center gap-1 text-sm font-medium" />
     ) : (
       <span className="text-muted-foreground">—</span>
     );

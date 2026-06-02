@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useParams, notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/hooks/use-store";
 import { SpeakerAppReviewList } from "@/components/desk/SpeakerAppReview";
+import { FileViewLink } from "@/components/file-viewer";
 
 export default function Page() {
   const params = useParams();
@@ -65,9 +66,7 @@ export default function Page() {
         {app.documentDataUrl && (
           <div>
             <dt className="text-xs text-muted-foreground uppercase mb-2">Abstract document ({app.documentName})</dt>
-            <a href={app.documentDataUrl} target="_blank" rel="noreferrer" className="text-accent text-sm font-semibold hover:underline inline-flex items-center gap-1">
-              Open uploaded file <ExternalLink className="h-3.5 w-3.5" />
-            </a>
+            <FileViewLink src={app.documentDataUrl} fileName={app.documentName ?? "abstract.pdf"} />
           </div>
         )}
         {app.documentName && !app.documentDataUrl && (

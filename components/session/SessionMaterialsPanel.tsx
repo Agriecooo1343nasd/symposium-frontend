@@ -6,6 +6,7 @@ import { patchStore, uid, type SessionMaterial } from "@/lib/store";
 import { canViewSessionMaterials } from "@/lib/access";
 import Link from "next/link";
 import { toast } from "sonner";
+import { FileViewLink } from "@/components/file-viewer";
 
 type Props = {
   sessionId: string;
@@ -76,9 +77,11 @@ export function SessionMaterialsPanel({ sessionId, sessionTitle, allowUpload, up
           {materials.map((m) => (
             <li key={m.id} className="flex items-center justify-between gap-2 text-sm border rounded-md px-3 py-2">
               <div className="min-w-0">
-                <a href={m.fileDataUrl} target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline truncate block">
-                  {m.fileName}
-                </a>
+                {m.fileDataUrl ? (
+                  <FileViewLink src={m.fileDataUrl} fileName={m.fileName} className="font-medium truncate block" />
+                ) : (
+                  <span className="font-medium truncate block">{m.fileName}</span>
+                )}
                 <span className="text-[10px] text-muted-foreground">
                   {m.uploadedBy} · {sessionTitle}
                 </span>

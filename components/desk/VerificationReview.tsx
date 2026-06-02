@@ -17,6 +17,7 @@ import {
 } from "@/lib/store";
 import { getSession } from "@/lib/auth";
 import { toast } from "sonner";
+import { FileViewButton } from "@/components/file-viewer";
 
 export function VerificationReviewList({
   items,
@@ -104,6 +105,15 @@ export function VerificationReviewList({
               {item.type === "student" ? "Student ID" : "Organization letter"}
             </div>
             <div className="text-xs mt-1 font-mono">{item.fileName}</div>
+            {item.fileDataUrl && (
+              <FileViewButton
+                src={item.fileDataUrl}
+                fileName={item.fileName}
+                label="View file"
+                className="mt-2"
+                variant="outline"
+              />
+            )}
             <span
               className={`inline-block mt-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
                 item.status === "approved"

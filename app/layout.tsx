@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
-import { PublicHeader } from "@/components/layout/PublicHeader";
-import { PublicFooter } from "@/components/layout/PublicFooter";
+import { AppProviders } from "@/components/providers/AppProviders";
+import { ConditionalSiteChrome } from "@/components/layout/ConditionalSiteChrome";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -35,9 +35,9 @@ export default function RootLayout({
         className={`${inter.variable} ${outfit.variable} min-h-screen flex flex-col bg-background font-sans antialiased`}
         suppressHydrationWarning
       >
-        <PublicHeader />
-        <main className="flex-1">{children}</main>
-        <PublicFooter />
+        <AppProviders>
+          <ConditionalSiteChrome>{children}</ConditionalSiteChrome>
+        </AppProviders>
       </body>
     </html>
   );

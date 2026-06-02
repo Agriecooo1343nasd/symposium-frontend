@@ -1,23 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Download, Lock } from "lucide-react";
+import { FileText, Eye, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/hooks/use-store";
 import { getSessions } from "@/lib/sessions";
 import { canViewSessionMaterials } from "@/lib/access";
-import { toast } from "sonner";
-
-const ORG_FILES = [
-  { name: "NAS 2026 Concept Note", type: "PDF", size: "1.2 MB" },
-  { name: "Delegate Welcome Pack", type: "PDF", size: "0.9 MB" },
-  { name: "Code of Conduct", type: "PDF", size: "0.3 MB" },
-];
+import { FileViewLink } from "@/components/file-viewer";
 
 export default function DashboardMaterialsPage() {
   const store = useStore();
   const canView = canViewSessionMaterials();
   const sessions = getSessions();
+  const samplePdf = store.sessionMaterials.find((m) => m.fileName.toLowerCase().endsWith(".pdf"));
+  const orgFiles = [
+    { name: "NAS 2026 Concept Note", type: "PDF", size: "1.2 MB", src: samplePdf?.fileDataUrl },
+    { name: "Delegate Welcome Pack", type: "PDF", size: "0.9 MB", src: samplePdf?.fileDataUrl },
+    { name: "Code of Conduct", type: "PDF", size: "0.3 MB", src: samplePdf?.fileDataUrl },
+  ];
   const bySession = sessions
     .map((s) => ({
       session: s,
@@ -35,7 +35,7 @@ export default function DashboardMaterialsPage() {
       <section>
         <h2 className="font-serif text-lg font-bold mb-3">Organizer resources</h2>
         <div className="space-y-3">
-          {ORG_FILES.map((f) => (
+          {orgFiles.map((f) => (
             <div key={f.name} className="flex items-center justify-between gap-3 rounded-2xl bg-card border border-border p-4">
               <div className="flex items-center gap-3 min-w-0">
                 <FileText className="h-5 w-5 text-accent shrink-0" />
@@ -46,9 +46,15 @@ export default function DashboardMaterialsPage() {
                   </div>
                 </div>
               </div>
-              <Button size="sm" variant="outline" onClick={() => toast.info("Download starting...")}>
-                <Download className="h-4 w-4" />
-              </Button>
+              {f.src ? (
+                <FileViewLink src={f.src} fileName={f.name} className="shrink-0">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold">
+                    <Eye className="h-3.5 w-3.5" /> View
+                  </span>
+                </FileViewLink>
+              ) : (
+                <span className="text-xs text-muted-foreground">Soon</span>
+              )}
             </div>
           ))}
         </div>
@@ -78,14 +84,15 @@ export default function DashboardMaterialsPage() {
                 <ul className="space-y-2">
                   {files.map((f) => (
                     <li key={f.id}>
-                      <a
-                        href={f.fileDataUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm text-accent hover:underline inline-flex items-center gap-2"
-                      >
-                        <FileText className="h-3.5 w-3.5" /> {f.fileName}
-                      </a>
+                      {f.fileDataUrl ? (
+                        <FileViewLink
+                          src={f.fileDataUrl}
+                          fileName={f.fileName}
+                          className="text-sm inline-flex items-center gap-2"
+                        />
+                      ) : (
+                        <span className="text-sm text-muted-foreground">{f.fileName}</span>
+                      )}
                     </li>
                   ))}
                 </ul>

@@ -5,6 +5,7 @@ import { X, ChevronLeft, ChevronRight, ZoomIn, Download, FileText } from "lucide
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { GalleryImage, PreviousPresentation } from "@/lib/store";
+import { useFileViewerOptional } from "@/components/file-viewer";
 
 // ─── Lightbox ────────────────────────────────────────────────────────────────
 
@@ -72,6 +73,35 @@ function Lightbox({
                 <ChevronRight className="h-6 w-6" />
             </button>
         </div>
+    );
+}
+
+function PresentationFileCard({ presentation: p }: { presentation: PreviousPresentation }) {
+    const viewer = useFileViewerOptional();
+    const canView = Boolean(p.fileUrl && p.fileUrl !== "#" && viewer);
+
+    return (
+        <button
+            type="button"
+            disabled={!canView}
+            onClick={() => viewer?.openFile({ src: p.fileUrl, fileName: p.fileName })}
+            className={cn(
+                "group flex items-start gap-3 rounded-xl border border-border bg-card p-4 hover-lift hover:border-accent/50 transition-colors text-left w-full",
+                !canView && "opacity-60 cursor-not-allowed",
+            )}
+        >
+            <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
+                <FileText className="h-5 w-5 text-accent" />
+            </div>
+            <div className="min-w-0 flex-1">
+                <div className="font-serif font-bold text-sm leading-snug line-clamp-2 group-hover:text-accent transition-colors">
+                    {p.title}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">{p.presenter}</div>
+                <div className="text-[10px] text-muted-foreground/70 mt-1 font-mono truncate">{p.fileName}</div>
+            </div>
+            <Download className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors flex-shrink-0 mt-0.5" />
+        </button>
     );
 }
 
@@ -157,27 +187,7 @@ export function PreviousSymposiumGallery({
                     </h3>
                     <div className="grid sm:grid-cols-2 gap-3">
                         {presentations.map((p) => (
-                            <a
-                                key={p.id}
-                                href={p.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="group flex items-start gap-3 rounded-xl border border-border bg-card p-4 hover-lift hover:border-accent/50 transition-colors"
-                            >
-                                <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
-                                    <FileText className="h-5 w-5 text-accent" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <div className="font-serif font-bold text-sm leading-snug line-clamp-2 group-hover:text-accent transition-colors">
-                                        {p.title}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground mt-0.5">{p.presenter}</div>
-                                    <div className="text-[10px] text-muted-foreground/70 mt-1 font-mono truncate">
-                                        {p.fileName}
-                                    </div>
-                                </div>
-                                <Download className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors flex-shrink-0 mt-0.5" />
-                            </a>
+                            <PresentationFileCard key={p.id} presentation={p} />
                         ))}
                     </div>
                 </div>

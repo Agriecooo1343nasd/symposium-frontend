@@ -13,8 +13,8 @@ import {
   Mic,
   Wifi,
   Video,
-  ExternalLink,
 } from "lucide-react";
+import { FileViewLink } from "@/components/file-viewer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -209,14 +209,7 @@ export default function SpeakerMaterialsPage() {
                   <FileText className="h-8 w-8 text-accent shrink-0" />
                   <div>
                     {decks[0].fileDataUrl ? (
-                      <a
-                        href={decks[0].fileDataUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-medium hover:underline flex items-center gap-1"
-                      >
-                        {decks[0].fileName} <ExternalLink className="h-3 w-3" />
-                      </a>
+                      <FileViewLink src={decks[0].fileDataUrl} fileName={decks[0].fileName} className="font-medium" />
                     ) : (
                       <span className="font-medium">{decks[0].fileName}</span>
                     )}
