@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, MapPin, ArrowRight, Users, FileText, Download } from "lucide-react";
+import { Calendar, MapPin, ArrowRight, Users, FileText, Download, Vote } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/CountdownTimer";
@@ -12,12 +12,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { useStore } from "@/hooks/use-store";
 import { GroupDelegationPanel } from "@/components/group/GroupDelegationPanel";
 import { getGroupByRepresentativeEmail } from "@/lib/group-registration";
+import { pollsForVoter } from "@/lib/live-polls";
 import { loadStore } from "@/lib/store";
 
 export default function OverviewPage() {
   const { session } = useAuth();
-  useStore();
-  const reg = session ? loadStore().registrations.find((r) => r.email === session.email) : undefined;
+  const store = useStore();
+  const reg = session ? store.registrations.find((r) => r.email === session.email) : undefined;
+  const openPolls = session ? pollsForVoter(store, session).active.length : 0;
   const displayName = session?.name ?? "Delegate";
   const category = reg?.category ?? session?.category ?? "Delegate";
   const isRep = session ? !!getGroupByRepresentativeEmail(session.email) : false;
@@ -53,6 +55,23 @@ export default function OverviewPage() {
           <CountdownTimer light compact />
         </div>
       </div>
+
+      {openPolls > 0 && (
+        <div className="rounded-2xl border border-green/40 bg-green/5 p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Vote className="h-8 w-8 text-green shrink-0" />
+            <div>
+              <div className="font-semibold text-sm">Live poll open</div>
+              <div className="text-xs text-muted-foreground">
+                {openPolls} session poll{openPolls > 1 ? "s" : ""} waiting for your vote
+              </div>
+            </div>
+          </div>
+          <Button asChild size="sm">
+            <Link href="/dashboard/polls">Vote now</Link>
+          </Button>
+        </div>
+      )}
 
       {session && (isRep || isMember) && (
         <GroupDelegationPanel

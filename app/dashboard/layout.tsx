@@ -15,6 +15,7 @@ import {
   Mic,
   Radio,
   RotateCcw,
+  Vote,
 } from "lucide-react";
 import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,6 +26,7 @@ import { getGroupByRepresentativeEmail } from "@/lib/group-registration";
 const BASE_NAV: readonly PortalNavItem[] = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/dashboard/live", label: "Live session", icon: Radio, exact: false },
+  { to: "/dashboard/polls", label: "Live polls", icon: Vote, exact: false },
   { to: "/dashboard/ticket", label: "My Ticket", icon: Ticket, exact: false },
   { to: "/dashboard/refunds", label: "Refunds & transfer", icon: RotateCcw, exact: false },
   { to: "/dashboard/schedule", label: "My Schedule", icon: Calendar, exact: false },

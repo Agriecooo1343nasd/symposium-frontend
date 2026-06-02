@@ -49,7 +49,6 @@ export function PublicFooter() {
             <h4 className="font-serif font-bold text-sm uppercase tracking-wider mb-4 opacity-90">Resources</h4>
             <ul className="space-y-2.5 text-sm opacity-80">
               <li><Link href="/news" className="hover:opacity-100 hover:text-gold transition-colors">News & Blog</Link></li>
-              <li><Link href="/media" className="hover:opacity-100 hover:text-gold transition-colors">Media & Press Kit</Link></li>
               <li><Link href="/faq" className="hover:opacity-100 hover:text-gold transition-colors">FAQ</Link></li>
               <li><Link href="/register" className="hover:opacity-100 hover:text-gold transition-colors">Registration</Link></li>
             </ul>

@@ -14,6 +14,7 @@ import {
   Sparkles,
   QrCode,
   Radio,
+  Vote,
 } from "lucide-react";
 import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,6 +32,7 @@ const NAV: readonly PortalNavItem[] = [
   { to: "/exhibitor/location", label: "Booth info", icon: Map },
   { to: "/exhibitor/networking", label: "Networking", icon: MessageSquare },
   { to: "/exhibitor/live", label: "Live stream", icon: Radio },
+  { to: "/exhibitor/polls", label: "Live polls", icon: Vote },
 ];
 
 export default function ExhibitorLayout({ children }: { children: React.ReactNode }) {

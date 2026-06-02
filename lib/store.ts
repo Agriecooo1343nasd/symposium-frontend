@@ -17,11 +17,12 @@ import {
   type SubTheme,
   type Session,
   type NewsPost,
+  type ParticipationKind,
 } from "./mock-data";
 import type { ZoomMeeting } from "./zoom-mock";
 
 const STORE_KEY = "nas2026_data";
-const STORE_VERSION = 17;
+const STORE_VERSION = 18;
 
 const LISTENERS = new Set<() => void>();
 
@@ -691,6 +692,49 @@ export type SpeakerProfile = {
   email?: string;
 };
 
+export type PollStatus = "draft" | "open" | "closed";
+
+export type PollAudienceConfig = {
+  /** Empty = all roles may vote (except when combined with other filters). */
+  roles: Role[];
+  /** Empty = any ticket category. */
+  ticketCategoryIds: string[];
+  /** For exhibitor portal users — empty = any participation type. */
+  participationKinds: ParticipationKind[];
+};
+
+export type LivePollOption = {
+  id: string;
+  label: string;
+};
+
+export type LivePoll = {
+  id: string;
+  title: string;
+  question: string;
+  description?: string;
+  options: LivePollOption[];
+  sessionId?: string;
+  audience: PollAudienceConfig;
+  status: PollStatus;
+  /** When true (and poll closed or open), eligible users see live results. */
+  resultsVisible: boolean;
+  createdAt: string;
+  createdBy: string;
+  openedAt?: string;
+  closedAt?: string;
+};
+
+export type PollVote = {
+  id: string;
+  pollId: string;
+  optionId: string;
+  voterEmail: string;
+  voterName: string;
+  voterRole: Role;
+  votedAt: string;
+};
+
 export type AppStore = {
   version: number;
   users: PlatformUser[];
@@ -738,6 +782,8 @@ export type AppStore = {
   attendeeProfiles: AttendeeProfile[];
   connectionRequests: StoreConnectionRequest[];
   chatMessages: ChatMessage[];
+  livePolls: LivePoll[];
+  pollVotes: PollVote[];
 };
 
 function uid(prefix = "id") {
@@ -2287,6 +2333,86 @@ function seedCancellationRequests(registrations: StoreRegistration[]): Cancellat
   return items;
 }
 
+function seedLivePolls(): LivePoll[] {
+  return [
+    {
+      id: "poll-closing-theme",
+      title: "Closing plenary — audience pulse",
+      question: "Which sub-theme should lead the Kigali Call to Action?",
+      description: "Live poll during the closing plenary (FR-6.2). One vote per delegate.",
+      options: [
+        { id: "po-soil", label: "Soil health & fertility" },
+        { id: "po-food", label: "Inclusive food systems" },
+        { id: "po-policy", label: "Policy & governance" },
+        { id: "po-climate", label: "Climate resilience" },
+        { id: "po-farmer", label: "Farmer-led innovation" },
+      ],
+      sessionId: "ss2",
+      audience: {
+        roles: ["attendee", "speaker", "exhibitor", "registration_desk", "moderator"],
+        ticketCategoryIds: [],
+        participationKinds: [],
+      },
+      status: "open",
+      resultsVisible: false,
+      createdAt: "2026-08-14T15:30:00.000Z",
+      createdBy: "Symposium Admin",
+      openedAt: "2026-08-14T15:35:00.000Z",
+    },
+    {
+      id: "poll-speaker-priority",
+      title: "Speaker lounge check-in",
+      question: "Which logistics topic needs more support tomorrow?",
+      options: [
+        { id: "po-av", label: "AV & rehearsal slots" },
+        { id: "po-transport", label: "Airport transfers" },
+        { id: "po-dietary", label: "Dietary requirements" },
+      ],
+      audience: {
+        roles: ["speaker"],
+        ticketCategoryIds: [],
+        participationKinds: [],
+      },
+      status: "draft",
+      resultsVisible: false,
+      createdAt: "2026-08-13T09:00:00.000Z",
+      createdBy: "Event Moderator",
+    },
+    {
+      id: "poll-exhibitor-energy",
+      title: "Exhibitor hall — quick poll",
+      question: "Best time for a guided exhibitor walk-through?",
+      options: [
+        { id: "po-am", label: "Day 1 · 11:00" },
+        { id: "po-lunch", label: "Day 1 · 13:00" },
+        { id: "po-pm", label: "Day 2 · 10:30" },
+      ],
+      audience: {
+        roles: ["exhibitor"],
+        ticketCategoryIds: [],
+        participationKinds: ["exhibitor", "both"],
+      },
+      status: "closed",
+      resultsVisible: true,
+      createdAt: "2026-08-12T14:00:00.000Z",
+      createdBy: "Symposium Admin",
+      openedAt: "2026-08-12T14:05:00.000Z",
+      closedAt: "2026-08-12T16:00:00.000Z",
+    },
+  ];
+}
+
+function seedPollVotes(): PollVote[] {
+  const votes: PollVote[] = [
+    { id: "pv1", pollId: "poll-closing-theme", optionId: "po-soil", voterEmail: "alice@example.rw", voterName: "Alice Uwimana", voterRole: "attendee", votedAt: "2026-08-14T15:40:00.000Z" },
+    { id: "pv2", pollId: "poll-closing-theme", optionId: "po-climate", voterEmail: "j.okello@example.ug", voterName: "John Okello", voterRole: "attendee", votedAt: "2026-08-14T15:41:00.000Z" },
+    { id: "pv3", pollId: "poll-closing-theme", optionId: "po-farmer", voterEmail: "speaker@nas2026.rw", voterName: "Dr. Mukeshimana Solange", voterRole: "speaker", votedAt: "2026-08-14T15:42:00.000Z" },
+    { id: "pv4", pollId: "poll-exhibitor-energy", optionId: "po-lunch", voterEmail: "exhibitor@nas2026.rw", voterName: "AgriTools Rwanda", voterRole: "exhibitor", votedAt: "2026-08-12T14:20:00.000Z" },
+    { id: "pv5", pollId: "poll-exhibitor-energy", optionId: "po-am", voterEmail: "eric@agritools.rw", voterName: "Eric Mukamana", voterRole: "exhibitor", votedAt: "2026-08-12T14:25:00.000Z" },
+  ];
+  return votes;
+}
+
 function createSeed(): AppStore {
   const baseRegs = seedRegistrations();
   const { groups, registrations } = seedGroupRegistrations(baseRegs);
@@ -2402,6 +2528,8 @@ function createSeed(): AppStore {
     attendeeProfiles: seedAttendeeProfiles(registrations),
     connectionRequests: seedConnectionRequests(),
     chatMessages: seedChatMessages(),
+    livePolls: seedLivePolls(),
+    pollVotes: seedPollVotes(),
   };
 }
 

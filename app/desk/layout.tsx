@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutDashboard, Users, FileCheck, Inbox, ScanLine, Radio, Mic, Store, Newspaper } from "lucide-react";
+import { LayoutDashboard, Users, FileCheck, Inbox, ScanLine, Radio, Mic, Store, Newspaper, Vote } from "lucide-react";
 import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell";
 import { useAuth } from "@/hooks/use-auth";
 import { canAccessPortal } from "@/lib/permissions";
@@ -17,6 +17,7 @@ const NAV: readonly PortalNavItem[] = [
   { to: "/desk/speakers", label: "Speakers", icon: Mic },
   { to: "/desk/checkin", label: "Check-in", icon: ScanLine },
   { to: "/desk/live", label: "Live stream", icon: Radio },
+  { to: "/desk/polls", label: "Live polls", icon: Vote },
 ];
 
 export default function DeskLayout({ children }: { children: React.ReactNode }) {

@@ -26,6 +26,7 @@ import {
   RotateCcw,
   MessageCircle,
   Camera,
+  Vote,
 } from "lucide-react";
 import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -47,6 +48,7 @@ const NAV: readonly PortalNavItem[] = [
   { to: "/admin/committee", label: "Committee", icon: UserCircle },
   { to: "/admin/news", label: "News", icon: Newspaper },
   { to: "/admin/networking", label: "Networking", icon: MessageCircle },
+  { to: "/admin/polls", label: "Live polls", icon: Vote },
   { to: "/admin/checkin", label: "Check-in", icon: ScanLine },
   { to: "/admin/communications", label: "Communications", icon: Megaphone },
   { to: "/admin/content", label: "Content", icon: FileText },

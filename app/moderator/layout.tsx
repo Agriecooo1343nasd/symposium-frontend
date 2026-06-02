@@ -14,6 +14,7 @@ import {
   Newspaper,
   Map,
   Users,
+  Vote,
 } from "lucide-react";
 import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,6 +26,7 @@ const NAV: readonly PortalNavItem[] = [
   { to: "/moderator/zoom", label: "Zoom & live", icon: Video },
   { to: "/moderator/live", label: "Live stream", icon: Radio },
   { to: "/moderator/queue", label: "Remote queue", icon: MessageSquare },
+  { to: "/moderator/polls", label: "Live polls", icon: Vote },
   { to: "/moderator/av-requirements", label: "AV & venue prep", icon: Settings2 },
   { to: "/moderator/recordings", label: "Recordings", icon: Upload },
   { to: "/moderator/surveys", label: "Surveys", icon: ClipboardCheck },
