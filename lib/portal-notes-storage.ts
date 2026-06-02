@@ -14,22 +14,41 @@ export function notesFullscreenStorageKey(portalId: string) {
   return `${FULLSCREEN_PREFIX}:${portalId}`;
 }
 
-export function loadPortalNotesHtml(userKey: string, portalId: string): string {
-  if (typeof window === "undefined") return "";
+import {
+  createDefaultDocument,
+  getActiveTab,
+  parsePortalNotesDocument,
+  serializePortalNotesDocument,
+  updateActiveTabHtml,
+  type PortalNotesDocument,
+} from "./portal-notes-document";
+
+export function loadPortalNotesDocument(userKey: string, portalId: string): PortalNotesDocument {
+  if (typeof window === "undefined") return createDefaultDocument();
   try {
-    return localStorage.getItem(notesStorageKey(userKey, portalId)) ?? "";
+    const raw = localStorage.getItem(notesStorageKey(userKey, portalId));
+    return parsePortalNotesDocument(raw);
   } catch {
-    return "";
+    return createDefaultDocument();
   }
 }
 
-export function savePortalNotesHtml(userKey: string, portalId: string, html: string) {
+export function savePortalNotesDocument(userKey: string, portalId: string, doc: PortalNotesDocument) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(notesStorageKey(userKey, portalId), html);
+    localStorage.setItem(notesStorageKey(userKey, portalId), serializePortalNotesDocument(doc));
   } catch {
-    /* quota exceeded — ignore */
+    /* quota exceeded */
   }
+}
+
+export function loadPortalNotesHtml(userKey: string, portalId: string): string {
+  return getActiveTab(loadPortalNotesDocument(userKey, portalId)).html;
+}
+
+export function savePortalNotesHtml(userKey: string, portalId: string, html: string) {
+  const doc = loadPortalNotesDocument(userKey, portalId);
+  savePortalNotesDocument(userKey, portalId, updateActiveTabHtml(doc, html));
 }
 
 export function loadPortalNotesOpen(portalId: string): boolean {

@@ -235,7 +235,7 @@ export default function Login() {
                                     )}
                                 >
                                     <div className="flex items-center gap-2 mb-1">
-                                        <v.icon className="h-3.5 w-3.5 text-accent flex-shrink-0" />
+                                        {/* <v.icon className="h-3.5 w-3.5 text-accent flex-shrink-0" /> */}
                                         <span className="text-xs font-semibold">{v.label}</span>
                                     </div>
                                     <p className="text-[10px] text-muted-foreground leading-tight">{v.description}</p>

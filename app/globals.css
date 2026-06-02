@@ -260,7 +260,25 @@
 .portal-notes-prose ol { padding-left: 1.25rem; margin: 0.35rem 0; }
 .portal-notes-prose li { margin: 0.15rem 0; }
 .portal-notes-prose a { color: hsl(var(--blue)); text-decoration: underline; }
-.portal-notes-prose img { max-width: 100%; height: auto; border-radius: 0.5rem; margin: 0.5rem 0; }
+.portal-notes-prose img { max-width: 100%; height: auto; border-radius: 0.5rem; margin: 0.5rem 0; display: block; }
+.portal-notes-editor-body img.ProseMirror-selectednode,
+.portal-notes-prose img.ProseMirror-selectednode {
+  outline: 2px solid hsl(var(--accent));
+  outline-offset: 2px;
+}
+.portal-notes-prose ol[data-list-style="lower-alpha"] { list-style-type: lower-alpha; }
+.portal-notes-prose ol[data-list-style="upper-alpha"] { list-style-type: upper-alpha; }
+.portal-notes-prose ol[data-list-style="lower-roman"] { list-style-type: lower-roman; }
+.portal-notes-prose ol[data-list-style="upper-roman"] { list-style-type: upper-roman; }
+.portal-notes-prose ul { list-style-type: disc; }
+.portal-notes-prose ol { list-style-type: decimal; }
+.portal-notes-prose table .selectedCell {
+  background: hsl(var(--accent) / 0.15);
+}
+.portal-notes-prose .column-resize-handle {
+  background: hsl(var(--accent));
+  width: 4px;
+}
 .portal-notes-prose video.portal-notes-video,
 .portal-notes-prose video {
   display: block;

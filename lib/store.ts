@@ -142,6 +142,14 @@ export type GroupRegistrationSettings = {
   maxSize: number;
 };
 
+export const DEFAULT_GROUP_REGISTRATION_SETTINGS: GroupRegistrationSettings = {
+  enabled: true,
+  minSize: 5,
+  tier5to9Percent: 10,
+  tier10PlusPercent: 15,
+  maxSize: 30,
+};
+
 export type GroupRegistration = {
   id: string;
   code: string;
@@ -1464,13 +1472,39 @@ function seedPlatformSettings(): PlatformSettings {
     cancellationPolicyText:
       "Cancellations received more than 30 days before NAS 2026 (before 14 July 2026) qualify for a full refund minus a 5% processing fee. Between 14–31 July, 50% refund. No refund after 31 July except documented emergencies (medical, visa denial) reviewed by the secretariat. Registration transfers to another named delegate require admin approval and are free of charge. Refunds are processed manually within 14 business days to the original payment method.",
     refundProcessingDays: 14,
-    groupRegistration: {
-      enabled: true,
-      minSize: 5,
-      tier5to9Percent: 10,
-      tier10PlusPercent: 15,
-      maxSize: 30,
-    },
+    groupRegistration: { ...DEFAULT_GROUP_REGISTRATION_SETTINGS },
+  };
+}
+
+function repairStore(store: AppStore): AppStore {
+  const seedSettings = seedPlatformSettings();
+  const groupRegistration: GroupRegistrationSettings = {
+    ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
+    ...store.platformSettings?.groupRegistration,
+  };
+  const platformSettings: PlatformSettings = {
+    ...seedSettings,
+    ...store.platformSettings,
+    groupRegistration,
+  };
+  const groupRegistrations = store.groupRegistrations ?? [];
+  const livePolls = store.livePolls ?? [];
+  const pollVotes = store.pollVotes ?? [];
+
+  const needsRepair =
+    !store.platformSettings?.groupRegistration ||
+    store.groupRegistrations == null ||
+    store.livePolls == null ||
+    store.pollVotes == null;
+
+  if (!needsRepair) return store;
+
+  return {
+    ...store,
+    platformSettings,
+    groupRegistrations,
+    livePolls,
+    pollVotes,
   };
 }
 
@@ -2586,7 +2620,11 @@ export function loadStore(): AppStore {
       saveStore(seed);
       return seed;
     }
-    return parsed;
+    const repaired = repairStore(parsed);
+    if (repaired !== parsed) {
+      saveStore(repaired);
+    }
+    return repaired;
   } catch {
     const seed = createSeed();
     saveStore(seed);

@@ -7,7 +7,7 @@ import Underline from "@tiptap/extension-underline";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
-import Image from "@tiptap/extension-image";
+import ImageResize from "tiptap-extension-resize-image";
 import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
@@ -22,6 +22,7 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  Columns,
   Download,
   Highlighter,
   ImageIcon,
@@ -31,8 +32,10 @@ import {
   ListOrdered,
   Minus,
   Redo2,
+  Rows,
   Strikethrough,
   Table2,
+  Trash2,
   Underline as UnderlineIcon,
   Undo2,
   VideoIcon,
@@ -44,6 +47,8 @@ import { exportElementToPdf } from "@/lib/export-notes-pdf";
 import { FontSize } from "./font-size-extension";
 import { Video } from "./video-extension";
 import { ToolbarNativeSelect } from "./ToolbarNativeSelect";
+import { OrderedListWithStyle, type ListStyleType } from "./extensions/ordered-list-styles";
+import { TableInsertPanel } from "./TableInsertPanel";
 import {
   BLOCK_STYLES,
   FONT_FAMILIES,
@@ -90,6 +95,7 @@ export type RichNotesEditorProps = {
   exportFileName: string;
   contentRef?: React.RefObject<HTMLDivElement | null>;
   isFullscreen?: boolean;
+  editorKey?: string;
 };
 
 export function RichNotesEditor({
@@ -98,28 +104,43 @@ export function RichNotesEditor({
   exportFileName,
   contentRef,
   isFullscreen = false,
+  editorKey,
 }: RichNotesEditorProps) {
   const internalRef = useRef<HTMLDivElement>(null);
   const printRef = contentRef ?? internalRef;
-  const seeded = useRef(false);
+  const seededKey = useRef<string | null>(null);
+  const [tableDialogOpen, setTableDialogOpen] = useState(false);
+  const [inTable, setInTable] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   const [fontId, setFontId] = useState("default");
   const [sizeId, setSizeId] = useState("16");
   const [styleId, setStyleId] = useState("p");
 
+  const refreshHistory = useCallback((ed: Editor) => {
+    setCanUndo(ed.can().undo());
+    setCanRedo(ed.can().redo());
+    setInTable(ed.isActive("table"));
+  }, []);
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+        orderedList: false,
+      }),
+      OrderedListWithStyle,
       Underline,
       TextStyle,
       Color,
       FontFamily,
       FontSize,
       Highlight.configure({ multicolor: true }),
-      Image.configure({ inline: false, allowBase64: true }),
+      ImageResize.configure({ inline: false, allowBase64: true }),
       Video,
-      Table.configure({ resizable: true }),
+      Table.configure({ resizable: true, allowTableNodeSelection: true }),
       TableRow,
       TableHeader,
       TableCell,
@@ -131,7 +152,7 @@ export function RichNotesEditor({
     editorProps: {
       attributes: {
         class: "portal-notes-prose px-4 py-3 focus:outline-none",
-        style: isFullscreen ? "min-height: calc(100vh - 200px)" : "min-height: 280px",
+        style: isFullscreen ? "min-height: calc(100vh - 220px)" : "min-height: 280px",
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -140,30 +161,35 @@ export function RichNotesEditor({
       setFontId(synced.fontId);
       setSizeId(synced.sizeId);
       setStyleId(synced.styleId);
+      refreshHistory(ed);
     },
     onSelectionUpdate: ({ editor: ed }) => {
       const synced = syncToolbarFromEditor(ed);
       setFontId(synced.fontId);
       setSizeId(synced.sizeId);
       setStyleId(synced.styleId);
+      refreshHistory(ed);
+    },
+    onTransaction: ({ editor: ed }) => {
+      refreshHistory(ed);
     },
   });
 
   useEffect(() => {
-    if (!editor || seeded.current) return;
-    if (initialHtml && initialHtml !== "<p></p>") {
-      editor.commands.setContent(initialHtml, { emitUpdate: false });
-    }
+    if (!editor) return;
+    if (editorKey && seededKey.current === editorKey) return;
+    if (editorKey) seededKey.current = editorKey;
+    editor.commands.setContent(initialHtml || "<p></p>", { emitUpdate: false });
     const synced = syncToolbarFromEditor(editor);
     setFontId(synced.fontId);
     setSizeId(synced.sizeId);
     setStyleId(synced.styleId);
-    seeded.current = true;
-  }, [editor, initialHtml]);
+    refreshHistory(editor);
+  }, [editor, initialHtml, editorKey, refreshHistory]);
 
   useEffect(() => {
     if (!editor) return;
-    const minH = isFullscreen ? "calc(100vh - 200px)" : "280px";
+    const minH = isFullscreen ? "calc(100vh - 220px)" : "280px";
     editor.setOptions({
       editorProps: {
         attributes: {
@@ -205,6 +231,18 @@ export function RichNotesEditor({
     [editor],
   );
 
+  const applyListStyle = useCallback(
+    (style: ListStyleType | "bullet") => {
+      if (!editor) return;
+      if (style === "bullet") {
+        editor.chain().focus().toggleBulletList().run();
+        return;
+      }
+      editor.chain().focus().toggleOrderedListWithStyle(style).run();
+    },
+    [editor],
+  );
+
   const insertMedia = useCallback(
     (kind: "image" | "video") => {
       if (!editor) return;
@@ -217,18 +255,15 @@ export function RichNotesEditor({
         if (!files?.length) return;
         for (const file of Array.from(files)) {
           if (file.size > MAX_MEDIA_MB * 1024 * 1024) {
-            window.alert(`"${file.name}" is too large. Please use files under ${MAX_MEDIA_MB} MB.`);
+            window.alert(`"${file.name}" is too large. Max ${MAX_MEDIA_MB} MB.`);
             continue;
           }
           try {
             const src = await readFileAsDataUrl(file);
-            if (kind === "image") {
-              editor.chain().focus().setImage({ src }).run();
-            } else {
-              editor.chain().focus().setVideo({ src }).run();
-            }
+            if (kind === "image") editor.chain().focus().setImage({ src }).run();
+            else editor.chain().focus().setVideo({ src }).run();
           } catch {
-            window.alert(`Could not add ${file.name}. Try a smaller file or different format.`);
+            window.alert(`Could not add ${file.name}.`);
           }
         }
       };
@@ -269,28 +304,38 @@ export function RichNotesEditor({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex flex-wrap items-center gap-1 border-b border-border bg-secondary/30 px-2 py-2 shrink-0 max-h-[140px] overflow-y-auto overflow-x-hidden">
-        <ToolbarNativeSelect
-          aria-label="Font family"
-          value={fontId}
-          onChange={applyFontFamily}
-          options={FONT_FAMILIES}
-          className="w-[130px]"
-        />
-        <ToolbarNativeSelect
-          aria-label="Font size"
-          value={sizeId}
-          onChange={applyFontSize}
-          options={FONT_SIZES}
-          className="w-[76px]"
-        />
-        <ToolbarNativeSelect
-          aria-label="Paragraph style"
-          value={styleId}
-          onChange={applyBlockStyle}
-          options={BLOCK_STYLES}
-          className="w-[108px]"
-        />
+      {inTable && (
+        <div className="flex flex-wrap items-center gap-1 border-b border-border bg-blue/5 px-2 py-1.5 shrink-0">
+          <span className="text-[10px] font-semibold uppercase text-muted-foreground mr-1">Table</span>
+          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => editor.chain().focus().addRowBefore().run()}>
+            <Rows className="h-3 w-3 mr-1" /> Row above
+          </Button>
+          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => editor.chain().focus().addRowAfter().run()}>
+            Row below
+          </Button>
+          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => editor.chain().focus().deleteRow().run()}>
+            Del row
+          </Button>
+          <Separator orientation="vertical" className="h-5" />
+          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => editor.chain().focus().addColumnBefore().run()}>
+            <Columns className="h-3 w-3 mr-1" /> Col left
+          </Button>
+          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => editor.chain().focus().addColumnAfter().run()}>
+            Col right
+          </Button>
+          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => editor.chain().focus().deleteColumn().run()}>
+            Del col
+          </Button>
+          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs text-destructive" onClick={() => editor.chain().focus().deleteTable().run()}>
+            <Trash2 className="h-3 w-3 mr-1" /> Delete table
+          </Button>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-1 border-b border-border bg-secondary/30 px-2 py-2 shrink-0 max-h-[160px] overflow-y-auto overflow-x-hidden">
+        <ToolbarNativeSelect aria-label="Font family" value={fontId} onChange={applyFontFamily} options={FONT_FAMILIES} className="w-[130px]" />
+        <ToolbarNativeSelect aria-label="Font size" value={sizeId} onChange={applyFontSize} options={FONT_SIZES} className="w-[76px]" />
+        <ToolbarNativeSelect aria-label="Paragraph style" value={styleId} onChange={applyBlockStyle} options={BLOCK_STYLES} className="w-[108px]" />
 
         <Separator orientation="vertical" className="mx-0.5 h-6" />
 
@@ -311,37 +356,9 @@ export function RichNotesEditor({
 
         <div className="flex items-center gap-0.5 px-0.5">
           {TEXT_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              title={`Text color ${c}`}
-              className="h-5 w-5 rounded-full border border-border shrink-0 hover:scale-110 transition-transform"
-              style={{ backgroundColor: c }}
-              onClick={() => editor.chain().focus().setColor(c).run()}
-            />
+            <button key={c} type="button" title={`Text color ${c}`} className="h-5 w-5 rounded-full border border-border shrink-0 hover:scale-110" style={{ backgroundColor: c }} onClick={() => editor.chain().focus().setColor(c).run()} />
           ))}
-          <input
-            type="color"
-            className="h-6 w-6 cursor-pointer rounded border-0 bg-transparent p-0"
-            title="Custom text color"
-            onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
-          />
-        </div>
-
-        <div className="flex items-center gap-0.5 px-0.5">
-          {HIGHLIGHT_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              title="Highlight"
-              className="h-5 w-5 rounded border border-border shrink-0 hover:scale-110"
-              style={{ backgroundColor: c }}
-              onClick={() => editor.chain().focus().toggleHighlight({ color: c }).run()}
-            />
-          ))}
-          <Toggle size="sm" pressed={editor.isActive("highlight")} onPressedChange={() => editor.chain().focus().toggleHighlight().run()} aria-label="Highlight">
-            <Highlighter className="h-3.5 w-3.5" />
-          </Toggle>
+          <input type="color" className="h-6 w-6 cursor-pointer rounded border-0 bg-transparent p-0" title="Custom text color" onChange={(e) => editor.chain().focus().setColor(e.target.value).run()} />
         </div>
 
         <Separator orientation="vertical" className="mx-0.5 h-6" />
@@ -361,26 +378,28 @@ export function RichNotesEditor({
 
         <Separator orientation="vertical" className="mx-0.5 h-6" />
 
-        <Toggle size="sm" pressed={editor.isActive("bulletList")} onPressedChange={() => editor.chain().focus().toggleBulletList().run()}>
+        <Toggle size="sm" pressed={editor.isActive("bulletList")} onPressedChange={() => applyListStyle("bullet")} aria-label="Bullet list" title="Bullet list">
           <List className="h-3.5 w-3.5" />
         </Toggle>
-        <Toggle size="sm" pressed={editor.isActive("orderedList")} onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}>
+        <Toggle size="sm" pressed={editor.isActive("orderedList", { listStyleType: "decimal" })} onPressedChange={() => applyListStyle("decimal")} aria-label="Numbered list" title="1. 2. 3.">
           <ListOrdered className="h-3.5 w-3.5" />
         </Toggle>
+        <Button type="button" variant={editor.isActive("orderedList", { listStyleType: "lower-alpha" }) ? "secondary" : "ghost"} size="sm" className="h-8 px-2 text-xs font-mono" onClick={() => applyListStyle("lower-alpha")} title="a. b. c.">
+          a.
+        </Button>
+        <Button type="button" variant={editor.isActive("orderedList", { listStyleType: "upper-alpha" }) ? "secondary" : "ghost"} size="sm" className="h-8 px-2 text-xs font-mono" onClick={() => applyListStyle("upper-alpha")} title="A. B. C.">
+          A.
+        </Button>
+        <Button type="button" variant={editor.isActive("orderedList", { listStyleType: "lower-roman" }) ? "secondary" : "ghost"} size="sm" className="h-8 px-2 text-xs font-mono" onClick={() => applyListStyle("lower-roman")} title="i. ii. iii.">
+          i.
+        </Button>
         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal rule">
           <Minus className="h-3.5 w-3.5" />
         </Button>
 
         <Separator orientation="vertical" className="mx-0.5 h-6" />
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          title="Insert table"
-          onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-        >
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Insert table" onClick={() => setTableDialogOpen(true)}>
           <Table2 className="h-3.5 w-3.5" />
         </Button>
         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Insert photo(s)" onClick={() => insertMedia("image")}>
@@ -395,10 +414,10 @@ export function RichNotesEditor({
 
         <Separator orientation="vertical" className="mx-0.5 h-6" />
 
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={!canUndo} onClick={() => editor.chain().focus().undo().run()} title="Undo (Ctrl+Z)">
           <Undo2 className="h-3.5 w-3.5" />
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()}>
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={!canRedo} onClick={() => editor.chain().focus().redo().run()} title="Redo (Ctrl+Y)">
           <Redo2 className="h-3.5 w-3.5" />
         </Button>
 
@@ -408,7 +427,15 @@ export function RichNotesEditor({
         </Button>
       </div>
 
-      <div ref={printRef} className="flex-1 overflow-y-auto bg-white dark:bg-card min-h-0">
+      <TableInsertPanel
+        open={tableDialogOpen}
+        onOpenChange={setTableDialogOpen}
+        onInsert={(rows, cols, withHeaderRow) => {
+          editor.chain().focus().insertTable({ rows, cols, withHeaderRow }).run();
+        }}
+      />
+
+      <div ref={printRef} className="flex-1 overflow-y-auto bg-white dark:bg-card min-h-0 portal-notes-editor-body">
         <EditorContent editor={editor} className="h-full [&_.ProseMirror]:min-h-full" />
       </div>
     </div>

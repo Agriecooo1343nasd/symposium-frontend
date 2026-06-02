@@ -103,7 +103,7 @@ export default function Register() {
   const [paymentMethod, setPaymentMethod] = useState("momo");
   const groupSettings = getGroupSettings();
   const [regKind, setRegKind] = useState<"individual" | "group">("individual");
-  const [groupSize, setGroupSize] = useState(groupSettings.minSize);
+  const [groupSize, setGroupSize] = useState(() => groupSettings.minSize);
   const [groupMembers, setGroupMembers] = useState<GroupMemberInput[]>([]);
 
   // Email verification state

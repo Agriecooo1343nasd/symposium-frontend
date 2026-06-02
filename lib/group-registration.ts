@@ -1,6 +1,7 @@
 import type { SubTheme } from "./mock-data";
 import {
   appendAudit,
+  DEFAULT_GROUP_REGISTRATION_SETTINGS,
   loadStore,
   patchStore,
   uid,
@@ -29,7 +30,10 @@ export type GroupPricing = {
 };
 
 export function getGroupSettings(): GroupRegistrationSettings {
-  return loadStore().platformSettings.groupRegistration;
+  return {
+    ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
+    ...loadStore().platformSettings?.groupRegistration,
+  };
 }
 
 export function calculateGroupPricing(memberCount: number, pricePerSeatUsd: number): GroupPricing {
