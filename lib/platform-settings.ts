@@ -48,3 +48,11 @@ export function getCommitteeMembers() {
 export function getRooms() {
   return loadStore().rooms;
 }
+
+export function getGalleryImages() {
+  return [...loadStore().galleryImages].sort((a, b) => a.order - b.order);
+}
+
+export function getPreviousPresentations() {
+  return [...loadStore().previousPresentations].sort((a, b) => a.order - b.order);
+}

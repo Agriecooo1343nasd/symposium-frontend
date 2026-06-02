@@ -188,6 +188,8 @@ export type MockSession = {
   category: string;
   ticketId: string;
   avatar?: string;
+  /** For exhibitor role — distinguishes exhibitor-only / sponsor-only / both */
+  participation?: "exhibitor" | "sponsor" | "both";
 };
 
 export const DEMO_USER: MockSession = {

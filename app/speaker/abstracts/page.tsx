@@ -148,13 +148,12 @@ export default function SpeakerAbstractsPage() {
                 )}
               </div>
               <span
-                className={`text-xs px-2 py-1 rounded font-semibold capitalize ${
-                  a.status === "accepted"
+                className={`text-xs px-2 py-1 rounded font-semibold capitalize ${a.status === "accepted"
                     ? "bg-green/15 text-green"
                     : a.status === "rejected"
                       ? "bg-red-100 text-red-700"
                       : "bg-amber-100 text-amber-800"
-                }`}
+                  }`}
               >
                 {a.status.replace("-", " ")}
               </span>

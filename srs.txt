@@ -1,0 +1,435 @@
+SOFTWARE REQUIREMENTS SPECIFICATION
+Digital Conference Platform
+
+3rd National Agroecology Symposium
+
+1. Introduction
+1.1 Purpose
+This Software Requirements Specification (SRS) defines the complete functional and non-functional requirements for the official digital platform of the 3rd National Agroecology Symposium (NAS 2026). The document is intended for use by the development team, Symposium organizers, and stakeholders involved in the design, implementation, testing, and deployment of the platform.
+The platform must provide a world-class, end-to-end digital experience  from pre-event registration and payment processing, through live-event engagement, to post-event archiving comparable to international benchmarks such as the African Food Systems Forum (AGRF), the International Biomass Conference & Expo (IBCE), and the CGIAR Food Systems Innovation Summit platforms.
+1.2 Project Overview
+The 3rd National Agroecology Symposium is a flagship two-day event bringing together over 300 participants including policymakers, researchers, farmers, civil society, private sector, development partners, and media across Rwanda and the region. Attendance is paid, and the platform must support a full commercial ticketing and payment workflow. Exhibitors (20+) spanning Platinum, Gold, and Silver tiers require dedicated management capabilities.
+1.3 Scope
+The platform encompasses:
+A public-facing symposium website with event information, agenda, speakers, and sponsor profiles
+A paid attendee registration and ticketing system with online payment processing
+An exhibitor and sponsor management portal
+An abstract and presentation submission system
+A programme / session management system (agenda builder)
+An attendee-facing mobile-responsive event app (web-based)
+A live-event engagement module (Q&A, polls, networking)
+An administrative back-end dashboard
+Post-event resource repository and certificate generation
+Out of scope: physical AV/streaming infrastructure, hotel booking, and travel logistics.
+
+
+
+
+1.4 Definitions, Acronyms, and Abbreviations
+Term / Acronym
+Definition
+NAS 2026
+3rd National Agroecology Symposium, August 2026
+SRS
+Software Requirements Specification
+FR
+Functional Requirement
+NFR
+Non-Functional Requirement
+UI
+User Interface
+UX
+User Experience
+API
+Application Programming Interface
+GDPR/DPA
+General Data Protection Regulation / Rwanda Data Protection Act
+MoMo
+Mobile Money (MTN, Airtel)
+QR Code
+Quick Response Code used for check-in
+CMS
+Content Management System
+RBAC
+Role-Based Access Control
+SSL/TLS
+Secure Sockets Layer / Transport Layer Security
+AGRF
+African Green Revolution Forum / Food Systems Summit platform (benchmark)
+
+2. System Features & Functional Requirements
+Module 1: Public Website & Content Management
+FR-1.1 — Homepage & Branding
+The homepage shall present a compelling, visually rich landing page including:
+Event countdown timer (days, hours, minutes, seconds to 13 Aug 2026)
+Hero flyer with symposium theme, date, venue, a hook that encourages them to register and primary CTA ('Register Now')
+Sponsor/partner logo carousel (Platinum, Gold, Silver tiers with tier labeling)
+Brief event summary aligned with the concept note narrative
+Social media share buttons and links
+FR-1.2 — About Section
+Symposium background, rationale, and linkage to the 2nd NAS roadmap
+Event objectives and expected outcomes (as per concept note)
+Organizing committee profiles
+Gallery for the previous symposiums 
+PPT presentations of the second national agroecology symposium 
+FR-1.3 — Programme / Agenda Page
+Interactive two-day agenda (13–14 August) with session filters by sub-theme, type (plenary, panel, workshop), and time
+Clickable session cards showing title, speakers, time, room, and description
+'Add to personal schedule' button for registered attendees
+Downloadable agenda (PDF export)
+FR-1.4 — Speakers Page
+Speaker profiles: photo, name, title, organization, country, bio, and assigned sessions
+Search and filter by name, organization, or sub-theme
+Keynote speakers prominently featured
+FR-1.5 — Exhibitors & Sponsors Page
+Tiered exhibitor showcase: Platinum, Gold, Silver
+Each exhibitor: logo, description, website link, and downloadable materials
+'Become a Sponsor' CTA linking to sponsorship application form
+FR-1.6 — News & Blog
+CMS-powered news/blog section for pre-event announcements, post-event summaries
+Social sharing per article; RSS feed
+FR-1.7 — Media & Press Kit
+Downloadable press kit (concept note summary, logos, high-res images, official quote sheet)
+Media accreditation form (separate from paid registration)
+FR-1.8 — Contact & FAQ
+Contact form with routing to organizing team email
+Comprehensive FAQ addressing registration, payment, venue, accommodation, and logistics
+FR-1.9 — CMS Administration
+Admin-editable website content (all pages above) without developer involvement
+Media library for logos, banners, and documents
+SEO metadata management per page (title, description, OG tags)
+
+Module 2: Registration & Ticketing
+This is the platform's most critical commercial module. It must inspire trust, be easy to complete on any device, and support the full paid-attendance workflow.
+FR-2.1 — Attendee Category & Pricing
+The system shall support multiple configurable ticket categories with individual pricing in both USD and RWF (exchange rate updated by admin). Minimum expected categories:
+Category
+USD Price (Example)
+RWF Price ($= RWF 1465)
+Notes
+International Delegate
+$250
+~RWF 366,250
+Full 2-day access
+NGO / CSO /private sector/ Representative
+$150
+~RWF 219,750
+Full 2-day access
+Academic / Researcher
+$120
+~RWF 175,800
+Full 2-day access
+Student
+$25
+~RWF 36,250
+Requires student ID verification
+Farmer / Farmer Org.
+$40
+~RWF 58,600
+Requires organization letter
+Exhibitor Staff Pass
+Bundled
+Bundled
+Included in exhibitor package
+Media / Press
+Free
+Free
+Requires accreditation approval
+Virtual Attendee
+$20
+~RWF 29,300
+Online access only
+
+Note:  The prices shall be approved by Symposium organizing committee.
+FR-2.2 — Registration Form
+The registration form shall collect:
+Full name, professional title, organization, country, email, phone number
+Attendee category selection (drives pricing)
+Dietary requirements and accessibility needs
+How they heard about the symposium (analytics)
+Consent checkboxes: data privacy policy, photo/media consent, terms & conditions
+Optional: LinkedIn profile URL, areas of interest (maps to sub-themes for networking)
+Validation: real-time field validation with clear error messaging. Email uniqueness enforced per registration.
+FR-2.3 — Group Registration
+Organizations may register multiple attendees in a single session (batch registration)
+Group discount tiers: 5–9 attendees (10% off), 10+ attendees (15% off) — configurable by admin
+Single invoice generated for group bookings
+FR-2.4 — Payment Processing
+The payment module shall support:
+MTN Mobile Money (Rwanda) — USSD push payment
+Airtel Money (Rwanda) — USSD push payment
+Visa / Mastercard (international and local cards)
+Bank Transfer — generates proforma invoice; registration held pending manual confirmation by admin
+Payment flow:
+Attendee completes registration form
+Directed to payment summary page (order review)
+Selects payment method
+Completes payment (real-time confirmation for MoMo/card)
+Registration confirmed; automated email + SMS confirmation sent
+E-ticket with QR code generated and attached to email
+Failed or incomplete payments: system holds registration in 'pending' state for 24 hours before releasing the slot. Automated reminder email sent after 4 hours.
+FR-2.5 — E-Ticket & QR Code
+Each confirmed registration generates a unique QR-code-bearing e-ticket (PDF, mobile-friendly)
+QR code encodes: attendee ID, name, category, and validity hash
+Ticket emailed automatically; also accessible from attendee's account dashboard
+FR-2.6 — Invoice & Receipt Management
+Automatic receipt generation upon payment confirmation
+Proforma invoice generation for bank transfer registrants
+VAT handling configurable (on/off, percentage)
+Admin can manually issue or override invoices
+FR-2.7 — Cancellation & Refund Policy
+Policy text displayed prominently during registration
+Cancellation request form in attendee dashboard
+Admin reviews and processes refunds manually; system logs all decisions
+Transfer of registration to another attendee supported (admin-approved)
+FR-2.8 — Waitlist Management
+When a ticket category sells out, attendees can join a waitlist
+Automated notification when a spot becomes available
+
+Module 3: Attendee Dashboard & Self-Service Portal
+FR-3.1 — Account Creation & Authentication
+Registration creates an attendee account (email + password or OAuth via Google)
+Email verification required before account activation
+Password reset via email link
+Optional two-factor authentication (2FA) via SMS or authenticator app
+FR-3.2 — Attendee Dashboard Features
+View and download e-ticket and receipt
+Edit personal profile (name, title, org, photo, bio — for networking directory)
+Personal agenda builder: add/remove sessions from the programme
+Networking directory: browse and connect with other attendees (opt-in)
+Notifications inbox: event updates, session reminders, announcements
+Access to pre-event materials uploaded by organizers
+Post-event: download presentation slides, access recordings, generate and download certificate of attendance
+
+Module 4: Abstract & Presentation Submission
+FR-4.1 — Submission Portal
+Open submission form accessible to registered users and invited submitters
+Fields: title, abstract (max 300 words, word counter), sub-theme selection, presentation type (oral, poster, workshop), author names and affiliations, keywords (up to 5)
+File upload: supporting document (PDF/DOCX, max 10MB)
+Submission deadline enforced with clear countdown; late submissions require admin override
+FR-4.2 — Review Workflow
+Submitted abstracts assigned to programme committee reviewers by admin
+Reviewers score abstracts on configured criteria (relevance, quality, innovation)
+Admin views consolidated scores and makes accept/reject/revision decision
+Automated email notification to submitter with decision and feedback
+Accepted presenters receive speaker portal access
+FR-4.3 — Speaker Portal
+Upload final presentation file (PDF/PPTX, max 50MB)
+Confirm session slot and audio/visual requirements
+View session details: date, time, room, chair/moderator
+Speaker bio and photo management (feeds into public speakers page)
+
+Module 5: Exhibitor & Sponsor Management
+FR-5.1 — Sponsorship Application
+Online application form: organization name, contact, desired tier, message
+Admin reviews and approves; triggers payment invoice for sponsorship fee
+Three tiers as per concept note: Platinum, Gold, Silver (benefits configured per tier)
+FR-5.2 — Exhibitor Portal
+Dedicated login for exhibitor contacts
+Upload company logo, profile description, website URL, social links
+Upload brochures and promotional materials (PDF, max 10MB each, up to 5 files)
+Manage exhibitor staff passes (add/remove names within allocated quota)
+View booth assignment details and event logistics information
+Access lead capture tool: scan attendee QR codes to capture contact details (with attendee consent)
+FR-5.3 — Exhibitor Analytics
+Profile view count
+Material download count
+Leads captured (QR scans)
+
+Module 6: Live Event Engagement
+FR-6.1 — Event App (Mobile-Responsive Web)
+Personalized agenda view with real-time session updates and room changes
+Push notifications for session reminders (15 min before) and announcements
+Interactive map of the venue (Kigali Marriott Hotel floor plan)
+FR-6.2 — Session Engagement Tools
+Live Q&A: attendees submit questions during sessions; moderator manages and displays approved questions
+Live polls: presenter or admin launches polls; real-time results displayed on screen
+Session rating: attendees rate sessions (1–5 stars + optional comment) after session ends
+Chat/discussion thread per session (optional; admin-enabled)
+FR-6.3 — Networking Module
+Attendee directory with search and filter (by country, organization, sub-theme interest)
+'Request to Connect' feature: attendee sends connection request; both parties get email notification
+In-app messaging between connected attendees
+AI-powered matchmaking suggestions based on shared interests and sub-themes (optional stretch goal)
+FR-6.4 — QR Code Check-In
+Dedicated check-in interface for registration desk staff (tablet/mobile browser)
+Scan attendee QR code from e-ticket to mark attendance
+Manual search check-in by name or registration ID for attendees without QR code
+Real-time attendance dashboard for admin: arrivals by hour, by category
+
+Module 7: Administration Dashboard
+FR-7.1 — Registration Management
+View, search, filter, and export all registrations (CSV/Excel)
+Manually add, edit, or cancel registrations
+Bulk import registrations via CSV template
+Send targeted email/SMS to segments (all attendees, specific category, pending payment)
+FR-7.2 — Financial Dashboard
+Real-time revenue dashboard: total collected, by ticket category, by payment method
+Transaction log with status (completed, pending, failed, refunded)
+Daily, weekly, and custom-range revenue reports (PDF and CSV export)
+Reconciliation report: registrations vs. confirmed payments
+Manual payment confirmation for bank transfers
+FR-7.3 — Content Management
+Full CMS access to edit all public website content
+Agenda builder: add/edit/delete sessions, assign speakers, assign rooms, set times
+Speaker management: add/edit/approve speaker profiles
+Announcement broadcaster: send notifications to all or segmented attendees
+FR-7.4 — User & Role Management
+RBAC with predefined roles: Super Admin, Finance Officer, Programme Committee, Registration Desk, Exhibitor Manager, Speaker
+Custom role creation with granular permission settings
+Audit log: all admin actions logged with timestamp and user ID
+FR-7.5 — Analytics & Reporting
+Registration conversion funnel (visits → started registration → completed payment)
+Attendee demographics: by country, category, organization type
+Session attendance heat map
+Abstract submission and acceptance statistics
+Exhibitor performance summary
+Post-event satisfaction survey results
+
+
+
+Module 8: Post-Event Module
+FR-8.1 — Resource Repository
+Admin uploads session recordings, presentation slides, and photos post-event
+Organized by day, sub-theme, and session
+Access control: public or registered-attendees-only per resource
+FR-8.2 — Certificate of Attendance
+Automated certificate generation for attendees who checked in (QR scanned)
+Personalized: name, category, event name, dates, and organizer signature/logo
+Downloadable as PDF from attendee dashboard
+Admin can manually grant certificates to specific attendees
+FR-8.3 — Post-Event Survey
+Configurable survey sent automatically to all attendees 24 hours post-event
+Question types: rating scale, multiple choice, open text
+Results aggregated in admin dashboard with export
+
+4. Non-Functional Requirements
+4.1 Performance
+Metric
+Target
+Page load time (public site)
+< 2.5 seconds on 4G (Google Lighthouse score > 85)
+Registration form submission
+< 3 seconds end-to-end response
+Payment confirmation
+< 5 seconds for MoMo; < 3 seconds for card
+Concurrent users (peak)
+Support 500 simultaneous active users without degradation
+API response time
+< 500ms for 95th percentile under normal load
+File upload (50MB presentation)
+< 60 seconds on standard broadband
+
+4.2 Security
+HTTPS/TLS 1.2+ on all endpoints; HTTP → HTTPS redirect enforced
+Passwords stored with bcrypt (minimum cost factor 12) — never in plain text
+Payment card data never stored; all card processing via PCI-DSS compliant payment gateway (Flutterwave)
+CSRF protection on all forms; XSS and SQL injection prevention (parameterised queries, output encoding)
+Rate limiting on registration, login, and payment endpoints
+Admin panel restricted by IP whitelist option
+Regular automated vulnerability scanning (OWASP Top 10 baseline)
+Data breach notification protocol documented and tested
+4.3 Availability & Reliability
+99.5% uptime SLA from 4 weeks before event through 1 week post-event
+Automated database backups every 6 hours; point-in-time recovery
+Graceful degradation: if payment gateway is unavailable, bank transfer option remains accessible
+Health monitoring and alerting (e.g., Uptime Robot or AWS Cloud Watch) with < 2 min incident notification to admin
+4.4 Scalability
+Auto-scaling infrastructure to handle traffic spikes (e.g., when registration opens or a keynote speaker is announced)
+CDN for static assets and media files
+Database read replicas for reporting queries to avoid impacting transactional performance
+4.5 Usability & Accessibility
+WCAG 2.1 AA compliance: keyboard navigability, sufficient colour contrast, screen reader labels
+Registration and payment flow completable on mobile in < 7 minutes
+All critical user flows user-tested with at least 5 representative users before launch
+Error messages specific and actionable (not generic 'error occurred' messages)
+Support for right-to-left rendering (future-proofing)
+4.6 Internationalisation & Localisation
+Primary language: English
+Secondary: Kinyarwanda UI labels and key content; French UI labels
+Date formats: DD Month YYYY (e.g., 13 August 2026)
+Currency: USD (primary display); RWF (secondary display with live rate)
+Phone number validation supporting Rwanda (+250) and international formats
+4.7 Maintainability
+Codebase with clear module separation, documented APIs, and inline code comments
+Admin CMS allowing non-technical staff to update all website content
+Automated test coverage: minimum 70% unit/integration test coverage on backend
+Staging environment mirroring production for pre-launch testing
+Deployment pipeline (CI/CD) for zero-downtime deployments
+8. Implementation & Launch Plan
+8.1 Recommended Phased Delivery
+Phase
+Scope
+Target Date
+Key Milestone
+Phase 1
+Core website, CMS, registration form, payment integration (card + MoMo), email/ticket system, admin dashboard basics
+16 June 2026
+Registration opens publicly
+Phase 2
+Abstract submission, speaker portal, exhibitor portal, programme /agenda builder, attendee dashboard
+7 July 2026
+Call for abstracts closes; full agenda published
+Phase 3
+Live event modules (Q&A, polls, check-in), networking directory, mobile optimisation, performance testing
+4 August 2026
+Full platform UAT complete
+Phase 4
+Post-event: certificate generation, resource repository, survey, final reporting, archival
+22 August 2026
+Post-event delivery complete
+
+8.2 Acceptance Criteria
+The platform shall be accepted for launch when all of the following are verified:
+All FR-1 through FR-8 functional requirements implemented and tested
+Payment flow tested end-to-end with live gateway (at least 10 test transactions)
+QR code check-in tested with 50 mock attendees
+Load test passed: 500 concurrent users with < 2.5s page load
+Security scan passed with no Critical or High OWASP vulnerabilities
+Mobile usability test passed on iOS and Android devices
+Admin trained and CMS content fully populated
+DNS, SSL, email deliverability, and payment gateway all configured for production
+
+9. Appendices
+Appendix — Exhibitor Tier Benefit Matrix (Template)
+The following table is a template for the organizing committee to populate with confirmed benefits. The platform shall enforce these benefits programmatically.
+Benefit
+Platinum
+Gold
+Silver
+Logo on website (homepage & exhibitors page)
+Yes
+Yes
+Yes
+Logo placement priority
+Top tier
+Mid tier
+Standard
+Brochure uploads
+5 files
+3 files
+1 file
+Staff passes included
+TBD
+TBD
+TBD
+Lead capture (QR scan)
+Yes
+Yes
+No
+Feature in newsletter / email to attendees
+Yes
+Yes
+No
+Speaking opportunity
+TBD
+TBD
+No
+Booth size
+TBD
+TBD
+TBD
+
+
+End of Software Requirements Specification
+3rd National Agroecology Symposium Digital Platform 

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Store } from "lucide-react";
+import { ArrowRight, Store, Sparkles, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { loadStore } from "@/lib/store";
 import { SPONSORS, EXHIBITORS } from "@/lib/mock-data";
@@ -21,29 +21,29 @@ export default function Exhibitors() {
   const sponsorCards =
     sponsors.length > 0
       ? sponsors.map((s) => ({
-          id: s.id,
-          name: s.name,
-          blurb: s.description,
-          tier: s.sponsorshipTier ?? "Silver",
-        }))
+        id: s.id,
+        name: s.name,
+        blurb: s.description,
+        tier: s.sponsorshipTier ?? "Silver",
+      }))
       : SPONSORS.map((s) => ({ id: s.id, name: s.name, blurb: s.blurb, tier: s.tier }));
 
   const exhibitorCards =
     exhibitorsList.length > 0
       ? exhibitorsList.map((e) => ({
-          id: e.id,
-          name: e.name,
-          blurb: e.description,
-          booth: e.booth,
-          category: e.category,
-        }))
+        id: e.id,
+        name: e.name,
+        blurb: e.description,
+        booth: e.booth,
+        category: e.category,
+      }))
       : EXHIBITORS.map((e) => ({
-          id: e.id,
-          name: e.name,
-          blurb: e.description,
-          booth: e.booth,
-          category: e.category,
-        }));
+        id: e.id,
+        name: e.name,
+        blurb: e.description,
+        booth: e.booth,
+        category: e.category,
+      }));
 
   const tierColor = (t: string) =>
     t === "Platinum" ? "bg-slate-200 text-slate-900" : t === "Gold" ? "bg-amber-100 text-amber-900" : "bg-zinc-200 text-zinc-900";
@@ -62,11 +62,18 @@ export default function Exhibitors() {
           <p className="mt-4 text-white/80 max-w-2xl">
             Our partners make NAS 2026 possible. Organizations can exhibit, sponsor, or both.
           </p>
-          <Button asChild className="mt-8 bg-gold hover:bg-gold/90 text-navy font-semibold">
-            <Link href="/register">
-              Apply to exhibit <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-3 mt-8">
+            <Button asChild className="bg-gold hover:bg-gold/90 text-navy font-semibold">
+              <Link href="/register">
+                Apply to exhibit <ArrowRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white">
+              <Link href="/dashboard/apply">
+                Become a sponsor <Sparkles className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -105,6 +112,54 @@ export default function Exhibitors() {
               <p className="text-sm text-muted-foreground mt-1 mb-3 flex-1">{e.blurb}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* FR-1.5 — Become a Sponsor CTA */}
+      <section className="bg-secondary/40 py-16">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-100 mx-auto mb-5">
+            <Sparkles className="h-7 w-7 text-amber-700" />
+          </div>
+          <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight">
+            Partner with NAS 2026
+          </h2>
+          <p className="text-muted-foreground mt-3 max-w-2xl mx-auto leading-relaxed">
+            Join Platinum, Gold, or Silver sponsors reaching 300+ policymakers, researchers, farmers, and development partners. Sponsorship includes homepage logo placement, newsletter features, staff passes, and speaking opportunities.
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center mt-8">
+            <Button asChild size="lg" className="bg-gold hover:bg-gold/90 text-navy font-semibold">
+              <Link href="/dashboard/apply">
+                Become a sponsor <Sparkles className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/contact">Talk to the team</Link>
+            </Button>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-4 mt-12 text-left">
+            {[
+              { tier: "Platinum", fee: "From $15,000", perks: ["Homepage carousel · top tier", "5 brochure uploads", "10 staff passes", "Lead capture", "Speaking slot"] },
+              { tier: "Gold", fee: "From $8,000", perks: ["Homepage carousel · mid tier", "3 brochure uploads", "6 staff passes", "Lead capture", "Newsletter feature"] },
+              { tier: "Silver", fee: "From $3,000", perks: ["Exhibitors page logo", "1 brochure upload", "3 staff passes", "Standard listing"] },
+            ].map((t) => (
+              <div key={t.tier} className={`rounded-2xl border p-5 bg-card ${t.tier === "Gold" ? "border-accent shadow-md ring-1 ring-accent/20" : "border-border"}`}>
+                <div className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full w-fit mb-3 ${t.tier === "Platinum" ? "bg-slate-200 text-slate-900" : t.tier === "Gold" ? "bg-amber-100 text-amber-900" : "bg-zinc-200 text-zinc-900"}`}>
+                  {t.tier}
+                </div>
+                <div className="font-serif text-xl font-bold mb-1">{t.tier}</div>
+                <div className="text-sm text-accent font-semibold mb-3">{t.fee}</div>
+                <ul className="space-y-1.5 text-sm">
+                  {t.perks.map((p) => (
+                    <li key={p} className="flex items-center gap-2 text-muted-foreground">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green flex-shrink-0" />
+                      {p}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </>

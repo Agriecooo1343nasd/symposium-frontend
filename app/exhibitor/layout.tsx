@@ -19,19 +19,31 @@ import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell
 import { useAuth } from "@/hooks/use-auth";
 import { canAccessPortal } from "@/lib/permissions";
 
-const NAV: readonly PortalNavItem[] = [
-  { to: "/exhibitor", label: "Overview", icon: LayoutDashboard, exact: true },
-  { to: "/exhibitor/booth", label: "Booth profile", icon: Store },
-  { to: "/exhibitor/qr", label: "Booth QR", icon: QrCode },
-  { to: "/exhibitor/sponsorship", label: "Sponsorship", icon: Sparkles },
-  { to: "/exhibitor/materials", label: "Brochures", icon: FileText },
-  { to: "/exhibitor/leads", label: "Leads", icon: Users },
-  { to: "/exhibitor/passes", label: "Staff passes", icon: IdCard },
-  { to: "/exhibitor/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/exhibitor/location", label: "Booth info", icon: Map },
-  { to: "/exhibitor/networking", label: "Networking", icon: MessageSquare },
-  { to: "/exhibitor/live", label: "Live stream", icon: Radio },
+const ALL_NAV: readonly (PortalNavItem & { showFor: ("exhibitor" | "sponsor" | "both")[] })[] = [
+  { to: "/exhibitor", label: "Overview", icon: LayoutDashboard, exact: true, showFor: ["exhibitor", "sponsor", "both"] },
+  { to: "/exhibitor/booth", label: "Booth profile", icon: Store, showFor: ["exhibitor", "sponsor", "both"] },
+  { to: "/exhibitor/qr", label: "Booth QR", icon: QrCode, showFor: ["exhibitor", "sponsor", "both"] },
+  { to: "/exhibitor/sponsorship", label: "Sponsorship", icon: Sparkles, showFor: ["sponsor", "both"] },
+  { to: "/exhibitor/materials", label: "Brochures", icon: FileText, showFor: ["exhibitor", "sponsor", "both"] },
+  { to: "/exhibitor/leads", label: "Leads", icon: Users, showFor: ["exhibitor", "sponsor", "both"] },
+  { to: "/exhibitor/passes", label: "Staff passes", icon: IdCard, showFor: ["exhibitor", "sponsor", "both"] },
+  { to: "/exhibitor/analytics", label: "Analytics", icon: BarChart3, showFor: ["exhibitor", "sponsor", "both"] },
+  { to: "/exhibitor/location", label: "Booth info", icon: Map, showFor: ["exhibitor", "sponsor", "both"] },
+  { to: "/exhibitor/networking", label: "Networking", icon: MessageSquare, showFor: ["exhibitor", "sponsor", "both"] },
+  { to: "/exhibitor/live", label: "Live stream", icon: Radio, showFor: ["exhibitor", "sponsor", "both"] },
 ];
+
+const PARTICIPATION_TITLE: Record<string, string> = {
+  sponsor: "Sponsor Console",
+  both: "Exhibitor + Sponsor Console",
+  exhibitor: "Exhibitor Console",
+};
+
+const PARTICIPATION_SUBTITLE: Record<string, string> = {
+  sponsor: "Sponsor Portal",
+  both: "Exhibitor & Sponsor Portal",
+  exhibitor: "Exhibitor Portal",
+};
 
 export default function ExhibitorLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -48,8 +60,15 @@ export default function ExhibitorLayout({ children }: { children: React.ReactNod
     return null;
   }
 
+  const participation = (session.participation ?? "exhibitor") as "exhibitor" | "sponsor" | "both";
+  const nav = ALL_NAV.filter((n) => n.showFor.includes(participation)) as PortalNavItem[];
+
   return (
-    <PortalShell title="Exhibitor Console" subtitle="Exhibitor Portal" nav={NAV}>
+    <PortalShell
+      title={PARTICIPATION_TITLE[participation] ?? "Exhibitor Console"}
+      subtitle={PARTICIPATION_SUBTITLE[participation] ?? "Exhibitor Portal"}
+      nav={nav}
+    >
       {children}
     </PortalShell>
   );

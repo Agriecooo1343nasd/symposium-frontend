@@ -21,7 +21,7 @@ import {
 import type { ZoomMeeting } from "./zoom-mock";
 
 const STORE_KEY = "nas2026_data";
-const STORE_VERSION = 15;
+const STORE_VERSION = 17;
 
 const LISTENERS = new Set<() => void>();
 
@@ -499,6 +499,28 @@ export type ChatMessage = {
   sentAt: string;
 };
 
+export type GalleryImage = {
+  id: string;
+  src: string;
+  caption: string;
+  event: string;
+  year: string;
+  order: number;
+  uploadedAt: string;
+};
+
+export type PreviousPresentation = {
+  id: string;
+  title: string;
+  presenter: string;
+  event: string;
+  year: string;
+  fileUrl: string;
+  fileName: string;
+  order: number;
+  uploadedAt: string;
+};
+
 export type CertificateSignature = {
   name: string;
   title: string;
@@ -641,6 +663,8 @@ export type AppStore = {
   attendeeProfiles: AttendeeProfile[];
   connectionRequests: StoreConnectionRequest[];
   chatMessages: ChatMessage[];
+  galleryImages: GalleryImage[];
+  previousPresentations: PreviousPresentation[];
 };
 
 function uid(prefix = "id") {
@@ -1731,6 +1755,143 @@ function seedChatMessages(): ChatMessage[] {
   ];
 }
 
+function seedGalleryImages(): GalleryImage[] {
+  return [
+    {
+      id: "gi1",
+      src: "https://picsum.photos/seed/nas-gallery-1/800/600",
+      caption: "Opening ceremony of the 2nd National Agroecology Symposium",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      order: 1,
+      uploadedAt: "2024-09-01",
+    },
+    {
+      id: "gi2",
+      src: "https://picsum.photos/seed/nas-gallery-2/800/600",
+      caption: "Ministerial address by the Minister of Agriculture at the 2nd NAS",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      order: 2,
+      uploadedAt: "2024-09-01",
+    },
+    {
+      id: "gi3",
+      src: "https://picsum.photos/seed/nas-gallery-3/800/600",
+      caption: "Farmer-led panel featuring cooperative leaders from across Rwanda",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      order: 3,
+      uploadedAt: "2024-09-01",
+    },
+    {
+      id: "gi4",
+      src: "https://picsum.photos/seed/nas-gallery-4/800/600",
+      caption: "Field visit to the Bugesera demonstration farm — soil health workshop",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      order: 4,
+      uploadedAt: "2024-09-02",
+    },
+    {
+      id: "gi5",
+      src: "https://picsum.photos/seed/nas-gallery-5/800/600",
+      caption: "Kigali Roadmap signing ceremony — day 2 closing session",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      order: 5,
+      uploadedAt: "2024-09-02",
+    },
+    {
+      id: "gi6",
+      src: "https://picsum.photos/seed/nas-gallery-6/800/600",
+      caption: "Exhibitor showcase — 20+ organizations presenting agroecological innovations",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      order: 6,
+      uploadedAt: "2024-09-02",
+    },
+    {
+      id: "gi7",
+      src: "https://picsum.photos/seed/nas-gallery-7/800/600",
+      caption: "Networking reception with delegates from 14 countries",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      order: 7,
+      uploadedAt: "2024-09-02",
+    },
+    {
+      id: "gi8",
+      src: "https://picsum.photos/seed/nas-gallery-8/800/600",
+      caption: "Youth delegates presenting research findings at the science track",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      order: 8,
+      uploadedAt: "2024-09-03",
+    },
+  ];
+}
+
+function seedPreviousPresentations(): PreviousPresentation[] {
+  return [
+    {
+      id: "pp1",
+      title: "Scaling Agroecology in Rwanda's Hillside Systems",
+      presenter: "Dr. Mukeshimana Solange",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      fileUrl: "#",
+      fileName: "nas2024-opening-plenary-mukeshimana.pdf",
+      order: 1,
+      uploadedAt: "2024-09-05",
+    },
+    {
+      id: "pp2",
+      title: "National Agroecology Roadmap 2024–2028",
+      presenter: "MINAGRI Rwanda",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      fileUrl: "#",
+      fileName: "nas2024-roadmap-minagri.pdf",
+      order: 2,
+      uploadedAt: "2024-09-05",
+    },
+    {
+      id: "pp3",
+      title: "Participatory Research & Farmer Co-Designers",
+      presenter: "Jean-Baptiste Habimana",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      fileUrl: "#",
+      fileName: "nas2024-participatory-research-habimana.pdf",
+      order: 3,
+      uploadedAt: "2024-09-06",
+    },
+    {
+      id: "pp4",
+      title: "Soil Health Indicators for Hillside Cooperatives",
+      presenter: "Prof. Esther Wanjiru",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      fileUrl: "#",
+      fileName: "nas2024-soil-health-wanjiru.pdf",
+      order: 4,
+      uploadedAt: "2024-09-06",
+    },
+    {
+      id: "pp5",
+      title: "Financing Agroecological Transitions — Donor Perspectives",
+      presenter: "GIZ Rwanda",
+      event: "2nd National Agroecology Symposium",
+      year: "2024",
+      fileUrl: "#",
+      fileName: "nas2024-financing-giz.pdf",
+      order: 5,
+      uploadedAt: "2024-09-06",
+    },
+  ];
+}
+
 function seedWaitlist(): WaitlistEntry[] {
   return [
     {
@@ -1976,6 +2137,8 @@ function createSeed(): AppStore {
     attendeeProfiles: seedAttendeeProfiles(registrations),
     connectionRequests: seedConnectionRequests(),
     chatMessages: seedChatMessages(),
+    galleryImages: seedGalleryImages(),
+    previousPresentations: seedPreviousPresentations(),
   };
 }
 

@@ -23,9 +23,14 @@ export function getSession(): MockSession | null {
 }
 
 export function signIn(role: Role = "attendee", overrides: Partial<MockSession> = {}): MockSession {
+  // Default participation based on role
+  const defaultParticipation: MockSession["participation"] =
+    role === "exhibitor" ? (overrides.participation ?? "exhibitor") : undefined;
+
   const base: MockSession = {
     ...DEMO_USER,
     role,
+    participation: defaultParticipation,
     name:
       overrides.name ??
       (role === "admin"
@@ -60,7 +65,11 @@ export function signIn(role: Role = "attendee", overrides: Partial<MockSession> 
           : role === "moderator"
             ? "Moderator"
             : role === "exhibitor"
-              ? "Exhibitor Lead"
+              ? overrides.participation === "sponsor"
+                ? "Sponsor"
+                : overrides.participation === "both"
+                  ? "Exhibitor + Sponsor"
+                  : "Exhibitor"
               : role === "speaker"
                 ? "Speaker"
                 : DEMO_USER.category,
@@ -71,6 +80,13 @@ export function signIn(role: Role = "attendee", overrides: Partial<MockSession> 
     LISTENERS.forEach((fn) => fn());
   }
   return base;
+}
+
+/** Convenience — get the participation type for the current exhibitor session */
+export function getExhibitorParticipation(): "exhibitor" | "sponsor" | "both" {
+  const session = getSession();
+  if (session?.role !== "exhibitor") return "exhibitor";
+  return session.participation ?? "exhibitor";
 }
 
 export function signOut() {

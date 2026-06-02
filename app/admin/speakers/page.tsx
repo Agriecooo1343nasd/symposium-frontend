@@ -35,7 +35,6 @@ export default function Page() {
       <Tabs defaultValue="list">
         <TabsList>
           <TabsTrigger value="list">Speakers</TabsTrigger>
-          <TabsTrigger value="submissions">Applications</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -81,14 +80,6 @@ export default function Page() {
           })}
         </TabsContent>
 
-        <TabsContent value="submissions" className="mt-6">
-          <p className="text-sm text-muted-foreground mb-4">
-            {store.speakerApplications.filter((a) => a.status === "pending").length} pending ·{" "}
-            <Link href="/admin/abstracts" className="text-accent font-semibold hover:underline">
-              Review in Speaker apps →
-            </Link>
-          </p>
-        </TabsContent>
       </Tabs>
 
       <CreateSpeakerDialog open={open} onOpenChange={setOpen} actorLabel="Admin" />
