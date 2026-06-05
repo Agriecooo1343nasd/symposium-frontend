@@ -158,12 +158,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SPONSORS */}
-      <section className="bg-secondary/40 py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Backed by Africa's leading institutions</h2>
-          </div>
+      {/* SPONSORS & EXHIBITORS */}
+      <section className="bg-secondary/40 py-14 sm:py-16 overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center mb-6 sm:mb-8">
+          <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">Backed by Africa's leading institutions</h2>
+          <p className="mt-2 text-sm text-muted-foreground max-w-2xl mx-auto">
+            Sponsors and exhibitors partnering with NAS 2026 — scroll to explore confirmed organizations.
+          </p>
+        </div>
+        <div className="marquee-pause">
           <SponsorMarquee />
         </div>
       </section>
@@ -234,10 +237,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA BAND */}
+      {/* CTA BAND — flows directly into footer (no gap) */}
       <section className="relative gradient-navy grain-overlay text-white overflow-hidden">
         <div className="absolute inset-0 leaf-texture opacity-70" />
-        <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-20 text-center">
+        <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-12 sm:pb-14 text-center">
           <h2 className="font-serif text-3xl sm:text-5xl font-bold tracking-tight">
             Seats fill <span className="text-gradient-light">fast</span>. Secure yours today.
           </h2>
@@ -251,6 +254,23 @@ export default function Home() {
             <Button asChild size="lg" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white">
               <Link href="/contact">Talk to the team</Link>
             </Button>
+          </div>
+
+          <div className="mt-10 sm:mt-12 pt-8 border-t border-white/15 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 text-left sm:text-center">
+            {[
+              { icon: Calendar, label: "13–14 Aug 2026", sub: "Two full symposium days" },
+              { icon: MapPin, label: "Kigali Marriott", sub: "Main venue & networking" },
+              { icon: Users, label: "300+ delegates", sub: "Policy, research & farmers" },
+              { icon: Trophy, label: "20+ partners", sub: "Sponsors & exhibitors" },
+            ].map((item) => (
+              <div key={item.label} className="flex sm:flex-col items-start sm:items-center gap-2 sm:gap-1">
+                <item.icon className="h-4 w-4 text-gold shrink-0 sm:mx-auto" />
+                <div>
+                  <div className="text-sm font-semibold text-white">{item.label}</div>
+                  <div className="text-[11px] text-white/60">{item.sub}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

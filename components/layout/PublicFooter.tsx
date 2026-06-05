@@ -10,7 +10,7 @@ export function PublicFooter() {
   const isHiddenPage = hiddenPrefixes.some((p) => pathname === p || pathname?.startsWith(p + "/"));
   if (isHiddenPage) return null;
   return (
-    <footer className="gradient-navy grain-overlay text-primary-foreground mt-20">
+    <footer className="gradient-navy grain-overlay text-primary-foreground border-t border-white/10">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           <div className="md:col-span-1">
