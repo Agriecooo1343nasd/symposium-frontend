@@ -4,7 +4,7 @@ import { useState } from "react";
 import { X, ChevronLeft, ChevronRight, ZoomIn, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { GalleryImage, PreviousPresentation } from "@/lib/store";
+import type { GalleryImage, PreviousPresentation, SymposiumArchiveKind } from "@/lib/store";
 import { useFileViewerOptional } from "@/components/file-viewer";
 
 // ─── Lightbox ────────────────────────────────────────────────────────────────
@@ -76,32 +76,61 @@ function Lightbox({
     );
 }
 
+const ARCHIVE_SECTIONS: { kind: SymposiumArchiveKind | "slides"; title: string }[] = [
+    { kind: "slides", title: "Presentation slides from previous editions" },
+    { kind: "overview", title: "Symposium overviews" },
+    { kind: "report", title: "Event reports" },
+    { kind: "proceedings", title: "Proceedings" },
+];
+
+function downloadFile(url: string, fileName: string) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.rel = "noopener";
+    a.click();
+}
+
 function PresentationFileCard({ presentation: p }: { presentation: PreviousPresentation }) {
     const viewer = useFileViewerOptional();
-    const canView = Boolean(p.fileUrl && p.fileUrl !== "#" && viewer);
+    const hasFile = Boolean(p.fileUrl && p.fileUrl !== "#");
+    const canView = hasFile && viewer;
 
     return (
-        <button
-            type="button"
-            disabled={!canView}
-            onClick={() => viewer?.openFile({ src: p.fileUrl, fileName: p.fileName })}
+        <div
             className={cn(
-                "group flex items-start gap-3 rounded-xl border border-border bg-card p-4 hover-lift hover:border-accent/50 transition-colors text-left w-full",
-                !canView && "opacity-60 cursor-not-allowed",
+                "group flex items-start gap-3 rounded-xl border border-border bg-card p-4 hover-lift hover:border-accent/50 transition-colors w-full",
+                !hasFile && "opacity-60",
             )}
         >
-            <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
-                <FileText className="h-5 w-5 text-accent" />
-            </div>
-            <div className="min-w-0 flex-1">
-                <div className="font-serif font-bold text-sm leading-snug line-clamp-2 group-hover:text-accent transition-colors">
-                    {p.title}
+            <button
+                type="button"
+                disabled={!canView}
+                onClick={() => viewer?.openFile({ src: p.fileUrl, fileName: p.fileName })}
+                className="flex items-start gap-3 text-left flex-1 min-w-0 disabled:cursor-not-allowed"
+            >
+                <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 group-hover:bg-accent/20 transition-colors">
+                    <FileText className="h-5 w-5 text-accent" />
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">{p.presenter}</div>
-                <div className="text-[10px] text-muted-foreground/70 mt-1 font-mono truncate">{p.fileName}</div>
-            </div>
-            <Download className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors flex-shrink-0 mt-0.5" />
-        </button>
+                <div className="min-w-0 flex-1">
+                    <div className="font-serif font-bold text-sm leading-snug line-clamp-2 group-hover:text-accent transition-colors">
+                        {p.title}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{p.presenter}</div>
+                    <div className="text-[10px] text-muted-foreground/70 mt-1 font-mono truncate">{p.fileName}</div>
+                </div>
+            </button>
+            {hasFile && (
+                <button
+                    type="button"
+                    aria-label={`Download ${p.fileName}`}
+                    onClick={() => downloadFile(p.fileUrl, p.fileName)}
+                    className="text-muted-foreground hover:text-accent transition-colors flex-shrink-0 mt-0.5 p-1"
+                >
+                    <Download className="h-4 w-4" />
+                </button>
+            )}
+        </div>
     );
 }
 
@@ -179,17 +208,23 @@ export function PreviousSymposiumGallery({
                 )}
             </div>
 
-            {/* Presentations list */}
+            {/* Archive documents */}
             {presentations.length > 0 && (
-                <div>
-                    <h3 className="font-serif text-xl font-bold mb-4">
-                        Presentation slides from the 2nd NAS
-                    </h3>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                        {presentations.map((p) => (
-                            <PresentationFileCard key={p.id} presentation={p} />
-                        ))}
-                    </div>
+                <div className="space-y-8">
+                    {ARCHIVE_SECTIONS.map((section) => {
+                        const items = presentations.filter((p) => p.kind === section.kind);
+                        if (items.length === 0) return null;
+                        return (
+                            <div key={section.kind}>
+                                <h3 className="font-serif text-xl font-bold mb-4">{section.title}</h3>
+                                <div className="grid sm:grid-cols-2 gap-3">
+                                    {items.map((p) => (
+                                        <PresentationFileCard key={p.id} presentation={p} />
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 

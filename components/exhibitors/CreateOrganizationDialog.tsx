@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, Store, X, Award } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import {
   type CreateOrganizationInput,
 } from "@/lib/create-organization";
 import type { OrgType, ParticipationType, SponsorshipTier, TicketPlan } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type Props = {
@@ -25,6 +26,36 @@ type Props = {
   actorLabel?: string;
   onCreated?: (applicationId: string) => void;
 };
+
+const PARTICIPATION_OPTIONS: {
+  value: ParticipationType;
+  label: string;
+  short: string;
+  description: string;
+  icon: typeof Store;
+}[] = [
+  {
+    value: "exhibitor",
+    label: "Exhibitor booth",
+    short: "Exhibitor",
+    description: "Floor booth, staff passes, and exhibitor portal — no sponsorship tier.",
+    icon: Store,
+  },
+  {
+    value: "sponsor",
+    label: "Sponsorship only",
+    short: "Sponsor",
+    description: "Branding package and sponsorship invoice — no booth assignment.",
+    icon: Award,
+  },
+  {
+    value: "both",
+    label: "Exhibitor + sponsor",
+    short: "Both",
+    description: "Combined booth and sponsorship tier with full deliverables.",
+    icon: Store,
+  },
+];
 
 const empty = (participation: ParticipationType): CreateOrganizationInput => ({
   ticketPlanId: "",
@@ -45,6 +76,10 @@ const empty = (participation: ParticipationType): CreateOrganizationInput => ({
   preferredBoothId: "",
   boothAssignment: "",
 });
+
+function participationMeta(p: ParticipationType) {
+  return PARTICIPATION_OPTIONS.find((o) => o.value === p) ?? PARTICIPATION_OPTIONS[0];
+}
 
 export function CreateOrganizationDialog({
   open,
@@ -85,28 +120,62 @@ export function CreateOrganizationDialog({
     const actor = actorLabel ?? getSession()?.name ?? "Staff";
     const result = createOrganizationManually(payload, actor);
     if (!result.ok) return toast.error(result.error);
-    toast.success(`${payload.companyName} onboarded as ${payload.participation}`);
+    toast.success(`${payload.companyName} onboarded as ${participationMeta(payload.participation).short}`);
     onOpenChange(false);
     onCreated?.(result.applicationId);
   };
 
+  const meta = participationMeta(form.participation);
   const isSponsor = form.participation === "sponsor" || form.participation === "both";
+  const isExhibitor = form.participation === "exhibitor" || form.participation === "both";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add {defaultParticipation === "sponsor" ? "sponsor" : "exhibitor / sponsor"} manually</DialogTitle>
+          <DialogTitle>Add organization — {meta.label.toLowerCase()}</DialogTitle>
           <p className="text-sm text-muted-foreground font-normal">
-            Creates comp registration for the primary contact, approved application, booth assignment, staff invites,
-            and exhibitor portal access.
+            {form.participation === "sponsor"
+              ? "Creates comp registration, approved sponsorship application, sponsorship invoice, and portal access."
+              : form.participation === "exhibitor"
+                ? "Creates comp registration, approved booth application, booth assignment, staff invites, and exhibitor portal access."
+                : "Creates comp registration, booth + sponsorship package, invoice, staff invites, and full portal access."}
           </p>
         </DialogHeader>
 
         <form onSubmit={submit} className="space-y-8">
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
+              Step 1 — Choose package type
+            </h3>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {PARTICIPATION_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const selected = form.participation === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, participation: opt.value }))}
+                    className={cn(
+                      "rounded-xl border p-4 text-left transition-colors",
+                      selected
+                        ? "border-accent bg-accent/10 ring-1 ring-accent"
+                        : "border-border hover:border-accent/50 hover:bg-secondary/40",
+                    )}
+                  >
+                    <Icon className={cn("h-5 w-5 mb-2", selected ? "text-accent" : "text-muted-foreground")} />
+                    <div className="font-semibold text-sm">{opt.label}</div>
+                    <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{opt.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
           <section className="space-y-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
-              Primary contact — registration
+              Step 2 — Primary contact (delegate pass)
             </h3>
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
@@ -187,7 +256,7 @@ export function CreateOrganizationDialog({
 
           <section className="space-y-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
-              Organization application
+              Step 3 — {isSponsor && isExhibitor ? "Booth & sponsorship" : isSponsor ? "Sponsorship details" : "Booth details"}
             </h3>
             <ExhibitorPackageEstimator
               store={store}
@@ -196,22 +265,6 @@ export function CreateOrganizationDialog({
               staffCount={form.staffCount}
               onStaffCountChange={(n) => setForm({ ...form, staffCount: n })}
             />
-            <div>
-              <Label>Participation *</Label>
-              <Select
-                value={form.participation}
-                onValueChange={(v) => setForm({ ...form, participation: v as ParticipationType })}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="exhibitor">Exhibitor only</SelectItem>
-                  <SelectItem value="sponsor">Sponsor only</SelectItem>
-                  <SelectItem value="both">Exhibitor + Sponsor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             {isSponsor && (
               <div>
                 <Label>Sponsorship tier *</Label>
@@ -276,91 +329,95 @@ export function CreateOrganizationDialog({
                 className="mt-1"
               />
             </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Booth to assign</Label>
-                <Input
-                  value={form.boothAssignment ?? ""}
-                  onChange={(e) => setForm({ ...form, boothAssignment: e.target.value })}
-                  placeholder="A-01"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Or pick available booth</Label>
-                <Select
-                  value={form.preferredBoothId || "_none"}
-                  onValueChange={(v) => {
-                    const booth = store.booths.find((b) => b.id === v);
-                    setForm({
-                      ...form,
-                      preferredBoothId: v === "_none" ? "" : v,
-                      boothAssignment: booth?.code ?? form.boothAssignment,
-                    });
-                  }}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Optional" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">—</SelectItem>
-                    {availableBooths.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </section>
-
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
-              Booth staff emails
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Invited colleagues receive comp check-in passes (not the primary contact email).
-            </p>
-            <div className="flex gap-2">
-              <Input
-                type="email"
-                placeholder="staff@company.com"
-                value={staffEmail}
-                onChange={(e) => setStaffEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addStaffEmail())}
-              />
-              <Button type="button" variant="outline" onClick={addStaffEmail}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            {form.staffEmails.length > 0 && (
-              <ul className="flex flex-wrap gap-2">
-                {form.staffEmails.map((e) => (
-                  <li
-                    key={e}
-                    className="text-xs flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-mono"
+            {isExhibitor && (
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Booth to assign</Label>
+                  <Input
+                    value={form.boothAssignment ?? ""}
+                    onChange={(e) => setForm({ ...form, boothAssignment: e.target.value })}
+                    placeholder="A-01"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Or pick available booth</Label>
+                  <Select
+                    value={form.preferredBoothId || "_none"}
+                    onValueChange={(v) => {
+                      const booth = store.booths.find((b) => b.id === v);
+                      setForm({
+                        ...form,
+                        preferredBoothId: v === "_none" ? "" : v,
+                        boothAssignment: booth?.code ?? form.boothAssignment,
+                      });
+                    }}
                   >
-                    {e}
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-foreground"
-                      onClick={() => setForm((f) => ({ ...f, staffEmails: f.staffEmails.filter((x) => x !== e) }))}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Optional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">—</SelectItem>
+                      {availableBooths.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             )}
           </section>
+
+          {isExhibitor && (
+            <section className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
+                Step 4 — Booth staff emails
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Invited colleagues receive comp check-in passes (not the primary contact email).
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  placeholder="staff@company.com"
+                  value={staffEmail}
+                  onChange={(e) => setStaffEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addStaffEmail())}
+                />
+                <Button type="button" variant="outline" onClick={addStaffEmail}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {form.staffEmails.length > 0 && (
+                <ul className="flex flex-wrap gap-2">
+                  {form.staffEmails.map((e) => (
+                    <li
+                      key={e}
+                      className="text-xs flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-mono"
+                    >
+                      {e}
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => setForm((f) => ({ ...f, staffEmails: f.staffEmails.filter((x) => x !== e) }))}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" className="gradient-blue text-accent-foreground">
-              Create & approve
+              Create & approve {meta.short.toLowerCase()}
             </Button>
           </DialogFooter>
         </form>

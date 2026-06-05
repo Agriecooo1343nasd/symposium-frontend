@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 /** Run a page action from ?action=… then strip it from the URL. */
@@ -21,6 +21,7 @@ export function useAdminCommandAction(handlers: Record<string, () => void>) {
       fn();
       const params = new URLSearchParams(searchParams.toString());
       params.delete("action");
+      params.delete("role");
       const q = params.toString();
       router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
     }, 50);
@@ -35,24 +36,32 @@ const TAB_PAGES: Record<string, { valid: string[]; defaultTab: string }> = {
   "/admin/refunds": { valid: ["cancellations", "waitlist", "plans"], defaultTab: "cancellations" },
   "/admin/media": { valid: ["pending", "approved", "rejected", "all"], defaultTab: "pending" },
   "/admin/checkin": { valid: ["scan", "dashboard"], defaultTab: "scan" },
-  "/admin/desk": { valid: ["verifications", "speakers", "orgs", "registrations", "checkins"], defaultTab: "verifications" },
   "/admin/users": { valid: ["users", "invites", "roles", "audit"], defaultTab: "users" },
   "/admin/speakers": { valid: ["list", "submissions"], defaultTab: "list" },
   "/admin/programme": { valid: ["sessions", "timeline1", "timeline2", "rooms", "ratings"], defaultTab: "sessions" },
-  "/admin/communications": { valid: ["email", "sms", "invites", "auto", "announce"], defaultTab: "email" },
+  "/admin/communications": { valid: ["email", "invites", "auto", "announce"], defaultTab: "email" },
 };
 
 /** Controlled tab state synced with ?tab= query param. */
-export function useAdminTabParam(pathname: string, validTabs: string[], defaultTab: string) {
+export function useAdminTabNavigation(validTabs: string[], defaultTab: string) {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const tabParam = searchParams.get("tab");
-  const initial = tabParam && validTabs.includes(tabParam) ? tabParam : defaultTab;
+  const activeTab = tabParam && validTabs.includes(tabParam) ? tabParam : defaultTab;
 
-  useEffect(() => {
-    // Tab param is read on mount; parent should use key={tabParam} or controlled state
-  }, [tabParam]);
+  const onTabChange = useCallback(
+    (tab: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (tab === defaultTab) params.delete("tab");
+      else params.set("tab", tab);
+      const q = params.toString();
+      router.push(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    },
+    [searchParams, pathname, router, defaultTab],
+  );
 
-  return initial;
+  return { activeTab, onTabChange };
 }
 
 export function getTabFromUrl(pathname: string, searchParams: URLSearchParams): string | null {

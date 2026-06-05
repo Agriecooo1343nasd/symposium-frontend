@@ -7,7 +7,7 @@ export default function Page() {
   return (
     <NewsCmsPanel
       title="News CMS"
-      subtitle="Create, update, and publish articles for the public /news section."
+      subtitle="Publish news articles and manage the public symposium archive (photos & documents on /about)."
       defaultAuthor="NAS Secretariat"
     />
   );

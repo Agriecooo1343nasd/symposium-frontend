@@ -1,15 +1,19 @@
+"use client";
+
 import { useState } from "react";
 import { Plus, Pencil, Trash2, ExternalLink, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStore } from "@/hooks/use-store";
 import { patchStore } from "@/lib/store";
 import type { NewsPost } from "@/lib/mock-data";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
+import { SymposiumArchivePanel } from "@/components/admin/SymposiumArchivePanel";
 
 type Draft = {
   slug: string;
@@ -41,7 +45,7 @@ function slugify(title: string) {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 48);
 }
 
-export function NewsCmsPanel({ title, subtitle, defaultAuthor }: Props) {
+function ArticlesEditor({ defaultAuthor }: { defaultAuthor: string }) {
   const store = useStore();
   const [draft, setDraft] = useState<Draft>(emptyDraft(defaultAuthor));
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
@@ -99,12 +103,8 @@ export function NewsCmsPanel({ title, subtitle, defaultAuthor }: Props) {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 min-h-[calc(100vh-12rem)]">
+    <div className="flex flex-col lg:flex-row gap-6 min-h-[calc(100vh-14rem)]">
       <aside className="lg:w-80 shrink-0 flex flex-col gap-3">
-        <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold">{title}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
-        </div>
         <Button size="sm" className="gradient-blue text-accent-foreground w-full" onClick={clearForm}>
           <Plus className="h-4 w-4 mr-1" /> New article
         </Button>
@@ -195,6 +195,34 @@ export function NewsCmsPanel({ title, subtitle, defaultAuthor }: Props) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function NewsCmsPanel({ title, subtitle, defaultAuthor }: Props) {
+  const store = useStore();
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold">{title}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
+      </div>
+
+      <Tabs defaultValue="articles">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="articles">News articles ({store.newsPosts.length})</TabsTrigger>
+          <TabsTrigger value="archive">Symposium archive ({store.galleryImages.length + store.previousPresentations.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="articles" className="mt-6">
+          <ArticlesEditor defaultAuthor={defaultAuthor} />
+        </TabsContent>
+
+        <TabsContent value="archive" className="mt-6">
+          <SymposiumArchivePanel />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -16,19 +16,16 @@ import { AnnouncementDialog } from "@/components/admin/AnnouncementDialog";
 import { patchStore } from "@/lib/store";
 import { toast } from "sonner";
 import type { Role } from "@/lib/mock-data";
-import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
-import { useSearchParams } from "next/navigation";
-
+import { useAdminCommandAction, useAdminTabNavigation } from "@/hooks/use-admin-command-action";
 
 const SEGMENTS = ["All Attendees", "By Category", "By Country", "Pending Payment", "Checked In", "Speakers", "Exhibitors", "Custom"];
+const COMM_TABS = ["email", "invites", "auto", "announce"] as const;
 
 export default function Page() {
   const [auto, setAuto] = useState(AUTOMATED_TEMPLATES);
   const [annOpen, setAnnOpen] = useState(false);
   const store = useStore();
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab");
-  const activeTab = ["email", "sms", "invites", "auto", "announce"].includes(tabParam ?? "") ? tabParam! : "email";
+  const { activeTab, onTabChange } = useAdminTabNavigation([...COMM_TABS], "email");
 
   useAdminCommandAction({
     "new-announcement": () => setAnnOpen(true),
@@ -36,10 +33,18 @@ export default function Page() {
 
   return (
     <div className="space-y-6">
-      <div><h1 className="font-serif text-3xl font-bold">Communications</h1><p className="text-muted-foreground">Send emails, SMS, in-app notifications, and manage triggers.</p></div>
+      <div>
+        <h1 className="font-serif text-3xl font-bold">Communications</h1>
+        <p className="text-muted-foreground">Send emails, manage invitations, automated triggers, and in-app announcements.</p>
+      </div>
 
-      <Tabs value={activeTab}>
-        <TabsList className="flex-wrap"><TabsTrigger value="email">Email</TabsTrigger><TabsTrigger value="sms">SMS</TabsTrigger><TabsTrigger value="invites">Invitations</TabsTrigger><TabsTrigger value="auto">Automated</TabsTrigger><TabsTrigger value="announce">In-app</TabsTrigger></TabsList>
+      <Tabs value={activeTab} onValueChange={onTabChange}>
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="email">Email</TabsTrigger>
+          <TabsTrigger value="invites">Invitations</TabsTrigger>
+          <TabsTrigger value="auto">Automated</TabsTrigger>
+          <TabsTrigger value="announce">In-app</TabsTrigger>
+        </TabsList>
 
         <TabsContent value="email" className="mt-6 grid lg:grid-cols-[1fr_1fr] gap-6">
           <form onSubmit={(e) => { e.preventDefault(); toast.success("Email campaign sent"); }} className="rounded-2xl bg-card border border-border p-6 space-y-4">
@@ -60,15 +65,6 @@ export default function Page() {
               ))}
             </div>
           </div>
-        </TabsContent>
-
-        <TabsContent value="sms" className="mt-6">
-          <form onSubmit={(e) => { e.preventDefault(); toast.success("SMS broadcast queued"); }} className="rounded-2xl bg-card border border-border p-6 space-y-4 max-w-2xl">
-            <h2 className="font-serif font-bold">Broadcast SMS</h2>
-            <div><Label>Segment</Label><Select defaultValue={SEGMENTS[0]}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent>{SEGMENTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
-            <div><Label>Message (160 chars max)</Label><Textarea rows={3} maxLength={160} required className="mt-1" /></div>
-            <Button type="submit" className="gradient-blue text-accent-foreground"><Send className="h-3.5 w-3.5 mr-1" /> Send</Button>
-          </form>
         </TabsContent>
 
         <TabsContent value="invites" className="mt-6 max-w-2xl space-y-3">

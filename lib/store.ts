@@ -21,7 +21,7 @@ import {
 import type { ZoomMeeting } from "./zoom-mock";
 
 const STORE_KEY = "nas2026_data";
-const STORE_VERSION = 19;
+const STORE_VERSION = 20;
 
 const LISTENERS = new Set<() => void>();
 
@@ -649,12 +649,17 @@ export type GalleryImage = {
   order: number;
 };
 
+export type SymposiumArchiveKind = "slides" | "overview" | "report" | "proceedings";
+
 export type PreviousPresentation = {
   id: string;
   title: string;
   presenter: string;
   fileName: string;
   fileUrl: string;
+  event: string;
+  year: number;
+  kind: SymposiumArchiveKind;
   order: number;
 };
 
@@ -1529,6 +1534,20 @@ function storeNeedsRepair(store: AppStore): boolean {
   return STORE_ARRAY_KEYS.some((key) => store[key] == null);
 }
 
+function migrateStore(store: AppStore): AppStore {
+  let next = repairStore({ ...store, version: STORE_VERSION });
+  if (next.previousPresentations?.length) {
+    next.previousPresentations = next.previousPresentations.map((p, i) => ({
+      ...p,
+      event: p.event ?? "2nd National Agroecology Symposium",
+      year: p.year ?? 2024,
+      kind: p.kind ?? ("slides" as SymposiumArchiveKind),
+      order: p.order ?? i + 1,
+    }));
+  }
+  return next;
+}
+
 function repairStore(store: AppStore): AppStore {
   if (!storeNeedsRepair(store)) return store;
 
@@ -2235,6 +2254,8 @@ function seedGalleryImages(): GalleryImage[] {
 }
 
 function seedPreviousPresentations(): PreviousPresentation[] {
+  const event = "2nd National Agroecology Symposium";
+  const year = 2024;
   return [
     {
       id: "pres-1",
@@ -2242,6 +2263,9 @@ function seedPreviousPresentations(): PreviousPresentation[] {
       presenter: "Dr. Mukeshimana Solange",
       fileName: "NAS2024-roadmap-progress.pdf",
       fileUrl: "#",
+      event,
+      year,
+      kind: "slides",
       order: 1,
     },
     {
@@ -2250,6 +2274,9 @@ function seedPreviousPresentations(): PreviousPresentation[] {
       presenter: "Jean-Baptiste Habimana",
       fileName: "NAS2024-soil-health-farmers.pdf",
       fileUrl: "#",
+      event,
+      year,
+      kind: "slides",
       order: 2,
     },
     {
@@ -2258,6 +2285,9 @@ function seedPreviousPresentations(): PreviousPresentation[] {
       presenter: "Youth in Agribusiness Forum",
       fileName: "NAS2024-youth-value-chains.pdf",
       fileUrl: "#",
+      event,
+      year,
+      kind: "slides",
       order: 3,
     },
     {
@@ -2266,7 +2296,21 @@ function seedPreviousPresentations(): PreviousPresentation[] {
       presenter: "MINAGRI Policy Unit",
       fileName: "NAS2024-organic-certification.pdf",
       fileUrl: "#",
+      event,
+      year,
+      kind: "slides",
       order: 4,
+    },
+    {
+      id: "pres-5",
+      title: "2nd NAS — symposium overview & outcomes",
+      presenter: "NAS Secretariat",
+      fileName: "NAS2024-overview.pdf",
+      fileUrl: "#",
+      event,
+      year,
+      kind: "overview",
+      order: 5,
     },
   ];
 }
@@ -2668,9 +2712,9 @@ export function loadStore(): AppStore {
     }
     const parsed = JSON.parse(raw) as AppStore;
     if (parsed.version !== STORE_VERSION) {
-      const seed = createSeed();
-      saveStore(seed);
-      return seed;
+      const migrated = migrateStore(parsed);
+      saveStore(migrated);
+      return migrated;
     }
     const repaired = repairStore(parsed);
     if (repaired !== parsed) {

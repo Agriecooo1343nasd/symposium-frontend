@@ -187,7 +187,7 @@ function SponsorPanel({ orgId }: { orgId: string }) {
       unpaid.length > 0 ? "bg-amber-50/60 border-amber-200" : "bg-card border-border",
     )}>
       <h2 className="font-serif font-bold mb-4 flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-accent" /> Sponsorship — {tierName}
+       Sponsorship — {tierName}
       </h2>
       {unpaid.length > 0 && (
         <p className="text-sm text-amber-900 mb-3">

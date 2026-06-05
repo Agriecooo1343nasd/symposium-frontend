@@ -7,6 +7,8 @@ export type AdminCommand = {
   action?: string;
   /** Selects a tab (path segment or ?tab= query) */
   tab?: string;
+  /** Pre-selects participation role for organization dialogs */
+  role?: "exhibitor" | "sponsor" | "both";
   keywords: string[];
   group: string;
 };
@@ -29,8 +31,9 @@ function add(
   keywords: string[],
   description?: string,
   tabId?: string,
+  role?: AdminCommand["role"],
 ): AdminCommand {
-  return { id, label, href, action, keywords, group: "Add & create", description, tab: tabId };
+  return { id, label, href, action, keywords, group: "Add & create", description, tab: tabId, role };
 }
 
 function tab(
@@ -63,11 +66,10 @@ export const ADMIN_COMMANDS: AdminCommand[] = [
   nav("page-networking", "Networking", "/admin/networking/directory", ["connect", "messages", "directory", "chat"]),
   nav("page-polls", "Live polls", "/admin/polls", ["vote", "voting", "plenary", "poll", "live"]),
   nav("page-checkin", "Check-in", "/admin/checkin", ["qr", "scan", "attendance", "desk"]),
-  nav("page-communications", "Communications", "/admin/communications", ["email", "sms", "announcement", "broadcast"]),
+  nav("page-communications", "Communications", "/admin/communications", ["email", "announcement", "broadcast", "invitation"]),
   nav("page-content", "Content", "/admin/content", ["public", "site", "pages", "faq"]),
   nav("page-analytics", "Analytics", "/admin/analytics", ["stats", "metrics", "reports"]),
   nav("page-users", "Users & Roles", "/admin/users", ["invite", "roles", "staff", "audit", "permissions"]),
-  nav("page-desk", "Desk audit", "/admin/desk", ["registration desk", "queue", "read-only"]),
   nav("page-settings", "Settings", "/admin/settings", ["platform", "flags", "countries", "event config"]),
 
   // ── Exhibitor tabs ────────────────────────────────────────────────────────
@@ -105,12 +107,34 @@ export const ADMIN_COMMANDS: AdminCommand[] = [
   add("add-announcement", "Send announcement", "/admin/communications", "new-announcement", [
     "add", "create", "announce", "banner", "broadcast", "in-app", "alert", "message",
   ], "Push an in-app announcement to portals", "announce"),
-  add("add-exhibitor", "Add exhibitor", "/admin/exhibitors/exhibitors", "add-exhibitor", [
-    "add", "create", "new", "exhibitor", "booth", "organization", "manual",
-  ], "Manually create and approve an exhibitor"),
-  add("add-sponsor", "Add sponsor", "/admin/exhibitors/sponsors", "add-sponsor", [
-    "add", "create", "new", "sponsor", "sponsorship", "platinum", "gold", "silver",
-  ], "Manually create and approve a sponsor package"),
+  add(
+    "add-organization",
+    "Add organization",
+    "/admin/exhibitors/exhibitors",
+    "add-organization",
+    ["add", "create", "new", "organization", "exhibitor", "sponsor", "booth", "manual", "onboard"],
+    "Manually onboard an exhibitor, sponsor, or combined package — choose role in the dialog",
+  ),
+  add(
+    "add-exhibitor",
+    "Add exhibitor (booth)",
+    "/admin/exhibitors/exhibitors",
+    "add-organization",
+    ["add", "create", "new", "exhibitor", "booth", "stand", "floor"],
+    "Opens organization dialog with exhibitor booth package pre-selected",
+    undefined,
+    "exhibitor",
+  ),
+  add(
+    "add-sponsor",
+    "Add sponsor",
+    "/admin/exhibitors/sponsors",
+    "add-organization",
+    ["add", "create", "new", "sponsor", "sponsorship", "platinum", "gold", "silver", "invoice"],
+    "Opens organization dialog with sponsorship package pre-selected",
+    undefined,
+    "sponsor",
+  ),
   add("add-booth", "New booth", "/admin/exhibitors/map", "new-booth", [
     "add", "create", "new", "booth", "map", "floor", "stand",
   ], "Add a booth to the floor map"),
@@ -132,6 +156,9 @@ export const ADMIN_COMMANDS: AdminCommand[] = [
   add("add-news-article", "New news article", "/admin/news", "new-article", [
     "add", "create", "new", "news", "article", "blog", "publish", "cms",
   ], "Compose a news post"),
+  nav("symposium-archive", "Symposium archive (photos & docs)", "/admin/news", [
+    "gallery", "photos", "slides", "presentation", "about", "archive", "documents", "overview", "proceedings",
+  ], "Manage public /about gallery and downloadable symposium documents"),
   add("add-committee-member", "New committee member", "/admin/committee", "new-member", [
     "add", "create", "new", "committee", "member", "organizing", "about",
   ], "Add a member to the organizing committee"),
@@ -159,6 +186,7 @@ export function buildCommandHref(cmd: AdminCommand): string {
   const params = new URLSearchParams(existingQuery ?? "");
   if (cmd.tab) params.set("tab", cmd.tab);
   if (cmd.action) params.set("action", cmd.action);
+  if (cmd.role) params.set("role", cmd.role);
   const q = params.toString();
   return q ? `${path}?${q}` : path;
 }

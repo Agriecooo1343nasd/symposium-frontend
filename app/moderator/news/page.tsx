@@ -6,7 +6,7 @@ export default function ModeratorNewsPage() {
   return (
     <NewsCmsPanel
       title="News"
-      subtitle="Same CMS as admin — create, update, and publish symposium news."
+      subtitle="Publish news and manage the public symposium archive — same CMS as admin."
       defaultAuthor="NAS Communications"
     />
   );

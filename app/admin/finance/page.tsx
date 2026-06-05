@@ -17,7 +17,7 @@ import { getFinanceSummary } from "@/lib/finance-records";
 import { markInvoicePaid } from "@/lib/sponsorship-invoices";
 import { getSession } from "@/lib/auth";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useAdminTabNavigation } from "@/hooks/use-admin-command-action";
 
 
 const COLORS = ["hsl(var(--blue))", "hsl(var(--green))", "hsl(var(--gold))", "hsl(var(--navy))"];
@@ -25,10 +25,8 @@ const COLORS = ["hsl(var(--blue))", "hsl(var(--green))", "hsl(var(--gold))", "hs
 export default function Page() {
   const store = useStore();
   const session = getSession();
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab");
   const financeTabs = ["overview", "transactions", "sponsorship", "bank", "reports", "settings"];
-  const activeTab = financeTabs.includes(tabParam ?? "") ? tabParam! : "overview";
+  const { activeTab, onTabChange } = useAdminTabNavigation(financeTabs, "overview");
   const finance = getFinanceSummary();
   const grp = store.platformSettings.groupRegistration;
   const [tier59, setTier59] = useState(String(grp.tier5to9Percent));
@@ -55,7 +53,7 @@ export default function Page() {
         <StatTile label="Pending payments" value={`$${pendingValue.toLocaleString()}`} hint={`${pending.length} open`} />
       </div>
 
-      <Tabs value={activeTab}>
+      <Tabs value={activeTab} onValueChange={onTabChange}>
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="transactions">All payments ({items.length})</TabsTrigger>

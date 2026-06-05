@@ -69,7 +69,6 @@ export function SponsorshipRecordPanel({ org, mode, actorName = "Admin", onEdit,
         <div className="relative flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <Sparkles className="h-4 w-4 text-gold" />
               <span className="text-xs uppercase tracking-widest text-gold">FR-5.1 · Sponsorship</span>
               <span className={cn("text-[10px] uppercase font-bold px-2 py-0.5 rounded-full", tierStyle(tierName))}>
                 {tierName}

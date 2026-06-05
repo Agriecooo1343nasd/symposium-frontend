@@ -121,9 +121,7 @@ export default function Exhibitors() {
       {/* FR-1.5 — Become a Sponsor CTA */}
       <section className="bg-secondary/40 py-16">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-100 mx-auto mb-5">
-            <Sparkles className="h-7 w-7 text-amber-700" />
-          </div>
+     
           <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight">
             Partner with NAS 2026
           </h2>

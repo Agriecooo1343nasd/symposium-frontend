@@ -18,7 +18,6 @@ import {
   Shield,
   Settings,
   Ticket,
-  ClipboardList,
   Award,
   ClipboardCheck,
   UserCircle,
@@ -55,7 +54,6 @@ const NAV: readonly PortalNavItem[] = [
   { to: "/admin/content", label: "Content", icon: FileText },
   { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/admin/users", label: "Users & Roles", icon: Shield },
-  { to: "/admin/desk", label: "Desk audit", icon: ClipboardList },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

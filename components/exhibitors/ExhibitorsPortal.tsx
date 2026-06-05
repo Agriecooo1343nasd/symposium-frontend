@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import { CreateOrganizationDialog } from "@/components/exhibitors/CreateOrganizationDialog";
 import { EditOrganizationDialog } from "@/components/exhibitors/EditOrganizationDialog";
 import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
+import { useSearchParams } from "next/navigation";
+import type { ParticipationType } from "@/lib/store";
 
 type Props = {
   basePath: "/admin/exhibitors" | "/desk/exhibitors";
@@ -118,10 +120,20 @@ function OrgCard({ org, onEdit }: { org: ApprovedOrganization; onEdit?: () => vo
 export function ExhibitorsPortal({ basePath, activeTab, onTabChange, variant, tabIds }: Props) {
   const store = useStore();
   const isAdmin = variant === "admin";
-  const [createExhibitor, setCreateExhibitor] = useState(false);
-  const [createSponsor, setCreateSponsor] = useState(false);
+  const searchParams = useSearchParams();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createRole, setCreateRole] = useState<ParticipationType>("exhibitor");
   const [editAppId, setEditAppId] = useState<string | null>(null);
   const actorLabel = isAdmin ? "Admin" : "Registration desk";
+
+  const openCreateDialog = (role?: ParticipationType) => {
+    const fromUrl = searchParams.get("role");
+    const resolved =
+      role ??
+      (fromUrl === "exhibitor" || fromUrl === "sponsor" || fromUrl === "both" ? fromUrl : "exhibitor");
+    setCreateRole(resolved);
+    setCreateOpen(true);
+  };
 
   const exhibitorOrgs = store.approvedOrganizations.filter((o) => isExhibitorParticipation(o.participation));
   const sponsorOrgs = store.approvedOrganizations.filter((o) => isSponsorParticipation(o.participation));
@@ -146,14 +158,9 @@ export function ExhibitorsPortal({ basePath, activeTab, onTabChange, variant, ta
 
   const pendingApps = store.organizationApplications.filter((a) => a.status === "pending").length;
 
-  useAdminCommandAction(
-    isAdmin
-      ? {
-          "add-exhibitor": () => setCreateExhibitor(true),
-          "add-sponsor": () => setCreateSponsor(true),
-        }
-      : {},
-  );
+  useAdminCommandAction({
+    "add-organization": () => openCreateDialog(),
+  });
 
   return (
     <div className="space-y-6">
@@ -165,14 +172,13 @@ export function ExhibitorsPortal({ basePath, activeTab, onTabChange, variant, ta
             {variant === "desk" && " · Sponsorship invoices issued by Admin"}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => setCreateExhibitor(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Add exhibitor
-          </Button>
-          <Button size="sm" className="gradient-blue text-accent-foreground" onClick={() => setCreateSponsor(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Add sponsor
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          className="gradient-blue text-accent-foreground"
+          onClick={() => openCreateDialog()}
+        >
+          <Plus className="h-3.5 w-3.5 mr-1" /> Add organization
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as ExhibitorPortalTab)}>
@@ -356,15 +362,9 @@ export function ExhibitorsPortal({ basePath, activeTab, onTabChange, variant, ta
       </Tabs>
 
       <CreateOrganizationDialog
-        open={createExhibitor}
-        onOpenChange={setCreateExhibitor}
-        defaultParticipation="exhibitor"
-        actorLabel={actorLabel}
-      />
-      <CreateOrganizationDialog
-        open={createSponsor}
-        onOpenChange={setCreateSponsor}
-        defaultParticipation="sponsor"
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        defaultParticipation={createRole}
         actorLabel={actorLabel}
       />
       <EditOrganizationDialog applicationId={editAppId} open={!!editAppId} onOpenChange={(o) => !o && setEditAppId(null)} />
