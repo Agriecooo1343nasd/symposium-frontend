@@ -58,7 +58,7 @@ export function PortalShell({ title, subtitle, nav, children }: { title: string;
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                 active ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/5 hover:text-white"
               )}>
-                <n.icon className="h-4 w-4" />{n.label}
+              {n.label}
               </Link>
             );
           })}

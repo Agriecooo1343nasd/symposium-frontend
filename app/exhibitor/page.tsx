@@ -145,8 +145,6 @@ function HeroBanner({
       <div className="absolute inset-0 leaf-texture opacity-50" />
       <div className="relative">
         <div className="flex items-center gap-3 mb-2">
-          {participation !== "exhibitor" && <Sparkles className="h-4 w-4 text-gold" />}
-          {participation === "exhibitor" && <Store className="h-4 w-4 text-gold" />}
           <span className="text-xs uppercase tracking-widest text-gold">{label}</span>
           {participation !== "exhibitor" && (
             <span className={cn("text-[10px] uppercase font-bold px-2 py-0.5 rounded-full", tierBadge(tierName))}>
