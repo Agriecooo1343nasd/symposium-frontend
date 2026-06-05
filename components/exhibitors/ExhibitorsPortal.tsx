@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useStore } from "@/hooks/use-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { getInvoicesForApplication } from "@/lib/sponsorship-invoices";
-import { SPONSORS, type Sponsor } from "@/lib/mock-data";
+import { SponsorshipRecordsList } from "@/components/admin/SponsorshipRecordsList";
 import type { ApprovedOrganization, OrganizationApplication } from "@/lib/store";
 import { BoothMapManager } from "@/components/admin/BoothMapManager";
 import { SponsorshipTierEditor } from "@/components/admin/SponsorshipTierEditor";
@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CreateOrganizationDialog } from "@/components/exhibitors/CreateOrganizationDialog";
 import { EditOrganizationDialog } from "@/components/exhibitors/EditOrganizationDialog";
+import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
 
 type Props = {
   basePath: "/admin/exhibitors" | "/desk/exhibitors";
@@ -73,17 +74,6 @@ function sortApp(a: OrganizationApplication, b: OrganizationApplication, key: st
     default:
       return cmp(a.companyName.toLowerCase(), b.companyName.toLowerCase());
   }
-}
-
-function filterSponsor(s: Sponsor, q: string) {
-  return [s.name, s.tier, s.blurb].some((v) => v?.toLowerCase().includes(q));
-}
-
-function sortSponsor(a: Sponsor, b: Sponsor, key: string, dir: "asc" | "desc") {
-  const mul = dir === "asc" ? 1 : -1;
-  const cmp = (x: string, y: string) => (x < y ? -1 : x > y ? 1 : 0) * mul;
-  if (key === "tier") return cmp(a.tier, b.tier);
-  return cmp(a.name.toLowerCase(), b.name.toLowerCase());
 }
 
 function OrgCard({ org, onEdit }: { org: ApprovedOrganization; onEdit?: () => void }) {
@@ -144,22 +134,6 @@ export function ExhibitorsPortal({ basePath, activeTab, onTabChange, variant, ta
     initialSortKey: "name",
   });
 
-  const sponsorOrgList = usePagedList({
-    items: sponsorOrgs,
-    pageSize: 9,
-    filterFn: filterOrg,
-    sortFn: sortOrg,
-    initialSortKey: "name",
-  });
-
-  const sponsorCarouselList = usePagedList({
-    items: SPONSORS,
-    pageSize: 9,
-    filterFn: filterSponsor,
-    sortFn: sortSponsor,
-    initialSortKey: "name",
-  });
-
   const appsList = usePagedList({
     items: store.organizationApplications,
     pageSize: 10,
@@ -171,6 +145,15 @@ export function ExhibitorsPortal({ basePath, activeTab, onTabChange, variant, ta
   const appDetailPath = (id: string) => `${basePath}/application/${id}`;
 
   const pendingApps = store.organizationApplications.filter((a) => a.status === "pending").length;
+
+  useAdminCommandAction(
+    isAdmin
+      ? {
+          "add-exhibitor": () => setCreateExhibitor(true),
+          "add-sponsor": () => setCreateSponsor(true),
+        }
+      : {},
+  );
 
   return (
     <div className="space-y-6">
@@ -243,83 +226,8 @@ export function ExhibitorsPortal({ basePath, activeTab, onTabChange, variant, ta
           )}
         </TabsContent>
 
-        <TabsContent value="sponsors" className="mt-6 space-y-10">
-          <section>
-            <h2 className="font-serif font-bold text-lg mb-1">Approved sponsors</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Organizations with sponsor or combined exhibitor + sponsor packages.
-            </p>
-            <ListToolbar
-              query={sponsorOrgList.query}
-              onQueryChange={sponsorOrgList.setQuery}
-              searchPlaceholder="Search sponsors by name, tier, contact…"
-              sortKey={sponsorOrgList.sortKey}
-              sortDir={sponsorOrgList.sortDir}
-              onSortKeyChange={(k) => sponsorOrgList.setSort(k, sponsorOrgList.sortDir)}
-              onSortDirChange={(d) => sponsorOrgList.setSort(sponsorOrgList.sortKey, d)}
-              sortOptions={[
-                { value: "name", label: "Name" },
-                { value: "booth", label: "Booth" },
-                { value: "leads", label: "Leads" },
-                { value: "views", label: "Profile views" },
-              ]}
-              page={sponsorOrgList.page}
-              totalPages={sponsorOrgList.totalPages}
-              total={sponsorOrgList.total}
-              pageSize={sponsorOrgList.pageSize}
-              onPageChange={sponsorOrgList.setPage}
-              onPageSizeChange={sponsorOrgList.setPageSize}
-            />
-            {sponsorOrgList.pageItems.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground text-sm">No sponsors match your filters.</p>
-            ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sponsorOrgList.pageItems.map((e) => (
-                  <OrgCard key={e.id} org={e} onEdit={() => setEditAppId(e.applicationId)} />
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section>
-            <h2 className="font-serif font-bold text-lg mb-1">Homepage sponsor carousel</h2>
-            <p className="text-sm text-muted-foreground mb-4">Reference list shown on the public site.</p>
-            <ListToolbar
-              query={sponsorCarouselList.query}
-              onQueryChange={sponsorCarouselList.setQuery}
-              searchPlaceholder="Search carousel sponsors…"
-              sortKey={sponsorCarouselList.sortKey}
-              sortDir={sponsorCarouselList.sortDir}
-              onSortKeyChange={(k) => sponsorCarouselList.setSort(k, sponsorCarouselList.sortDir)}
-              onSortDirChange={(d) => sponsorCarouselList.setSort(sponsorCarouselList.sortKey, d)}
-              sortOptions={[
-                { value: "name", label: "Name" },
-                { value: "tier", label: "Tier" },
-              ]}
-              page={sponsorCarouselList.page}
-              totalPages={sponsorCarouselList.totalPages}
-              total={sponsorCarouselList.total}
-              pageSize={sponsorCarouselList.pageSize}
-              onPageChange={sponsorCarouselList.setPage}
-              onPageSizeChange={sponsorCarouselList.setPageSize}
-            />
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sponsorCarouselList.pageItems.map((s) => (
-                <div key={s.id} className="rounded-xl border bg-card p-5 hover-lift">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="font-serif font-bold">{s.name}</div>
-                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full shrink-0 ${tierColor(s.tier)}`}>
-                      {s.tier}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">{s.blurb}</p>
-                  <a href={s.website} className="text-xs text-accent font-semibold mt-3 inline-block hover:underline">
-                    Website →
-                  </a>
-                </div>
-              ))}
-            </div>
-          </section>
+        <TabsContent value="sponsors" className="mt-6">
+          <SponsorshipRecordsList actorName={actorLabel} readOnly={!isAdmin} basePath={basePath} />
         </TabsContent>
 
         <TabsContent value="applications" className="mt-6">

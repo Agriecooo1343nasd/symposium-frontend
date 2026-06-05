@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/hooks/use-store";
 import { patchStore, uid, type CommitteeMember } from "@/lib/store";
 import { toast } from "sonner";
+import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
 
 type Draft = Omit<CommitteeMember, "id"> & { id?: string };
 
@@ -38,6 +39,10 @@ export default function Page() {
   };
 
   const clearForm = () => setDraft(emptyDraft(sorted.length + 1));
+
+  useAdminCommandAction({
+    "new-member": clearForm,
+  });
 
   const save = () => {
     if (!draft.name.trim()) return toast.error("Name is required");

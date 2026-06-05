@@ -16,6 +16,8 @@ import { AnnouncementDialog } from "@/components/admin/AnnouncementDialog";
 import { patchStore } from "@/lib/store";
 import { toast } from "sonner";
 import type { Role } from "@/lib/mock-data";
+import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
+import { useSearchParams } from "next/navigation";
 
 
 const SEGMENTS = ["All Attendees", "By Category", "By Country", "Pending Payment", "Checked In", "Speakers", "Exhibitors", "Custom"];
@@ -24,12 +26,19 @@ export default function Page() {
   const [auto, setAuto] = useState(AUTOMATED_TEMPLATES);
   const [annOpen, setAnnOpen] = useState(false);
   const store = useStore();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab = ["email", "sms", "invites", "auto", "announce"].includes(tabParam ?? "") ? tabParam! : "email";
+
+  useAdminCommandAction({
+    "new-announcement": () => setAnnOpen(true),
+  });
 
   return (
     <div className="space-y-6">
       <div><h1 className="font-serif text-3xl font-bold">Communications</h1><p className="text-muted-foreground">Send emails, SMS, in-app notifications, and manage triggers.</p></div>
 
-      <Tabs defaultValue="email">
+      <Tabs value={activeTab}>
         <TabsList className="flex-wrap"><TabsTrigger value="email">Email</TabsTrigger><TabsTrigger value="sms">SMS</TabsTrigger><TabsTrigger value="invites">Invitations</TabsTrigger><TabsTrigger value="auto">Automated</TabsTrigger><TabsTrigger value="announce">In-app</TabsTrigger></TabsList>
 
         <TabsContent value="email" className="mt-6 grid lg:grid-cols-[1fr_1fr] gap-6">

@@ -10,6 +10,7 @@ import { getSession, signOut } from "@/lib/auth";
 import type { MockSession } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { AnnouncementBanner } from "@/components/admin/AnnouncementBanner";
+import { useAdminCommandPaletteOptional } from "@/components/admin/AdminCommandPaletteProvider";
 import { PortalNotesWidget } from "@/components/notes/PortalNotesWidget";
 
 export type PortalNavItem = {
@@ -33,6 +34,7 @@ export function PortalShell({ title, subtitle, nav, children }: { title: string;
 
   const crumbs = pathname.split("/").filter(Boolean);
   const activeItem = [...nav].reverse().find((n) => n.exact ? pathname === n.to : pathname.startsWith(n.to));
+  const commandPalette = useAdminCommandPaletteOptional();
 
   return (
     <PortalNotesWidget>
@@ -94,11 +96,24 @@ export function PortalShell({ title, subtitle, nav, children }: { title: string;
               <span className="inline-flex items-center gap-1.5"><ChevronRight className="h-3 w-3" /><span>{activeItem.label}</span></span>
             )}
           </div>
-          <div className="hidden lg:flex relative ml-auto w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder="Search…" className="pl-8 h-9 text-sm" />
-          </div>
-          <div className="flex items-center gap-2 ml-auto lg:ml-2">
+          {commandPalette ? (
+            <button
+              type="button"
+              onClick={() => commandPalette.setOpen(true)}
+              className="flex items-center gap-2 ml-auto lg:ml-0 lg:w-72 h-9 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground hover:bg-accent/50 transition-colors min-w-0"
+              aria-label="Open command palette"
+            >
+              <Search className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline truncate flex-1 text-left">Search menus & actions…</span>
+              <kbd className="hidden lg:inline shrink-0 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-mono">Ctrl+K</kbd>
+            </button>
+          ) : (
+            <div className="hidden lg:flex relative ml-auto w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Search…" className="pl-8 h-9 text-sm" readOnly />
+            </div>
+          )}
+          <div className="flex items-center gap-2 ml-auto lg:ml-2 shrink-0">
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-4 w-4" />
               <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-accent" />

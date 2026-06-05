@@ -29,6 +29,7 @@ import {
   Vote,
 } from "lucide-react";
 import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell";
+import { AdminCommandPaletteProvider } from "@/components/admin/AdminCommandPaletteProvider";
 import { useAuth } from "@/hooks/use-auth";
 import { canAccessPortal } from "@/lib/permissions";
 
@@ -74,8 +75,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <PortalShell title="Admin Console" subtitle="Organizer Portal" nav={NAV}>
-      {children}
-    </PortalShell>
+    <AdminCommandPaletteProvider>
+      <PortalShell title="Admin Console" subtitle="Organizer Portal" nav={NAV}>
+        {children}
+      </PortalShell>
+    </AdminCommandPaletteProvider>
   );
 }

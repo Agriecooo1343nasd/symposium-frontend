@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Store, Sparkles, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { loadStore } from "@/lib/store";
-import { SPONSORS, EXHIBITORS } from "@/lib/mock-data";
+import { EXHIBITORS } from "@/lib/mock-data";
 
 export default function Exhibitors() {
   const [mounted, setMounted] = useState(false);
@@ -18,15 +18,12 @@ export default function Exhibitors() {
   const exhibitorsList =
     store?.approvedOrganizations.filter((o) => o.participation === "exhibitor" || o.participation === "both") ?? [];
 
-  const sponsorCards =
-    sponsors.length > 0
-      ? sponsors.map((s) => ({
-        id: s.id,
-        name: s.name,
-        blurb: s.description,
-        tier: s.sponsorshipTier ?? "Silver",
-      }))
-      : SPONSORS.map((s) => ({ id: s.id, name: s.name, blurb: s.blurb, tier: s.tier }));
+  const sponsorCards = sponsors.map((s) => ({
+    id: s.id,
+    name: s.name,
+    blurb: s.description,
+    tier: s.sponsorshipTier ?? "Silver",
+  }));
 
   const exhibitorCards =
     exhibitorsList.length > 0
@@ -80,6 +77,11 @@ export default function Exhibitors() {
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
         <h2 className="font-serif text-3xl font-bold mb-2">Sponsors</h2>
         <p className="text-muted-foreground mb-8">Financial and material supporters with platform-wide visibility.</p>
+        {sponsorCards.length === 0 ? (
+          <p className="text-muted-foreground text-sm mb-16 border border-dashed rounded-2xl p-8 text-center">
+            Sponsor profiles will appear here once the secretariat approves applications.
+          </p>
+        ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 mb-16">
           {sponsorCards.map((s) => (
             <div key={s.id} className="rounded-2xl bg-card border border-border p-6 hover-lift flex flex-col">
@@ -94,6 +96,7 @@ export default function Exhibitors() {
             </div>
           ))}
         </div>
+        )}
 
         <h2 className="font-serif text-3xl font-bold mb-2 flex items-center gap-2">
           <Store className="h-7 w-7" /> Exhibitors

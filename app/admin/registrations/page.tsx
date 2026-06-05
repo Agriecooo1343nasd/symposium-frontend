@@ -8,11 +8,20 @@ import { useStore } from "@/hooks/use-store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManualRegistrationDialog } from "@/components/admin/ManualRegistrationDialog";
 import { GroupRegistrationsManager } from "@/components/group/GroupRegistrationsManager";
+import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
+import { useSearchParams } from "next/navigation";
 
 
 export default function Page() {
   const store = useStore();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab = tabParam === "groups" ? "groups" : "individual";
   const [manualOpen, setManualOpen] = useState(false);
+
+  useAdminCommandAction({
+    "manual-registration": () => setManualOpen(true),
+  });
   const [q, setQ] = useState("");
   const [filterVer, setFilterVer] = useState<"all" | "pending">("all");
 
@@ -62,7 +71,7 @@ export default function Page() {
       </div>
       <ManualRegistrationDialog open={manualOpen} onOpenChange={setManualOpen} />
 
-      <Tabs defaultValue="individual" className="mt-4">
+      <Tabs value={activeTab} className="mt-4">
         <TabsList>
           <TabsTrigger value="individual">Individual ({store.registrations.filter((r) => !r.groupId).length})</TabsTrigger>
           <TabsTrigger value="groups">Groups ({store.groupRegistrations.length})</TabsTrigger>

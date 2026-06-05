@@ -6,11 +6,13 @@ import { ArrowRight, Send, Plus, Download, ScanLine, AlertCircle } from "lucide-
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, AreaChart, Area } from "recharts";
 import { Button } from "@/components/ui/button";
 import { StatTile } from "@/components/layout/PortalShell";
-import { TRANSACTIONS, DAILY_REGS, CHECKINS } from "@/lib/mock-data";
+import { DAILY_REGS, CHECKINS } from "@/lib/mock-data";
+import { getFinanceSummary } from "@/lib/finance-records";
 import { useStore } from "@/hooks/use-store";
 import { getEventConfig } from "@/lib/platform-settings";
 import { AnnouncementDialog } from "@/components/admin/AnnouncementDialog";
 import { ManualRegistrationDialog } from "@/components/admin/ManualRegistrationDialog";
+import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
 
 
 const COLORS = ["hsl(var(--blue))", "hsl(var(--green))", "hsl(var(--gold))", "hsl(var(--navy))", "hsl(var(--blue-light))", "#e85d3a"];
@@ -21,6 +23,12 @@ export default function AdminOverview() {
   const [annOpen, setAnnOpen] = useState(false);
   const [regOpen, setRegOpen] = useState(false);
 
+  useAdminCommandAction({
+    "manual-registration": () => setRegOpen(true),
+    "new-announcement": () => setAnnOpen(true),
+    "send-announcement": () => setAnnOpen(true),
+  });
+
   const regs = store.registrations ?? [];
   const paid = regs.filter((r) => r.status === "paid" || r.status === "comp");
   const pending = regs.filter((r) => r.status === "pending");
@@ -29,9 +37,8 @@ export default function AdminOverview() {
   const pendingApps = store.speakerApplications.filter((a) => a.status === "pending").length;
   const reviewAbs = store.speakerAbstracts.filter((a) => a.status === "under-review" || a.status === "submitted").length;
 
-  const methodData = ["MoMo MTN", "Airtel Money", "Card", "Bank Transfer"].map((m) => ({
-    name: m, value: TRANSACTIONS.filter((t) => t.method === m && t.status === "completed").reduce((a, b) => a + b.amountUsd, 0),
-  }));
+  const finance = getFinanceSummary();
+  const methodData = finance.methodData;
   const catData = store.ticketPlans.map((c) => ({
     name: c.name.split(" ")[0],
     value: regs.filter((r) => r.category === c.name).length || 0,
@@ -162,10 +169,10 @@ export default function AdminOverview() {
             <Button asChild variant="ghost" size="sm"><Link href="/admin/finance">All <ArrowRight className="h-3 w-3 ml-1" /></Link></Button>
           </div>
           <div className="space-y-2">
-            {TRANSACTIONS.slice(0, 5).map((t) => (
+            {finance.items.slice(0, 5).map((t) => (
               <div key={t.id} className="flex items-center justify-between text-sm">
-                <div className="min-w-0"><div className="font-medium truncate">{t.attendee}</div><div className="text-xs text-muted-foreground">{t.method}</div></div>
-                <div className="text-right"><div className="font-mono text-xs">${t.amountUsd}</div><div className={`text-[10px] uppercase font-bold ${t.status === "completed" ? "text-green" : t.status === "pending" ? "text-amber-700" : t.status === "refunded" ? "text-blue" : "text-red-700"}`}>{t.status}</div></div>
+                <div className="min-w-0"><div className="font-medium truncate">{t.payer}</div><div className="text-xs text-muted-foreground capitalize">{t.kind} · {t.method}</div></div>
+                <div className="text-right"><div className="font-mono text-xs">${t.amountUsd.toLocaleString()}</div><div className={`text-[10px] uppercase font-bold ${t.status === "completed" || t.status === "paid" ? "text-green" : t.status === "pending" || t.status === "issued" ? "text-amber-700" : t.status === "refunded" ? "text-blue" : "text-red-700"}`}>{t.status}</div></div>
               </div>
             ))}
           </div>
@@ -173,7 +180,8 @@ export default function AdminOverview() {
         <div className="rounded-2xl bg-amber-50 border border-amber-200 p-6">
           <div className="flex items-center gap-2 mb-3"><AlertCircle className="h-4 w-4 text-amber-700" /><h2 className="font-serif font-bold text-amber-900">Needs your action</h2></div>
           <ul className="space-y-2 text-sm">
-            <li className="flex justify-between"><span>Pending bank transfers</span><Link href="/admin/finance" className="font-bold text-amber-900">{pending.length} →</Link></li>
+            <li className="flex justify-between"><span>Pending payments</span><Link href="/admin/finance" className="font-bold text-amber-900">{finance.pending.length} →</Link></li>
+            <li className="flex justify-between"><span>Open sponsorship invoices</span><Link href="/admin/exhibitors/sponsors" className="font-bold text-amber-900">{(store.sponsorshipInvoices ?? []).filter((i) => i.status !== "paid").length} →</Link></li>
             <li className="flex justify-between"><span>Speaker applications</span><Link href="/admin/abstracts" className="font-bold text-amber-900">{pendingApps} →</Link></li>
             <li className="flex justify-between"><span>Exhibitor applications</span><Link href="/admin/exhibitors/applications" className="font-bold text-amber-900">{store.organizationApplications.filter((a) => a.status === "pending").length} →</Link></li>
             <li className="flex justify-between"><span>Media accreditation</span><Link href="/admin/media" className="font-bold text-amber-900">{store.mediaApplications.filter((a) => a.status === "pending").length} →</Link></li>

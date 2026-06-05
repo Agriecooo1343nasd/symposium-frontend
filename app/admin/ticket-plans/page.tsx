@@ -13,6 +13,7 @@ import { useStore } from "@/hooks/use-store";
 import { patchStore, uid, type TicketPlan } from "@/lib/store";
 import { countRegistrationsForPlan } from "@/lib/registration-ops";
 import { toast } from "sonner";
+import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
 
 
 const emptyPlan = (): TicketPlan => ({
@@ -43,6 +44,10 @@ export default function Page() {
     setEditing(p);
     setFeaturesText("");
   };
+
+  useAdminCommandAction({
+    "add-plan": openNew,
+  });
 
   const save = () => {
     if (!editing) return;

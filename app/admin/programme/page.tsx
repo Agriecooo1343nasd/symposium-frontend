@@ -18,10 +18,16 @@ import { SUB_THEME_COLORS } from "@/lib/mock-data";
 import { getSessionRatingSummary } from "@/lib/session-ratings";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
+import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
+import { useSearchParams } from "next/navigation";
 
 
 export default function Page() {
   const store = useStore();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const validTabs = ["sessions", "timeline1", "timeline2", "rooms", "ratings"];
+  const activeTab = validTabs.includes(tabParam ?? "") ? tabParam! : "sessions";
   const [sessionOpen, setSessionOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [roomOpen, setRoomOpen] = useState(false);
@@ -29,6 +35,11 @@ export default function Page() {
 
   const openCreate = () => { setEditingSession(null); setSessionOpen(true); };
   const openEdit = (s: Session) => { setEditingSession(s); setSessionOpen(true); };
+
+  useAdminCommandAction({
+    "add-session": openCreate,
+    "add-room": () => setRoomOpen(true),
+  });
 
   const saveRoom = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +64,7 @@ export default function Page() {
         </div>
       </div>
 
-      <Tabs defaultValue="sessions">
+      <Tabs value={activeTab}>
         <TabsList>
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
           <TabsTrigger value="timeline1">Run of show · Day 1</TabsTrigger>

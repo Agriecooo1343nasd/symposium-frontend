@@ -26,16 +26,23 @@ export function EditOrganizationDialog({ applicationId, open, onOpenChange, onSa
   const app = applicationId
     ? store.organizationApplications.find((a) => a.id === applicationId)
     : undefined;
+  const org = applicationId
+    ? store.approvedOrganizations.find((o) => o.applicationId === applicationId)
+    : undefined;
   const [draft, setDraft] = useState<OrganizationApplication | null>(null);
   const [staffEmail, setStaffEmail] = useState("");
   const [staffEmails, setStaffEmails] = useState<string[]>([]);
+  const [speakingSlot, setSpeakingSlot] = useState("");
+  const [sponsorshipContractRef, setSponsorshipContractRef] = useState("");
 
   useEffect(() => {
     if (!open || !app) return;
     setDraft({ ...app });
     setStaffEmails(app.staffMemberEmails ?? []);
     setStaffEmail("");
-  }, [open, app]);
+    setSpeakingSlot(org?.speakingSlot ?? "");
+    setSponsorshipContractRef(org?.sponsorshipContractRef ?? "");
+  }, [open, app, org]);
 
   if (!applicationId) return null;
 
@@ -59,6 +66,8 @@ export function EditOrganizationDialog({ applicationId, open, onOpenChange, onSa
         staffEmails,
         boothAssignment: draft.boothAssignment,
         boothPreference: draft.boothPreference,
+        speakingSlot,
+        sponsorshipContractRef,
       },
       actor,
     );
@@ -176,6 +185,28 @@ export function EditOrganizationDialog({ applicationId, open, onOpenChange, onSa
               className="mt-1"
             />
           </div>
+          {isSponsor && (
+            <>
+              <div>
+                <Label>Speaking slot</Label>
+                <Input
+                  value={speakingSlot}
+                  onChange={(e) => setSpeakingSlot(e.target.value)}
+                  placeholder="e.g. Day 1 · Exhibitor showcase (14:30, Hall B)"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Sponsorship contract ref</Label>
+                <Input
+                  value={sponsorshipContractRef}
+                  onChange={(e) => setSponsorshipContractRef(e.target.value)}
+                  placeholder="e.g. NAS26-SP-AGRI-0042"
+                  className="mt-1"
+                />
+              </div>
+            </>
+          )}
           <div>
             <Label>Staff count</Label>
             <Input

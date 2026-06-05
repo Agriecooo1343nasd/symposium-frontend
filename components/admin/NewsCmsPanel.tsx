@@ -9,6 +9,7 @@ import { patchStore } from "@/lib/store";
 import type { NewsPost } from "@/lib/mock-data";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
 
 type Draft = {
   slug: string;
@@ -44,6 +45,15 @@ export function NewsCmsPanel({ title, subtitle, defaultAuthor }: Props) {
   const store = useStore();
   const [draft, setDraft] = useState<Draft>(emptyDraft(defaultAuthor));
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
+
+  const startNewArticle = () => {
+    setDraft(emptyDraft(defaultAuthor));
+    setEditingSlug(null);
+  };
+
+  useAdminCommandAction({
+    "new-article": startNewArticle,
+  });
 
   const readImage = (file: File) => {
     const r = new FileReader();

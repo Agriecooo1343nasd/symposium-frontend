@@ -6,7 +6,6 @@ import {
   ABSTRACTS,
   ADMIN_USERS,
   AUDIT_LOG,
-  SPONSORS,
   EXHIBITORS,
   EVENT,
   NEWS,
@@ -22,7 +21,7 @@ import {
 import type { ZoomMeeting } from "./zoom-mock";
 
 const STORE_KEY = "nas2026_data";
-const STORE_VERSION = 18;
+const STORE_VERSION = 19;
 
 const LISTENERS = new Set<() => void>();
 
@@ -2567,7 +2566,7 @@ function createSeed(): AppStore {
     organizationApplications: seedOrgApplications(),
     approvedOrganizations: seedApprovedOrgs(),
     sponsorshipTiers: seedSponsorshipTiers(),
-    sponsorshipDeliverables: [],
+    sponsorshipDeliverables: seedSponsorshipDeliverables(),
     sessionRatings: seedSessionRatings(),
     sponsorshipInvoices: seedSponsorshipInvoices(),
     runOfShow: seedRunOfShow(),

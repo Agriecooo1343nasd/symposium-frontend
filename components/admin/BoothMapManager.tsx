@@ -14,6 +14,7 @@ import { useStore } from "@/hooks/use-store";
 import { patchStore, uid, type Booth, type BoothStatus } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -480,6 +481,10 @@ export function BoothMapManager() {
         setDraft(emptyDraft());
         setOpen(true);
     };
+
+    useAdminCommandAction({
+        "new-booth": openCreate,
+    });
 
     const openEdit = (b: Booth) => {
         setEditingId(b.id);

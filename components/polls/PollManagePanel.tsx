@@ -43,6 +43,7 @@ import { PollResultsChart } from "./PollResultsChart";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Role } from "@/lib/mock-data";
+import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
 
 const emptyAudience = (): PollAudienceConfig => ({
   roles: ["attendee", "speaker", "exhibitor"],
@@ -79,6 +80,10 @@ export function PollManagePanel() {
     setAudience(emptyAudience());
     setDialogOpen(true);
   };
+
+  useAdminCommandAction({
+    "new-poll": openCreate,
+  });
 
   const openEdit = (poll: LivePoll) => {
     if (poll.status !== "draft") {

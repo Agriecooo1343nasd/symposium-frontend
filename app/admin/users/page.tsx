@@ -15,12 +15,22 @@ import type { Role } from "@/lib/mock-data";
 import type { PlatformUser, UserInvite } from "@/lib/store";
 import { getSession } from "@/lib/auth";
 import { toast } from "sonner";
+import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
+import { useSearchParams } from "next/navigation";
 
 
 export default function Page() {
   const store = useStore();
   const session = getSession();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const validTabs = ["users", "invites", "roles", "audit"];
+  const activeTab = validTabs.includes(tabParam ?? "") ? tabParam! : "users";
   const [inviteOpen, setInviteOpen] = useState(false);
+
+  useAdminCommandAction({
+    "invite-user": () => setInviteOpen(true),
+  });
   const [editUser, setEditUser] = useState<PlatformUser | null>(null);
   const [inviteForm, setInviteForm] = useState({ name: "", email: "", role: "moderator" as Role });
 
@@ -98,7 +108,7 @@ export default function Page() {
         </Button>
       </div>
 
-      <Tabs defaultValue="users">
+      <Tabs value={activeTab}>
         <TabsList>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="invites">Invitations</TabsTrigger>

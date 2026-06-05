@@ -9,11 +9,20 @@ import { CreateSpeakerDialog } from "@/components/speakers/CreateSpeakerDialog";
 import { EditSpeakerDialog } from "@/components/speakers/EditSpeakerDialog";
 import { useStore } from "@/hooks/use-store";
 import { toast } from "sonner";
+import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
+import { useSearchParams } from "next/navigation";
 
 export default function Page() {
   const store = useStore();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab = tabParam === "submissions" ? "submissions" : "list";
   const [open, setOpen] = useState(false);
   const [editEmail, setEditEmail] = useState<string | null>(null);
+
+  useAdminCommandAction({
+    "add-speaker": () => setOpen(true),
+  });
 
   return (
     <div className="space-y-6">
@@ -32,7 +41,7 @@ export default function Page() {
         </div>
       </div>
 
-      <Tabs defaultValue="list">
+      <Tabs value={activeTab}>
         <TabsList>
           <TabsTrigger value="list">Speakers</TabsTrigger>
           <TabsTrigger value="submissions">Applications</TabsTrigger>

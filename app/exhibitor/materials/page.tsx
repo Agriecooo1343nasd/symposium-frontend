@@ -3,26 +3,38 @@
 import { useState } from "react";
 import { Upload, FileText, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EXHIBITOR_BROCHURES, EXHIBITOR_ME } from "@/lib/mock-data";
+import { EXHIBITOR_BROCHURES } from "@/lib/mock-data";
+import { useStore } from "@/hooks/use-store";
+import { getExhibitorOrgId } from "@/lib/store";
 import { toast } from "sonner";
 
-
 export default function Page() {
+  const store = useStore();
+  const orgId = getExhibitorOrgId();
+  const org = store.approvedOrganizations.find((o) => o.id === orgId) ?? store.approvedOrganizations[0];
+  const tier = store.sponsorshipTiers.find((t) => t.tier === org?.sponsorshipTier);
+  const brochureQuota = tier?.brochureSlots ?? 1;
+
   const [files, setFiles] = useState(EXHIBITOR_BROCHURES);
+
   return (
     <div>
       <div className="flex items-end justify-between flex-wrap gap-3 mb-6">
         <div>
           <h1 className="font-serif text-3xl font-bold">Brochures & downloads</h1>
-          <p className="text-muted-foreground">{files.length} of {EXHIBITOR_ME.tierQuota.brochures} brochure slots used.</p>
+          <p className="text-muted-foreground">{files.length} of {brochureQuota} brochure slots used.</p>
         </div>
-        <Button className="gradient-blue text-accent-foreground" onClick={() => toast.success("Upload simulated")} disabled={files.length >= EXHIBITOR_ME.tierQuota.brochures}>
+        <Button
+          className="gradient-blue text-accent-foreground"
+          onClick={() => toast.success("Upload simulated")}
+          disabled={files.length >= brochureQuota}
+        >
           <Upload className="h-4 w-4 mr-1" /> Upload brochure
         </Button>
       </div>
 
       <div className="h-2 bg-secondary rounded-full overflow-hidden mb-6">
-        <div className="h-full gradient-blue" style={{ width: `${(files.length / EXHIBITOR_ME.tierQuota.brochures) * 100}%` }} />
+        <div className="h-full gradient-blue" style={{ width: `${Math.min(100, (files.length / brochureQuota) * 100)}%` }} />
       </div>
 
       <div className="space-y-3">

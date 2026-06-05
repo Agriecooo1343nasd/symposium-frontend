@@ -118,6 +118,8 @@ export type UpdateOrganizationInput = {
   ticketPlanId?: string;
   contactCountry?: string;
   contactJobTitle?: string;
+  speakingSlot?: string;
+  sponsorshipContractRef?: string;
 };
 
 export function updateOrganizationOnboarding(
@@ -195,6 +197,11 @@ export function updateOrganizationOnboarding(
               category: nextApp.orgType,
               description: nextApp.description,
               contact: contactEmail,
+              speakingSlot: input.speakingSlot !== undefined ? input.speakingSlot.trim() || undefined : o.speakingSlot,
+              sponsorshipContractRef:
+                input.sponsorshipContractRef !== undefined
+                  ? input.sponsorshipContractRef.trim() || undefined
+                  : o.sponsorshipContractRef,
             },
       ),
       registrations: s.registrations.map((r) => {

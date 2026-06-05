@@ -9,33 +9,40 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { StatTile } from "@/components/layout/PortalShell";
-import { TRANSACTIONS, DAILY_REGS, REGISTRATIONS, EVENT, TICKET_CATEGORIES } from "@/lib/mock-data";
+import { DAILY_REGS, EVENT } from "@/lib/mock-data";
 import { toast } from "sonner";
 import { useStore } from "@/hooks/use-store";
 import { patchStore } from "@/lib/store";
+import { getFinanceSummary } from "@/lib/finance-records";
+import { markInvoicePaid } from "@/lib/sponsorship-invoices";
+import { getSession } from "@/lib/auth";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 
 const COLORS = ["hsl(var(--blue))", "hsl(var(--green))", "hsl(var(--gold))", "hsl(var(--navy))"];
 
 export default function Page() {
   const store = useStore();
+  const session = getSession();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const financeTabs = ["overview", "transactions", "sponsorship", "bank", "reports", "settings"];
+  const activeTab = financeTabs.includes(tabParam ?? "") ? tabParam! : "overview";
+  const finance = getFinanceSummary();
   const grp = store.platformSettings.groupRegistration;
   const [tier59, setTier59] = useState(String(grp.tier5to9Percent));
   const [tier10, setTier10] = useState(String(grp.tier10PlusPercent));
   const [minGroup, setMinGroup] = useState(String(grp.minSize));
+  const [, setTick] = useState(0);
 
-  const completed = TRANSACTIONS.filter((t) => t.status === "completed");
-  const gross = completed.reduce((a, b) => a + b.amountUsd, 0);
-  const refunded = TRANSACTIONS.filter((t) => t.status === "refunded").reduce((a, b) => a + b.amountUsd, 0);
-  const pending = TRANSACTIONS.filter((t) => t.status === "pending");
-  const pendingValue = pending.reduce((a, b) => a + b.amountUsd, 0);
+  const { gross, refundedValue, pending, pendingValue, methodData, sponsorshipGross, registrationGross, items } = finance;
   const revenueOverTime = DAILY_REGS.map((d) => ({ day: d.day.split(" ")[1], usd: d.regs * 95 }));
-  const methodData = ["MoMo MTN", "Airtel Money", "Card", "Bank Transfer"].map((m) => ({
-    name: m, value: completed.filter((t) => t.method === m).reduce((a, b) => a + b.amountUsd, 0),
-  }));
-  const catRevenue = TICKET_CATEGORIES.map((c) => ({ name: c.name.split(" ")[0], usd: REGISTRATIONS.filter((r) => r.category === c.name && r.status === "paid").reduce((a, b) => a + b.amountUsd, 0) }));
-
-  const [bank, setBank] = useState(pending);
+  const catRevenue = [
+    { name: "Delegates", usd: registrationGross },
+    { name: "Sponsors", usd: sponsorshipGross },
+  ];
+  const bankPending = pending.filter((i) => i.method === "Bank Transfer");
 
   return (
     <div className="space-y-6">
@@ -43,16 +50,17 @@ export default function Page() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile label="Gross revenue" value={`$${gross.toLocaleString()}`} hint={`RWF ${(gross * EVENT.exchangeRate).toLocaleString()}`} accent />
-        <StatTile label="Net (after refunds)" value={`$${(gross - refunded).toLocaleString()}`} />
-        <StatTile label="Refunds issued" value={`$${refunded.toLocaleString()}`} />
-        <StatTile label="Pending bank transfers" value={`$${pendingValue.toLocaleString()}`} hint={`${pending.length} transactions`} />
+        <StatTile label="Net (after refunds)" value={`$${(gross - refundedValue).toLocaleString()}`} />
+        <StatTile label="Sponsorship collected" value={`$${sponsorshipGross.toLocaleString()}`} hint="From sponsorship invoices" />
+        <StatTile label="Pending payments" value={`$${pendingValue.toLocaleString()}`} hint={`${pending.length} open`} />
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab}>
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="bank">Bank transfers ({pending.length})</TabsTrigger>
+          <TabsTrigger value="transactions">All payments ({items.length})</TabsTrigger>
+          <TabsTrigger value="sponsorship">Sponsorship invoices</TabsTrigger>
+          <TabsTrigger value="bank">Bank transfers ({bankPending.length})</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -106,20 +114,80 @@ export default function Page() {
 
         <TabsContent value="transactions" className="mt-6">
           <div className="flex justify-end mb-3"><Button variant="outline" size="sm"><Download className="h-3.5 w-3.5 mr-1" /> Export</Button></div>
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="rounded-2xl border border-border bg-card overflow-x-auto">
+            <table className="w-full text-sm min-w-[720px]">
               <thead className="bg-secondary/60 text-xs uppercase tracking-wider text-muted-foreground">
-                <tr><th className="text-left px-4 py-3">Attendee</th><th className="text-left px-4 py-3 hidden md:table-cell">Method</th><th className="text-left px-4 py-3 hidden sm:table-cell">Ref</th><th className="text-right px-4 py-3">Amount</th><th className="text-left px-4 py-3">Status</th><th className="text-left px-4 py-3 hidden lg:table-cell">When</th></tr>
+                <tr>
+                  <th className="text-left px-4 py-3">Payer</th>
+                  <th className="text-left px-4 py-3">Type</th>
+                  <th className="text-left px-4 py-3 hidden md:table-cell">Method</th>
+                  <th className="text-left px-4 py-3 hidden sm:table-cell">Ref</th>
+                  <th className="text-right px-4 py-3">Amount</th>
+                  <th className="text-left px-4 py-3">Status</th>
+                </tr>
               </thead>
               <tbody>
-                {TRANSACTIONS.map((t) => (
+                {items.map((t) => (
                   <tr key={t.id} className="border-t border-border hover:bg-secondary/30">
-                    <td className="px-4 py-3 font-medium">{t.attendee}</td>
+                    <td className="px-4 py-3 font-medium">{t.payer}</td>
+                    <td className="px-4 py-3 text-xs capitalize">{t.kind}</td>
                     <td className="px-4 py-3 hidden md:table-cell">{t.method}</td>
-                    <td className="px-4 py-3 hidden sm:table-cell font-mono text-xs text-muted-foreground">{t.ref}</td>
-                    <td className="px-4 py-3 text-right font-mono">${t.amountUsd}</td>
-                    <td className="px-4 py-3"><span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${t.status === "completed" ? "bg-green/15 text-green" : t.status === "pending" ? "bg-amber-100 text-amber-800" : t.status === "refunded" ? "bg-blue/15 text-blue" : "bg-red-100 text-red-700"}`}>{t.status}</span></td>
-                    <td className="px-4 py-3 hidden lg:table-cell text-xs text-muted-foreground">{t.at}</td>
+                    <td className="px-4 py-3 hidden sm:table-cell font-mono text-xs text-muted-foreground">{t.reference}</td>
+                    <td className="px-4 py-3 text-right font-mono">${t.amountUsd.toLocaleString()}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${t.status === "completed" || t.status === "paid" ? "bg-green/15 text-green" : t.status === "pending" || t.status === "issued" ? "bg-amber-100 text-amber-800" : t.status === "refunded" ? "bg-blue/15 text-blue" : "bg-red-100 text-red-700"}`}>
+                        {t.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="sponsorship" className="mt-6">
+          <p className="text-sm text-muted-foreground mb-4">
+            Proforma invoices from approved sponsorship applications — same records shown on exhibitor sponsorship pages.
+          </p>
+          <div className="rounded-2xl border border-border bg-card overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead className="bg-secondary/60 text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="text-left px-4 py-3">Reference</th>
+                  <th className="text-left px-4 py-3">Organization</th>
+                  <th className="text-right px-4 py-3">USD</th>
+                  <th className="text-left px-4 py-3">Status</th>
+                  <th className="text-right px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(store.sponsorshipInvoices ?? []).map((inv) => (
+                  <tr key={inv.id} className="border-t">
+                    <td className="px-4 py-3 font-mono">{inv.reference}</td>
+                    <td className="px-4 py-3">{inv.orgName}</td>
+                    <td className="px-4 py-3 text-right font-mono">${inv.amountUsd.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-xs uppercase font-bold">{inv.status}</td>
+                    <td className="px-4 py-3 text-right space-x-2">
+                      {inv.orgId && (
+                        <Button asChild size="sm" variant="ghost">
+                          <Link href={`/admin/exhibitors/sponsorship/${inv.orgId}`}>Record</Link>
+                        </Button>
+                      )}
+                      {inv.status !== "paid" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            markInvoicePaid(inv.id, session?.name ?? "Admin");
+                            toast.success("Sponsorship payment recorded");
+                            setTick((n) => n + 1);
+                          }}
+                        >
+                          <Check className="h-3.5 w-3.5 mr-1" /> Mark paid
+                        </Button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -128,17 +196,33 @@ export default function Page() {
         </TabsContent>
 
         <TabsContent value="bank" className="space-y-3 mt-6">
-          {bank.length === 0 ? (
-            <p className="text-muted-foreground text-center py-12">All transfers confirmed ✓</p>
-          ) : bank.map((t) => (
+          {bankPending.length === 0 ? (
+            <p className="text-muted-foreground text-center py-12">All bank transfers confirmed ✓</p>
+          ) : bankPending.map((t) => (
             <div key={t.id} className="rounded-2xl bg-card border border-border p-5 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className="font-serif font-bold">{t.attendee}</div>
-                <div className="text-xs text-muted-foreground">Proforma {t.ref} · ${t.amountUsd} · expected {t.at}</div>
+                <div className="font-serif font-bold">{t.payer}</div>
+                <div className="text-xs text-muted-foreground capitalize">
+                  {t.kind} · {t.reference} · ${t.amountUsd.toLocaleString()}
+                </div>
               </div>
-              <Button size="sm" className="gradient-blue text-accent-foreground" onClick={() => { setBank(bank.filter((x) => x.id !== t.id)); toast.success("Transfer confirmed; ticket emailed"); }}>
-                <Check className="h-3.5 w-3.5 mr-1" /> Confirm payment
-              </Button>
+              {t.kind === "sponsorship" && t.invoiceId ? (
+                <Button
+                  size="sm"
+                  className="gradient-blue text-accent-foreground"
+                  onClick={() => {
+                    markInvoicePaid(t.invoiceId!, session?.name ?? "Admin");
+                    toast.success("Sponsorship payment confirmed");
+                    setTick((n) => n + 1);
+                  }}
+                >
+                  <Check className="h-3.5 w-3.5 mr-1" /> Confirm payment
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" onClick={() => toast.success("Registration payment noted (demo)")}>
+                  <Check className="h-3.5 w-3.5 mr-1" /> Confirm payment
+                </Button>
+              )}
             </div>
           ))}
         </TabsContent>

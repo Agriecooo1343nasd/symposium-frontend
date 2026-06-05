@@ -2,21 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { loadStore } from "@/lib/store";
-import { SPONSORS } from "@/lib/mock-data";
+import { isSponsorOrg } from "@/lib/sponsorship-records";
 
 type Item = { id: string; name: string; tier: string };
 
 export function SponsorMarquee() {
-  const legacy: Item[] = SPONSORS.map((s) => ({ id: s.id, name: s.name, tier: s.tier }));
-  const [items, setItems] = useState<Item[]>(legacy);
+  const [items, setItems] = useState<Item[]>([]);
 
   useEffect(() => {
     const store = loadStore();
-    const fromStore = store?.approvedOrganizations
-      .filter((o) => o.participation === "sponsor" || o.participation === "both")
-      .map((o) => ({ id: o.id, name: o.name, tier: o.sponsorshipTier ?? "Silver" })) ?? [];
-    if (fromStore.length > 0) setItems(fromStore);
+    const fromStore = store.approvedOrganizations
+      .filter(isSponsorOrg)
+      .map((o) => ({ id: o.id, name: o.name, tier: o.sponsorshipTier ?? "Silver" }));
+    setItems(fromStore);
   }, []);
+
+  if (items.length === 0) return null;
 
   const loop = [...items, ...items];
 
