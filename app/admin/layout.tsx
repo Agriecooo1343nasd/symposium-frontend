@@ -37,7 +37,7 @@ const NAV: readonly PortalNavItem[] = [
   { to: "/admin/registrations", label: "Registrations", icon: Users },
   { to: "/admin/media", label: "Media / Press", icon: Camera },
   { to: "/admin/refunds", label: "Refunds & waitlist", icon: RotateCcw },
-  { to: "/admin/ticket-plans", label: "Pass plans", icon: Ticket },
+  { to: "/admin/ticket-plans", label: "Registration fees", icon: Ticket },
   { to: "/admin/finance", label: "Finance", icon: DollarSign },
   { to: "/admin/programme", label: "Programme", icon: Calendar },
   { to: "/admin/speakers", label: "Speakers", icon: Mic },

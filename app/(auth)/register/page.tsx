@@ -36,7 +36,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CurrencyToggle, formatPrice } from "@/components/CurrencyToggle";
 import { SUB_THEMES, buildEventICS, type SubTheme } from "@/lib/mock-data";
 import {
-  getTicketPlans,
   patchStore,
   uid,
   upsertAttendeeProfile,
@@ -70,8 +69,8 @@ export default function Register() {
   const registrationOpen = isFeatureOpen("registration");
   const event = getEventConfig();
   const countries = getCountries();
-  useStore();
-  const ticketPlans = getTicketPlans().filter((t) => !t.isMediaAccreditation);
+  const store = useStore();
+  const ticketPlans = store.ticketPlans.filter((t) => !t.isMediaAccreditation);
   const [regMode, setRegMode] = useState<"delegate" | "media">("delegate");
   const cancellationPolicy = getCancellationPolicy();
   const [step, setStep] = useState(0);

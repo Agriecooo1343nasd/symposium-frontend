@@ -53,7 +53,13 @@ export const ADMIN_COMMANDS: AdminCommand[] = [
   nav("page-registrations", "Registrations", "/admin/registrations", ["attendees", "delegates", "manual", "groups", "individual"]),
   nav("page-media", "Media / Press", "/admin/media", ["press", "journalist", "accreditation", "camera"]),
   nav("page-refunds", "Refunds & waitlist", "/admin/refunds", ["cancellation", "refund", "transfer", "waitlist", "capacity"]),
-  nav("page-ticket-plans", "Pass plans", "/admin/ticket-plans", ["pricing", "tickets", "categories", "plans", "pass"]),
+  nav(
+    "page-ticket-plans",
+    "Registration fees & pricing",
+    "/admin/ticket-plans",
+    ["fees", "costs", "pricing", "tickets", "categories", "plans", "pass", "register", "registration", "delegate", "usd", "rwf", "price"],
+    "Manage delegate pass fees shown on the public registration page",
+  ),
   nav("page-finance", "Finance", "/admin/finance", ["revenue", "payments", "invoices", "bank", "money"]),
   nav("page-programme", "Programme", "/admin/programme", ["sessions", "schedule", "run of show", "rooms", "moderation"]),
   nav("page-speakers", "Speakers", "/admin/speakers", ["speaker", "directory", "onboarding"]),
@@ -65,7 +71,7 @@ export const ADMIN_COMMANDS: AdminCommand[] = [
   nav("page-news", "News", "/admin/news", ["cms", "articles", "blog", "publish"]),
   nav("page-networking", "Networking", "/admin/networking/directory", ["connect", "messages", "directory", "chat"]),
   nav("page-polls", "Live polls", "/admin/polls", ["vote", "voting", "plenary", "poll", "live"]),
-  nav("page-checkin", "Check-in", "/admin/checkin", ["qr", "scan", "attendance", "desk"]),
+  nav("page-checkin", "Check-in", "/admin/checkin", ["qr", "scan", "attendance"]),
   nav("page-communications", "Communications", "/admin/communications", ["email", "announcement", "broadcast", "invitation"]),
   nav("page-content", "Content", "/admin/content", ["public", "site", "pages", "faq"]),
   nav("page-analytics", "Analytics", "/admin/analytics", ["stats", "metrics", "reports"]),
@@ -147,9 +153,9 @@ export const ADMIN_COMMANDS: AdminCommand[] = [
   add("add-room", "Add room", "/admin/programme", "add-room", [
     "add", "create", "new", "room", "hall", "venue",
   ], "Add a venue room"),
-  add("add-pass-plan", "Add pass plan", "/admin/ticket-plans", "add-plan", [
-    "add", "create", "new", "ticket", "plan", "pricing", "category", "pass",
-  ], "Create a delegate pass plan"),
+  add("add-pass-plan", "Add registration pass plan", "/admin/ticket-plans", "add-plan", [
+    "add", "create", "new", "ticket", "plan", "pricing", "category", "pass", "fee", "cost", "register",
+  ], "Create a delegate pass with fee shown on /register"),
   add("add-poll", "New live poll", "/admin/polls", "new-poll", [
     "add", "create", "new", "poll", "vote", "voting", "plenary", "question",
   ], "Create a draft live poll"),
@@ -175,7 +181,7 @@ export const ADMIN_COMMANDS: AdminCommand[] = [
   ]),
   nav("pending-media", "Pending media accreditation", "/admin/media", ["pending", "press", "media"]),
   nav("open-checkin", "Open check-in", "/admin/checkin", ["qr", "scan", "attendance"]),
-  nav("open-desk", "Open desk portal", "/desk", ["desk", "registration", "live"]),
+  nav("public-register", "Public registration page", "/register", ["public", "register", "fees", "pricing", "preview", "pass"]),
   nav("public-news", "Public news page", "/news", ["public", "website", "preview"]),
   nav("public-programme", "Public programme", "/programme", ["public", "schedule"]),
   nav("public-exhibitors", "Public exhibitors page", "/exhibitors", ["public", "sponsors"]),

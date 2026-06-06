@@ -10,11 +10,14 @@ import { SessionCard } from "@/components/SessionCard";
 import { SpeakerCard } from "@/components/SpeakerCard";
 import { StatsCounter } from "@/components/StatsCounter";
 import { CurrencyToggle, formatPrice } from "@/components/CurrencyToggle";
-import { EVENT, SESSIONS, SPEAKERS, NEWS, TICKET_CATEGORIES } from "@/lib/mock-data";
+import { EVENT, SESSIONS, SPEAKERS, NEWS } from "@/lib/mock-data";
+import { useStore } from "@/hooks/use-store";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
+  const store = useStore();
   const [currency, setCurrency] = useState<"USD" | "RWF">("USD");
+  const ticketPlans = store.ticketPlans.filter((t) => !t.isMediaAccreditation);
 
   return (
     <>
@@ -182,7 +185,7 @@ export default function Home() {
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {TICKET_CATEGORIES.slice(0, 8).map((t) => (
+          {ticketPlans.map((t) => (
             <div
               key={t.id}
               className={cn(
