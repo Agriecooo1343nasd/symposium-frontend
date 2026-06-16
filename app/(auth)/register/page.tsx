@@ -58,11 +58,13 @@ import { toast } from "sonner";
 import { MediaRegistrationFlow } from "@/components/media/MediaRegistrationFlow";
 import { GroupMembersFields } from "@/components/group/GroupMembersFields";
 import { GroupPricingSummary } from "@/components/group/GroupPricingSummary";
+import { GroupDiscountTiersCard } from "@/components/group/GroupDiscountTiersCard";
 import {
   createGroupRegistration,
-  getGroupSettings,
+  calculateGroupPricing,
   type GroupMemberInput,
 } from "@/lib/group-registration";
+import { DEFAULT_GROUP_REGISTRATION_SETTINGS } from "@/lib/store";
 
 export default function Register() {
   const router = useRouter();
@@ -71,6 +73,10 @@ export default function Register() {
   const countries = getCountries();
   const store = useStore();
   const ticketPlans = store.ticketPlans.filter((t) => !t.isMediaAccreditation);
+  const groupSettings = {
+    ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
+    ...store.platformSettings.groupRegistration,
+  };
   const [regMode, setRegMode] = useState<"delegate" | "media">("delegate");
   const cancellationPolicy = getCancellationPolicy();
   const [step, setStep] = useState(0);
@@ -100,7 +106,6 @@ export default function Register() {
     consentExhibitor: true,
   });
   const [paymentMethod, setPaymentMethod] = useState("momo");
-  const groupSettings = getGroupSettings();
   const [regKind, setRegKind] = useState<"individual" | "group">("individual");
   const [groupSize, setGroupSize] = useState(() => groupSettings.minSize);
   const [groupMembers, setGroupMembers] = useState<GroupMemberInput[]>([]);
@@ -370,16 +375,35 @@ export default function Register() {
                 exit={{ opacity: 0, x: -30 }}
                 transition={{ duration: 0.25 }}
               >
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-                  <h2 className="font-serif text-2xl font-bold">
-                    Choose your pass
-                  </h2>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div>
+                    <h2 className="font-serif text-2xl font-bold">Choose your pass</h2>
+                    {regKind === "group" && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Group of {groupSize} — {groupSettings.tier5to9Percent}% off ({groupSettings.minSize}–9) or{" "}
+                        {groupSettings.tier10PlusPercent}% off (10+)
+                      </p>
+                    )}
+                  </div>
                   <CurrencyToggle currency={currency} onChange={setCurrency} />
                 </div>
+                {regKind === "group" && groupSettings.enabled && (
+                  <div className="mb-6">
+                    <GroupDiscountTiersCard
+                      settings={groupSettings}
+                      examplePriceUsd={picked?.usd ?? ticketPlans.find((p) => p.popular)?.usd ?? 150}
+                      currency={currency}
+                      exchangeRate={event.exchangeRate}
+                      compact
+                    />
+                  </div>
+                )}
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {ticketPlans.map((t) => {
                     const avail = getPlanAvailability(t);
                     const soldOut = avail.soldOut;
+                    const groupPricing =
+                      regKind === "group" ? calculateGroupPricing(groupSize, t.usd) : null;
                     return (
                       <button
                         key={t.id}
@@ -415,10 +439,24 @@ export default function Register() {
                           {t.name}
                         </div>
                         <div className="font-serif text-2xl font-bold mt-2 text-gradient">
-                          {formatPrice(t.usd, currency, event.exchangeRate)}
+                          {regKind === "group" && groupPricing
+                            ? formatPrice(groupPricing.totalUsd, currency, event.exchangeRate)
+                            : formatPrice(t.usd, currency, event.exchangeRate)}
                         </div>
                         <div className="text-[10px] text-muted-foreground mt-1">
-                          {avail.sold} / {avail.capacity} seats taken
+                          {regKind === "group" && groupPricing ? (
+                            <>
+                              {groupSize} delegates ·{" "}
+                              {groupPricing.discountPercent > 0 && (
+                                <span className="text-green font-semibold">
+                                  −{groupPricing.discountPercent}% ({formatPrice(groupPricing.discountUsd, currency, event.exchangeRate)})
+                                </span>
+                              )}
+                              {groupPricing.discountPercent === 0 && "List price — add delegates for discount"}
+                            </>
+                          ) : (
+                            <>{avail.sold} / {avail.capacity} seats taken</>
+                          )}
                         </div>
                         {t.note && (
                           <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2 inline-block">
@@ -449,6 +487,17 @@ export default function Register() {
                     );
                   })}
                 </div>
+                {picked && regKind === "group" && (
+                  <div className="mt-6 rounded-2xl border border-accent/30 bg-accent/5 p-5 max-w-lg">
+                    <h3 className="font-serif font-bold text-sm mb-3">Group total — {picked.name}</h3>
+                    <GroupPricingSummary
+                      memberCount={groupSize}
+                      pricePerSeatUsd={picked.usd}
+                      currency={currency}
+                      exchangeRate={event.exchangeRate}
+                    />
+                  </div>
+                )}
                 {waitlistPlan && (
                   <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 max-w-lg">
                     <h3 className="font-serif font-bold">
@@ -519,10 +568,21 @@ export default function Register() {
                           <Users className="h-3.5 w-3.5" /> Group
                         </span>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {groupSettings.minSize}+ delegates, volume discount
+                          {groupSettings.minSize}+ delegates · up to {groupSettings.tier10PlusPercent}% off
                         </p>
                       </button>
                     </div>
+                    {regKind === "group" && (
+                      <div className="mt-4">
+                        <GroupDiscountTiersCard
+                          settings={groupSettings}
+                          examplePriceUsd={store.ticketPlans.find((p) => p.popular)?.usd ?? 150}
+                          currency={currency}
+                          exchangeRate={event.exchangeRate}
+                          compact
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="grid sm:grid-cols-2 gap-4">

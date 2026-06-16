@@ -50,7 +50,13 @@ function tab(
 export const ADMIN_COMMANDS: AdminCommand[] = [
   // ── Pages (main nav) ──────────────────────────────────────────────────────
   nav("page-overview", "Overview", "/admin", ["dashboard", "home", "command", "centre", "snapshot"]),
-  nav("page-registrations", "Registrations", "/admin/registrations", ["attendees", "delegates", "manual", "groups", "individual"]),
+  nav(
+    "page-registrations",
+    "Registrations",
+    "/admin/registrations",
+    ["attendees", "delegates", "manual", "groups", "individual", "group registration"],
+    "Individual and group registrations",
+  ),
   nav("page-media", "Media / Press", "/admin/media", ["press", "journalist", "accreditation", "camera"]),
   nav("page-refunds", "Refunds & waitlist", "/admin/refunds", ["cancellation", "refund", "transfer", "waitlist", "capacity"]),
   nav(
@@ -95,7 +101,22 @@ export const ADMIN_COMMANDS: AdminCommand[] = [
   tab("finance-settings", "Finance settings", "/admin/finance", "settings", ["group discount", "vat"]),
 
   // ── Other tabs ────────────────────────────────────────────────────────────
-  tab("registrations-groups", "Group registrations", "/admin/registrations", "groups", ["group", "delegation", "team"]),
+  tab(
+    "registrations-groups",
+    "Group registrations",
+    "/admin/registrations",
+    "groups",
+    ["group", "delegation", "team", "discount", "volume", "organization"],
+    "Manage groups, discounts, and delegation pricing",
+  ),
+  tab(
+    "group-discount-settings",
+    "Group registration discounts",
+    "/admin/registrations",
+    "groups",
+    ["group", "discount", "fee", "pricing", "volume", "tier", "delegation", "percent"],
+    "Set min size and volume discount tiers shown on /register",
+  ),
   tab("refunds-cancellations", "Cancellation requests", "/admin/refunds", "cancellations", ["cancel", "refund", "pending"]),
   tab("refunds-waitlist", "Waitlist", "/admin/refunds", "waitlist", ["wait", "capacity", "notify"]),
   tab("media-pending", "Pending media apps", "/admin/media", "pending", ["press", "accreditation", "review"]),
@@ -110,6 +131,9 @@ export const ADMIN_COMMANDS: AdminCommand[] = [
   add("add-manual-registration", "Manual registration", "/admin/registrations", "manual-registration", [
     "add", "create", "register", "attendee", "comp", "manual", "new registration",
   ], "Create a paid or comp registration from the secretariat"),
+  add("add-group-registration", "Add group registration", "/admin/registrations", "add-group-registration", [
+    "add", "create", "group", "delegation", "team", "organization", "bulk", "multiple", "register",
+  ], "Manually create a group with volume discount applied", "groups"),
   add("add-announcement", "Send announcement", "/admin/communications", "new-announcement", [
     "add", "create", "announce", "banner", "broadcast", "in-app", "alert", "message",
   ], "Push an in-app announcement to portals", "announce"),

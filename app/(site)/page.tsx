@@ -12,12 +12,19 @@ import { StatsCounter } from "@/components/StatsCounter";
 import { CurrencyToggle, formatPrice } from "@/components/CurrencyToggle";
 import { EVENT, SESSIONS, SPEAKERS, NEWS } from "@/lib/mock-data";
 import { useStore } from "@/hooks/use-store";
+import { DEFAULT_GROUP_REGISTRATION_SETTINGS } from "@/lib/store";
+import { GroupDiscountTiersCard } from "@/components/group/GroupDiscountTiersCard";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
   const store = useStore();
   const [currency, setCurrency] = useState<"USD" | "RWF">("USD");
   const ticketPlans = store.ticketPlans.filter((t) => !t.isMediaAccreditation);
+  const groupSettings = {
+    ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
+    ...store.platformSettings.groupRegistration,
+  };
+  const popularPlan = ticketPlans.find((t) => t.popular) ?? ticketPlans[0];
 
   return (
     <>
@@ -210,6 +217,24 @@ export default function Home() {
             </div>
           ))}
         </div>
+
+        {groupSettings.enabled && (
+          <div className="mt-10">
+            <GroupDiscountTiersCard
+              settings={groupSettings}
+              examplePriceUsd={popularPlan?.usd ?? 150}
+              currency={currency}
+              exchangeRate={EVENT.exchangeRate}
+            />
+            <div className="mt-4 text-center">
+              <Button asChild className="gradient-blue text-accent-foreground">
+                <Link href="/register">
+                  Register a group <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* NEWS */}
