@@ -1,18 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { Users, FileCheck, Mic, ScanLine, Store, CheckCircle, Newspaper } from "lucide-react";
+import { Users, FileCheck, Mic, ScanLine, Store, Newspaper } from "lucide-react";
+import {
+  useDeskRegistrations,
+  useMediaAccreditationStats,
+  usePendingVerifications,
+  useAdminSubmissions,
+} from "@/hooks/api/useDesk";
 import { useStore } from "@/hooks/use-store";
 
 export default function DeskOverviewPage() {
   const store = useStore();
-  const pendingVerifications = store.documentVerifications.filter((d) => d.status === "pending");
-  const pendingSpeakers = store.speakerApplications.filter((s) => s.status === "pending");
+  const { registrations } = useDeskRegistrations({ limit: 200 });
+  const { items: pendingVerifications } = usePendingVerifications();
+  const { submissions } = useAdminSubmissions({ limit: 100 });
+  const mediaStats = useMediaAccreditationStats();
+
+  const paidRegs = registrations.filter((r) =>
+    ["active", "paid", "confirmed", "pending_verification"].includes(r.status),
+  );
+  const pendingSpeakers = submissions.filter((s) =>
+    ["submitted", "under_review", "revision_required"].includes(s.status),
+  );
   const pendingOrgs = store.organizationApplications.filter((o) => o.status === "pending");
-  const pendingMedia = store.mediaApplications.filter((m) => m.status === "pending");
-  const paidRegs = store.registrations.filter((r) => r.status === "paid");
-  const checkedIn = store.registrations.filter((r) => r.checkedIn).length;
-  const todayScans = store.checkInScans.length;
+  const pendingMedia = mediaStats.data?.pending ?? 0;
 
   return (
     <div className="space-y-6">
@@ -23,11 +35,11 @@ export default function DeskOverviewPage() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {[
-          { label: "Paid registrations", value: paidRegs.length, sub: `${checkedIn} checked in` },
+          { label: "Paid registrations", value: paidRegs.length, sub: "From API list" },
           { label: "Pending verifications", value: pendingVerifications.length, sub: "Student & farmer docs" },
-          { label: "Speaker applications", value: pendingSpeakers.length, sub: "Awaiting review" },
-          { label: "Media accreditation", value: pendingMedia.length, sub: "Press pending review" },
-          { label: "Org applications", value: pendingOrgs.length, sub: "Exhibitor & sponsor" },
+          { label: "Speaker submissions", value: pendingSpeakers.length, sub: "Awaiting review" },
+          { label: "Media accreditation", value: pendingMedia, sub: "Press pending review" },
+          { label: "Org applications", value: pendingOrgs.length, sub: "Exhibitor & sponsor (local)" },
         ].map((s) => (
           <div key={s.label} className="rounded-md bg-card border border-border p-4">
             <div className="font-serif text-2xl font-bold">{s.value}</div>
@@ -40,12 +52,13 @@ export default function DeskOverviewPage() {
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="rounded-md bg-card border border-border p-5">
           <h2 className="font-serif font-bold mb-3 flex items-center gap-2">
-            <ScanLine className="h-4 w-4" /> Check-in today
+            <ScanLine className="h-4 w-4" /> Check-in
           </h2>
-          <div className="font-serif text-3xl font-bold">{todayScans}</div>
-          <p className="text-sm text-muted-foreground mt-1">Scans recorded this session</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Scan signed QR payloads from attendee tickets or use manual check-in by email.
+          </p>
           <Link href="/desk/checkin" className="text-sm text-accent font-semibold mt-3 inline-block">
-            Open QR scanner →
+            Open check-in station →
           </Link>
         </div>
         <div className="rounded-md bg-card border border-border p-5">
@@ -55,8 +68,8 @@ export default function DeskOverviewPage() {
               { to: "/desk/registrations", label: "View registrations", icon: Users },
               { to: "/desk/verifications", label: "Verify documents", icon: FileCheck },
               { to: "/desk/applications", label: "Speaker applications", icon: Mic },
-            { to: "/desk/media", label: "Media accreditation", icon: Newspaper },
-            { to: "/desk/exhibitors", label: "Exhibitors & sponsors", icon: Store },
+              { to: "/desk/media", label: "Media accreditation", icon: Newspaper },
+              { to: "/desk/exhibitors", label: "Exhibitors & sponsors", icon: Store },
               { to: "/desk/checkin", label: "Scan badges", icon: ScanLine },
             ].map((a) => (
               <Link
@@ -72,31 +85,10 @@ export default function DeskOverviewPage() {
         </div>
       </div>
 
-      <div className="rounded-md bg-card border border-border p-5">
-        <h2 className="font-serif font-bold mb-3">Recent check-ins</h2>
-        {store.checkInScans.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No scans yet — use the check-in station at the venue entrance.</p>
-        ) : (
-          <ul className="space-y-2">
-            {store.checkInScans.slice(0, 6).map((s) => (
-              <li key={s.id} className="text-sm flex justify-between gap-2 border-b border-border pb-2 last:border-0">
-                <span>
-                  <CheckCircle className="h-3.5 w-3.5 inline text-green mr-1" />
-                  {s.name}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {s.scanType.replace("_", " ")} · {s.scannedAt}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { to: "/desk/registrations", label: "Registrations", value: paidRegs.length, icon: Users },
-          { to: "/desk/media", label: "Media apps", value: pendingMedia.length, icon: Newspaper },
+          { to: "/desk/media", label: "Media apps", value: pendingMedia, icon: Newspaper },
           { to: "/desk/verifications", label: "Verifications", value: pendingVerifications.length, icon: FileCheck },
           { to: "/desk/applications", label: "Speaker apps", value: pendingSpeakers.length, icon: Mic },
           { to: "/desk/exhibitors/applications", label: "Exhibitor apps", value: pendingOrgs.length, icon: Store },

@@ -1,6 +1,12 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
-import type { ExhibitorLeadDto, ExhibitorProfileDto } from "../dto";
+import type {
+  CreateExhibitorDto,
+  ExhibitorAdminDto,
+  ExhibitorLeadDto,
+  ExhibitorProfileDto,
+  UpdateExhibitorDto,
+} from "../dto";
 import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
 
 export const exhibitorsService = {
@@ -18,10 +24,19 @@ export const exhibitorsService = {
   },
   listAdmin(params?: PaginationParams & { symposiumId?: string }) {
     return apiClient
-      .get<ApiResponse<Record<string, unknown>[]>>("/exhibitors/admin/list", { params: toQueryParams(params) })
+      .get<ApiResponse<ExhibitorAdminDto[]>>("/exhibitors/admin/list", { params: toQueryParams(params) })
       .then(unwrapPaginated);
   },
   getAdmin(id: string) {
-    return apiClient.get<ApiResponse<Record<string, unknown>>>(`/exhibitors/admin/${id}`).then(unwrapApi);
+    return apiClient.get<ApiResponse<ExhibitorAdminDto>>(`/exhibitors/admin/${id}`).then(unwrapApi);
+  },
+  createAdmin(dto: CreateExhibitorDto) {
+    return apiClient.post<ApiResponse<ExhibitorAdminDto>>("/exhibitors/admin", dto).then(unwrapApi);
+  },
+  updateAdmin(id: string, dto: UpdateExhibitorDto) {
+    return apiClient.patch<ApiResponse<ExhibitorAdminDto>>(`/exhibitors/admin/${id}`, dto).then(unwrapApi);
+  },
+  removeAdmin(id: string) {
+    return apiClient.delete(`/exhibitors/admin/${id}`);
   },
 };

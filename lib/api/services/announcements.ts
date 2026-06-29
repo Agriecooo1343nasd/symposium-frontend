@@ -1,6 +1,6 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
-import type { AnnouncementDto } from "../dto";
+import type { AnnouncementDto, CreateAnnouncementDto, UpdateAnnouncementDto } from "../dto";
 import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
 
 export const announcementsService = {
@@ -20,10 +20,10 @@ export const announcementsService = {
   getAdmin(id: string) {
     return apiClient.get<ApiResponse<AnnouncementDto>>(`/announcements/admin/${id}`).then(unwrapApi);
   },
-  create(dto: Record<string, unknown>) {
+  create(dto: CreateAnnouncementDto) {
     return apiClient.post<ApiResponse<AnnouncementDto>>("/announcements/admin", dto).then(unwrapApi);
   },
-  update(id: string, dto: Record<string, unknown>) {
+  update(id: string, dto: UpdateAnnouncementDto) {
     return apiClient.patch<ApiResponse<AnnouncementDto>>(`/announcements/admin/${id}`, dto).then(unwrapApi);
   },
   publish(id: string) {

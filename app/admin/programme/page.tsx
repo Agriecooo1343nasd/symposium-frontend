@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useStore } from "@/hooks/use-store";
 import { SessionFormDialog } from "@/components/admin/SessionFormDialog";
 import { RunOfShowTimeline } from "@/components/admin/RunOfShowTimeline";
-import { deleteSession } from "@/lib/programme-sync";
+import { AdminSessionsPanel } from "@/components/admin/AdminSessionsPanel";
 import { patchStore, uid, appendAudit } from "@/lib/store";
 import { getSession } from "@/lib/auth";
 import type { Session } from "@/lib/mock-data";
@@ -79,15 +79,9 @@ export default function Page() {
           </TabsContent>
         ))}
 
-        <TabsContent value="sessions" className="mt-6 space-y-3">
-          {store.sessions.filter((s) => s.day === 1).length > 0 && <h3 className="text-sm font-semibold text-muted-foreground">Day 1</h3>}
-          {store.sessions.filter((s) => s.day === 1).map((s) => (
-            <SessionRow key={s.id} session={s} onEdit={() => openEdit(s)} onDelete={() => { deleteSession(s.id); toast.info("Deleted"); }} />
-          ))}
-          <h3 className="text-sm font-semibold text-muted-foreground pt-4">Day 2</h3>
-          {store.sessions.filter((s) => s.day === 2).map((s) => (
-            <SessionRow key={s.id} session={s} onEdit={() => openEdit(s)} onDelete={() => { deleteSession(s.id); toast.info("Deleted"); }} />
-          ))}
+        <TabsContent value="sessions" className="mt-6">
+          <AdminSessionsPanel />
+          <p className="text-xs text-muted-foreground mt-4">Run-of-show, rooms, and ratings tabs remain local mock (no API).</p>
         </TabsContent>
 
         <TabsContent value="ratings" className="mt-6">

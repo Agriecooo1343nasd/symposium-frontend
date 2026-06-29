@@ -1,6 +1,11 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
-import type { UpdateProfileDto, UserDto } from "../dto";
+import type {
+  AdminCreateUserDto,
+  AdminUpdateUserDto,
+  UpdateProfileDto,
+  UserDto,
+} from "../dto";
 import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
 
 export const usersService = {
@@ -18,10 +23,10 @@ export const usersService = {
   getById(id: string) {
     return apiClient.get<ApiResponse<UserDto>>(`/users/${id}`).then(unwrapApi);
   },
-  createAdmin(dto: Record<string, unknown>) {
+  createAdmin(dto: AdminCreateUserDto) {
     return apiClient.post<ApiResponse<UserDto>>("/users/admin", dto).then(unwrapApi);
   },
-  updateAdmin(id: string, dto: Record<string, unknown>) {
+  updateAdmin(id: string, dto: AdminUpdateUserDto) {
     return apiClient.patch<ApiResponse<UserDto>>(`/users/${id}`, dto).then(unwrapApi);
   },
 };

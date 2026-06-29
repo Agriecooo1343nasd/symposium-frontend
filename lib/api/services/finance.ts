@@ -1,6 +1,6 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
-import type { FinanceSummaryDto, FinanceTransactionDto } from "../dto";
+import type { FinanceRefundDto, FinanceSummaryDto, FinanceTransactionDto } from "../dto";
 import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
 
 export const financeService = {
@@ -11,7 +11,7 @@ export const financeService = {
   },
   listRefunds(params?: PaginationParams & { symposiumId?: string; status?: string }) {
     return apiClient
-      .get<ApiResponse<Record<string, unknown>[]>>("/finance/refunds", { params: toQueryParams(params) })
+      .get<ApiResponse<FinanceRefundDto[]>>("/finance/refunds", { params: toQueryParams(params) })
       .then(unwrapPaginated);
   },
   getSummary(symposiumId?: string) {

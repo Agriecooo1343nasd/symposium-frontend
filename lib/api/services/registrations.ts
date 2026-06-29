@@ -1,7 +1,10 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type {
+  AdminUpdateRegistrationDto,
+  CreateGroupRegistrationDto,
   CreateRegistrationDto,
+  DeskWalkInDto,
   RegistrationDto,
   RegistrationStatus,
   UpdateRegistrationCategoryDto,
@@ -17,7 +20,7 @@ export const registrationsService = {
       .patch<ApiResponse<RegistrationDto>>(`/registrations/${id}/category`, dto)
       .then(unwrapApi);
   },
-  createGroup(dto: Record<string, unknown>) {
+  createGroup(dto: CreateGroupRegistrationDto) {
     return apiClient.post<ApiResponse<RegistrationDto[]>>("/registrations/group", dto).then(unwrapApi);
   },
   joinWaitlist(id: string) {
@@ -37,13 +40,16 @@ export const registrationsService = {
   getById(id: string) {
     return apiClient.get<ApiResponse<RegistrationDto>>(`/registrations/${id}`).then(unwrapApi);
   },
+  adminUpdate(id: string, dto: AdminUpdateRegistrationDto) {
+    return apiClient.patch<ApiResponse<RegistrationDto>>(`/registrations/${id}`, dto).then(unwrapApi);
+  },
   approve(id: string) {
     return apiClient.post<ApiResponse<RegistrationDto>>(`/registrations/${id}/approve`).then(unwrapApi);
   },
   reject(id: string) {
     return apiClient.post<ApiResponse<RegistrationDto>>(`/registrations/${id}/reject`).then(unwrapApi);
   },
-  walkIn(dto: Record<string, unknown>) {
+  walkIn(dto: DeskWalkInDto) {
     return apiClient.post<ApiResponse<RegistrationDto>>("/registrations/desk/walk-in", dto).then(unwrapApi);
   },
 };

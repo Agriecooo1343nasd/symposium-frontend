@@ -2,6 +2,7 @@ import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type {
   BankTransferProformaDto,
+  ConfirmManualPaymentDto,
   InitiatePaymentDto,
   PaymentInitiateResponseDto,
   PaymentTransactionDto,
@@ -21,7 +22,7 @@ export const paymentsService = {
   syncStatus(id: string) {
     return apiClient.post<ApiResponse<PaymentTransactionDto>>(`/payments/${id}/sync-status`).then(unwrapApi);
   },
-  confirmManual(id: string, dto: Record<string, unknown>) {
+  confirmManual(id: string, dto: ConfirmManualPaymentDto) {
     return apiClient
       .patch<ApiResponse<PaymentTransactionDto>>(`/payments/${id}/confirm-manual`, dto)
       .then(unwrapApi);

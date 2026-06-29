@@ -11,7 +11,9 @@ export const queryKeys = {
     bySymposium: (symposiumId: string, params?: Record<string, unknown>) =>
       ["sessions", symposiumId, params] as const,
     detail: (id: string) => ["sessions", "detail", id] as const,
+    admin: (params?: Record<string, unknown>) => ["sessions", "admin", params] as const,
     tracks: (symposiumId: string) => ["tracks", symposiumId] as const,
+    tracksAdmin: (symposiumId: string) => ["tracks", "admin", symposiumId] as const,
   },
   speakers: {
     all: ["speakers"] as const,
@@ -19,6 +21,8 @@ export const queryKeys = {
       ["speakers", symposiumId, params] as const,
     detail: (id: string) => ["speakers", "detail", id] as const,
     dashboard: ["speakers", "me", "dashboard"] as const,
+    admin: (symposiumId: string, params?: Record<string, unknown>) =>
+      ["speakers", "admin", symposiumId, params] as const,
   },
   ticketCategories: {
     public: (symposiumId: string) => ["ticket-categories", "public", symposiumId] as const,
@@ -42,6 +46,9 @@ export const queryKeys = {
     page: (key: string, symposiumId?: string) => ["cms", "page", key, symposiumId] as const,
     faqs: (symposiumId?: string) => ["cms", "faqs", symposiumId] as const,
     pressKit: (symposiumId?: string) => ["cms", "press-kit", symposiumId] as const,
+    mediaAccreditations: (params?: Record<string, unknown>) =>
+      ["cms", "media-accreditations", params] as const,
+    mediaAccreditationStats: ["cms", "media-accreditation-stats"] as const,
   },
   sponsors: {
     bySymposium: (symposiumId: string) => ["sponsors", symposiumId] as const,
@@ -74,5 +81,26 @@ export const queryKeys = {
   },
   auth: {
     session: ["auth", "session"] as const,
+  },
+  notifications: {
+    mine: (params?: Record<string, unknown>) => ["notifications", "me", params] as const,
+  },
+  schedules: {
+    mine: (params?: Record<string, unknown>) => ["schedules", "me", params] as const,
+  },
+  refunds: {
+    mine: ["refund-requests", "me"] as const,
+  },
+  submissions: {
+    mine: ["submissions", "me"] as const,
+    detail: (id: string) => ["submissions", id] as const,
+    admin: (params?: Record<string, unknown>) => ["submissions", "admin", params] as const,
+  },
+  certificates: {
+    mine: ["certificates", "me"] as const,
+  },
+  roles: {
+    all: ["roles"] as const,
+    permissions: ["permissions"] as const,
   },
 } as const;

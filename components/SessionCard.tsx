@@ -20,14 +20,21 @@ export function SessionCard({
   expandable = true,
   onSave,
   speakers: speakersOverride,
+  saved: savedProp,
+  saveLabel = "Add to schedule",
+  unsaveLabel = "Saved",
 }: {
   session: Session;
   expandable?: boolean;
   onSave?: () => void;
   speakers?: ResolvedSpeaker[];
+  saved?: boolean;
+  saveLabel?: string;
+  unsaveLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [savedLocal, setSavedLocal] = useState(false);
+  const saved = savedProp ?? savedLocal;
   const speakers: ResolvedSpeaker[] =
     speakersOverride ??
     (session.speakers
@@ -90,14 +97,17 @@ export function SessionCard({
         )}
         {onSave && (
           <button
-            onClick={() => { setSaved(!saved); onSave(); }}
+            onClick={() => {
+              if (savedProp === undefined) setSavedLocal(!savedLocal);
+              onSave();
+            }}
             className={cn(
               "inline-flex items-center gap-1.5 text-xs font-semibold transition-colors",
-              saved ? "text-green" : "text-muted-foreground hover:text-foreground"
+              saved ? "text-green" : "text-muted-foreground hover:text-foreground",
             )}
           >
             {saved ? <Check className="h-3.5 w-3.5" /> : <BookmarkPlus className="h-3.5 w-3.5" />}
-            {saved ? "Saved" : "Add to schedule"}
+            {saved ? unsaveLabel : saveLabel}
           </button>
         )}
       </div>
