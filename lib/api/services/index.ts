@@ -19,3 +19,5 @@ export { schedulesService } from "./schedules";
 export { refundsService } from "./refunds";
 export { submissionsService } from "./submissions";
 export { certificatesService } from "./certificates";
+export { reviewsService } from "./reviews";
+export { rolesService } from "./roles";

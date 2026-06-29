@@ -1,6 +1,15 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
-import type { CmsPageDto, CreateContactMessageDto, FaqDto } from "../dto";
+import type {
+  CmsPageDto,
+  CreateContactMessageDto,
+  FaqDto,
+  MediaAccreditationDto,
+  MediaAccreditationStatsDto,
+  MediaAccreditationStatus,
+  UpdateMediaAccreditationDto,
+} from "../dto";
+import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
 
 export const cmsService = {
   getPage(key: string, symposiumId?: string) {
@@ -29,5 +38,22 @@ export const cmsService = {
   },
   upsertPage(dto: Record<string, unknown>) {
     return apiClient.post<ApiResponse<CmsPageDto>>("/cms/admin/pages", dto).then(unwrapApi);
+  },
+  listMediaAccreditations(params?: PaginationParams & { status?: MediaAccreditationStatus }) {
+    return apiClient
+      .get<ApiResponse<MediaAccreditationDto[]>>("/cms/admin/media-accreditations", {
+        params: toQueryParams(params),
+      })
+      .then(unwrapPaginated);
+  },
+  getMediaAccreditationStats() {
+    return apiClient
+      .get<ApiResponse<MediaAccreditationStatsDto>>("/cms/admin/media-accreditations/stats")
+      .then(unwrapApi);
+  },
+  updateMediaAccreditation(id: string, dto: UpdateMediaAccreditationDto) {
+    return apiClient
+      .patch<ApiResponse<MediaAccreditationDto>>(`/cms/admin/media-accreditations/${id}`, dto)
+      .then(unwrapApi);
   },
 };

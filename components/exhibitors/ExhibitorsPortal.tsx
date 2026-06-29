@@ -10,6 +10,7 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { getInvoicesForApplication } from "@/lib/sponsorship-invoices";
 import { SponsorshipRecordsList } from "@/components/admin/SponsorshipRecordsList";
 import type { ApprovedOrganization, OrganizationApplication } from "@/lib/store";
+import { AdminExhibitorsApiPanel } from "@/components/admin/AdminExhibitorsApiPanel";
 import { BoothMapManager } from "@/components/admin/BoothMapManager";
 import { SponsorshipTierEditor } from "@/components/admin/SponsorshipTierEditor";
 import { ListToolbar } from "@/components/exhibitors/ListToolbar";
@@ -196,8 +197,9 @@ export function ExhibitorsPortal({ basePath, activeTab, onTabChange, variant, ta
         </TabsList>
 
         <TabsContent value="exhibitors" className="mt-6">
+          {isAdmin && <AdminExhibitorsApiPanel />}
           <p className="text-sm text-muted-foreground mb-4">
-            Approved organizations with an exhibitor booth (exhibitor-only or exhibitor + sponsor packages).
+            Approved organizations with an exhibitor booth (local mock below).
           </p>
           <ListToolbar
             query={exhibitorList.query}

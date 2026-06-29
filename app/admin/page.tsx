@@ -7,17 +7,24 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Resp
 import { Button } from "@/components/ui/button";
 import { StatTile } from "@/components/layout/PortalShell";
 import { DAILY_REGS, CHECKINS } from "@/lib/mock-data";
-import { getFinanceSummary } from "@/lib/finance-records";
+import { useAdminRegistrations, useFinanceSummary, useAdminSubmissions } from "@/hooks/api/useAdmin";
+import { submissionReviewStatus } from "@/lib/api/mappers/desk";
 import { useStore } from "@/hooks/use-store";
 import { getEventConfig } from "@/lib/platform-settings";
 import { AnnouncementDialog } from "@/components/admin/AnnouncementDialog";
 import { ManualRegistrationDialog } from "@/components/admin/ManualRegistrationDialog";
+import { getFinanceSummary } from "@/lib/finance-records";
+import { toast } from "sonner";
+import { registrationCategoryLabel } from "@/lib/api/mappers/registration-helpers";
 import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
 
 
 const COLORS = ["hsl(var(--blue))", "hsl(var(--green))", "hsl(var(--gold))", "hsl(var(--navy))", "hsl(var(--blue-light))", "#e85d3a"];
 
 export default function AdminOverview() {
+  const { registrations } = useAdminRegistrations({ limit: 200 });
+  const financeApi = useFinanceSummary();
+  const { submissions } = useAdminSubmissions({ limit: 100 });
   const store = useStore();
   const event = getEventConfig();
   const [annOpen, setAnnOpen] = useState(false);
@@ -29,30 +36,24 @@ export default function AdminOverview() {
     "send-announcement": () => setAnnOpen(true),
   });
 
-  const regs = store.registrations ?? [];
-  const paid = regs.filter((r) => r.status === "paid" || r.status === "comp");
-  const pending = regs.filter((r) => r.status === "pending");
-  const revenue = paid.reduce((a, b) => a + b.amountUsd, 0);
-  const pendingValue = pending.reduce((a, b) => a + b.amountUsd, 0);
-  const pendingApps = store.speakerApplications.filter((a) => a.status === "pending").length;
-  const reviewAbs = store.speakerAbstracts.filter((a) => a.status === "under-review" || a.status === "submitted").length;
+  const regs = registrations;
+  const paid = regs.filter((r) => ["active", "paid", "confirmed"].includes(r.status));
+  const pending = regs.filter((r) => r.status === "pending_payment");
+  const revenue = financeApi.data?.totalRevenue ?? paid.reduce((a, b) => a + (b.amountUsd ?? 0), 0);
+  const pendingValue = pending.reduce((a, b) => a + (b.amountUsd ?? 0), 0);
+  const pendingApps = submissions.filter((s) => submissionReviewStatus(s.status) === "pending").length;
+  const reviewAbs = pendingApps;
 
   const finance = getFinanceSummary();
   const methodData = finance.methodData;
   const catData = store.ticketPlans.map((c) => ({
     name: c.name.split(" ")[0],
-    value: regs.filter((r) => r.category === c.name).length || 0,
+    value: regs.filter((r) => r.ticketCategoryId === c.id).length || 0,
   }));
   const funnelData = DAILY_REGS.map((d) => ({ day: d.day.split(" ")[1], visits: d.regs * 8, regs: d.regs }));
 
   const exportCsv = () => {
-    const header = "name,email,category,status,amount\n";
-    const rows = regs.map((r) => `${r.name},${r.email},${r.category},${r.status},${r.amountUsd}`).join("\n");
-    const blob = new Blob([header + rows], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "registrations.csv";
-    a.click();
+    toast.error("Use Registrations page export — GET /admin/registrations/export");
   };
 
   return (
@@ -157,8 +158,11 @@ export default function AdminOverview() {
           <div className="space-y-2">
             {regs.slice(0, 5).map((r) => (
               <div key={r.id} className="flex items-center justify-between text-sm">
-                <div className="min-w-0"><div className="font-medium truncate">{r.name}</div><div className="text-xs text-muted-foreground truncate">{r.country}</div></div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold capitalize ${r.status === "paid" ? "bg-green/15 text-green" : r.status === "comp" ? "bg-blue/15 text-blue" : "bg-amber-100 text-amber-800"}`}>{r.status}</span>
+                <div className="min-w-0">
+                  <div className="font-medium truncate font-mono text-xs">{r.id.slice(0, 8)}…</div>
+                  <div className="text-xs text-muted-foreground truncate">{registrationCategoryLabel(r)}</div>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold capitalize bg-secondary">{r.status.replace(/_/g, " ")}</span>
               </div>
             ))}
           </div>

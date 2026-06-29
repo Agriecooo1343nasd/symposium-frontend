@@ -1,4 +1,7 @@
+"use client";
+
 import { useState } from "react";
+import Link from "next/link";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,141 +13,114 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  patchStore,
-  appendAudit,
-  type DocumentVerification,
-} from "@/lib/store";
-import { getSession } from "@/lib/auth";
-import { toast } from "sonner";
 import { FileViewButton } from "@/components/file-viewer";
+import { toast } from "sonner";
+import {
+  usePendingVerifications,
+  useVerifyRegistration,
+} from "@/hooks/api/useDesk";
+import type { PendingVerificationDto } from "@/lib/api/dto";
 
 export function VerificationReviewList({
-  items,
   readOnly = false,
   highlightId,
 }: {
-  items: DocumentVerification[];
   readOnly?: boolean;
   highlightId?: string;
 }) {
+  const { items, isLoading, isError, error } = usePendingVerifications();
+  const verify = useVerifyRegistration();
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
-  const session = getSession();
 
-  const approve = (item: DocumentVerification) => {
-    patchStore((s) => ({
-      ...s,
-      documentVerifications: s.documentVerifications.map((d) =>
-        d.id === item.id ? { ...d, status: "approved" as const } : d,
-      ),
-      registrations: s.registrations.map((r) =>
-        r.id === item.registrationId
-          ? { ...r, verificationStatus: "approved" as const }
-          : r,
-      ),
-    }));
-    appendAudit(
-      session?.name ?? "Desk",
-      "Approved verification",
-      item.registrantEmail,
+  const approve = (item: PendingVerificationDto) => {
+    verify.mutate(
+      { id: item.id, dto: { action: "approve" } },
+      {
+        onSuccess: () => toast.success("Verification approved"),
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Approval failed"),
+      },
     );
-    toast.success("Verification approved");
   };
 
   const reject = () => {
     if (!rejectId || !message.trim()) return;
-    patchStore((s) => ({
-      ...s,
-      documentVerifications: s.documentVerifications.map((d) =>
-        d.id === rejectId
-          ? { ...d, status: "rejected" as const, reviewMessage: message }
-          : d,
-      ),
-      registrations: s.registrations.map((r) => {
-        const item = s.documentVerifications.find((d) => d.id === rejectId);
-        return item && r.id === item.registrationId
-          ? { ...r, verificationStatus: "rejected" as const }
-          : r;
-      }),
-    }));
-    appendAudit(session?.name ?? "Desk", "Rejected verification", rejectId);
-    toast.info("Verification rejected");
-    setRejectId(null);
-    setMessage("");
+    verify.mutate(
+      { id: rejectId, dto: { action: "reject", notes: message.trim() } },
+      {
+        onSuccess: () => {
+          toast.info("Verification rejected");
+          setRejectId(null);
+          setMessage("");
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Rejection failed"),
+      },
+    );
   };
+
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground">Loading verifications…</p>;
+  }
+
+  if (isError) {
+    return (
+      <p className="text-sm text-destructive">
+        {error instanceof Error ? error.message : "Could not load verifications"}
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-4">
       {items.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No verification requests.
-        </p>
+        <p className="text-sm text-muted-foreground">No verification requests.</p>
       )}
       {items.map((item) => (
         <div
           key={item.id}
           id={`verify-${item.id}`}
           className={`rounded-2xl bg-card border p-5 flex flex-wrap gap-4 ${
-            highlightId === item.id
-              ? "border-accent ring-2 ring-accent/30"
-              : "border-border"
+            highlightId === item.id ? "border-accent ring-2 ring-accent/30" : "border-border"
           }`}
         >
-          {item.fileDataUrl && item.fileDataUrl.startsWith("data:image") && (
-            <img
-              src={item.fileDataUrl}
-              alt=""
-              className="h-24 w-32 object-cover rounded-lg border"
-            />
-          )}
           <div className="flex-1 min-w-0">
-            <div className="font-serif font-bold">{item.registrantName}</div>
-            <div className="text-sm text-muted-foreground">
-              {item.registrantEmail} ·{" "}
-              {item.type === "student" ? "Student ID" : "Organization letter"}
+            <div className="font-serif font-bold">{item.userName ?? "Delegate"}</div>
+            <div className="text-sm text-muted-foreground">{item.userEmail ?? item.userId}</div>
+            <div className="text-xs mt-1 text-muted-foreground">
+              Registration · {item.status.replace(/_/g, " ")}
             </div>
-            <div className="text-xs mt-1 font-mono">{item.fileName}</div>
-            {item.fileDataUrl && (
+            {item.verificationDocUrl && (
               <FileViewButton
-                src={item.fileDataUrl}
-                fileName={item.fileName}
-                label="View file"
+                src={item.verificationDocUrl}
+                fileName="verification-document"
+                label="View verification document"
                 className="mt-2"
                 variant="outline"
               />
             )}
-            <span
-              className={`inline-block mt-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
-                item.status === "approved"
-                  ? "bg-green/15 text-green"
-                  : item.status === "rejected"
-                    ? "bg-red-100 text-red-700"
-                    : "bg-amber-100 text-amber-800"
-              }`}
-            >
-              {item.status}
+            <span className="inline-block mt-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+              pending
             </span>
-            {item.reviewMessage && (
-              <p className="text-xs mt-2 text-muted-foreground">
-                {item.reviewMessage}
-              </p>
-            )}
+            <div className="mt-2">
+              <Link
+                href={`/desk/registrations/${item.id}`}
+                className="text-xs text-accent hover:underline"
+              >
+                View registration
+              </Link>
+            </div>
           </div>
-          {item.status === "pending" && !readOnly && (
+          {!readOnly && (
             <div className="flex gap-2 items-start">
               <Button
                 size="sm"
                 className="gradient-blue text-accent-foreground"
+                disabled={verify.isPending}
                 onClick={() => approve(item)}
               >
                 <Check className="h-3.5 w-3.5 mr-1" /> Approve
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setRejectId(item.id)}
-              >
+              <Button size="sm" variant="outline" onClick={() => setRejectId(item.id)}>
                 <X className="h-3.5 w-3.5 mr-1" /> Reject
               </Button>
             </div>
@@ -167,7 +143,7 @@ export function VerificationReviewList({
             />
           </div>
           <DialogFooter>
-            <Button onClick={reject} disabled={!message.trim()}>
+            <Button onClick={reject} disabled={!message.trim() || verify.isPending}>
               Confirm
             </Button>
           </DialogFooter>

@@ -4,40 +4,43 @@ import Link from "next/link";
 import { useParams, notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useStore } from "@/hooks/use-store";
-import { SpeakerAppReviewList } from "@/components/desk/SpeakerAppReview";
+import { DeskSubmissionReviewList } from "@/components/desk/DeskSubmissionReview";
 import { FileViewLink } from "@/components/file-viewer";
+import { useSubmissionDetail, useSubmissionReviews } from "@/hooks/api/useAdmin";
+import { submissionPrimaryAuthor, submissionReviewStatus } from "@/lib/api/mappers/desk";
 
 export default function Page() {
   const params = useParams();
   const applicationId = typeof params.applicationId === "string" ? params.applicationId : "";
-  const store = useStore();
-  const app = store.speakerApplications.find((a) => a.id === applicationId);
-  if (!app) notFound();
+  const { data: app, isLoading, isError } = useSubmissionDetail(applicationId);
+  const reviews = useSubmissionReviews(applicationId);
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading submission…</p>;
+  if (isError || !app) notFound();
+
+  const uiStatus = submissionReviewStatus(app.status);
 
   return (
     <div className="space-y-6">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/admin/abstracts">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to applications
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to submissions
         </Link>
       </Button>
 
       <div>
-        <h1 className="font-serif text-3xl font-bold">{app.name}</h1>
-        <p className="text-muted-foreground">Full speaker application as submitted from the attendee dashboard.</p>
+        <h1 className="font-serif text-3xl font-bold">{app.title}</h1>
+        <p className="text-muted-foreground">
+          {submissionPrimaryAuthor(app)} · {app.presentationType} · {app.status.replace(/_/g, " ")}
+        </p>
       </div>
 
       <div className="rounded-md bg-card border border-border p-6 space-y-4 text-sm">
         <dl className="grid sm:grid-cols-2 gap-4">
           {[
-            ["Status", app.status],
-            ["Email", app.email],
-            ["Phone", app.phone],
-            ["Country", app.country],
-            ["Presentation type", app.presentationType],
-            ["Submitted", app.submittedAt],
-            ["Review message", app.reviewMessage],
+            ["Sub-theme", app.subTheme],
+            ["Submitted", new Date(app.createdAt).toLocaleString()],
+            ["Deadline override", app.deadlineOverride ? "Yes" : "No"],
           ].map(([k, v]) => (
             <div key={k}>
               <dt className="text-xs text-muted-foreground uppercase">{k}</dt>
@@ -46,38 +49,43 @@ export default function Page() {
           ))}
         </dl>
         <div>
-          <dt className="text-xs text-muted-foreground uppercase">About the speaker</dt>
-          <dd className="mt-1 leading-relaxed">{app.about}</dd>
+          <dt className="text-xs text-muted-foreground uppercase">Abstract</dt>
+          <dd className="mt-1 leading-relaxed whitespace-pre-wrap">{app.abstract}</dd>
         </div>
-        <div>
-          <dt className="text-xs text-muted-foreground uppercase">Presentation title</dt>
-          <dd className="mt-1 font-serif font-bold text-lg">{app.title}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground uppercase">Abstract summary</dt>
-          <dd className="mt-1 leading-relaxed">{app.summary}</dd>
-        </div>
-        {app.photoUrl && (
+        {app.authors.length > 0 && (
           <div>
-            <dt className="text-xs text-muted-foreground uppercase mb-2">Profile photo</dt>
-            <img src={app.photoUrl} alt="" className="h-24 w-24 rounded-full object-cover border border-border" />
+            <dt className="text-xs text-muted-foreground uppercase mb-2">Authors</dt>
+            <ul className="space-y-1">
+              {app.authors.map((a) => (
+                <li key={a.id}>
+                  {a.name}
+                  {a.affiliation ? ` · ${a.affiliation}` : ""}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
-        {app.documentDataUrl && (
+        {app.fileUrl && (
           <div>
-            <dt className="text-xs text-muted-foreground uppercase mb-2">Abstract document ({app.documentName})</dt>
-            <FileViewLink src={app.documentDataUrl} fileName={app.documentName ?? "abstract.pdf"} />
-          </div>
-        )}
-        {app.documentName && !app.documentDataUrl && (
-          <div>
-            <dt className="text-xs text-muted-foreground uppercase">Document</dt>
-            <dd className="mt-1 font-mono">{app.documentName}</dd>
+            <dt className="text-xs text-muted-foreground uppercase mb-2">Document</dt>
+            <FileViewLink src={app.fileUrl} fileName="abstract.pdf" />
           </div>
         )}
       </div>
 
-      {app.status === "pending" && <SpeakerAppReviewList apps={[app]} />}
+      {(reviews.data?.length ?? 0) > 0 && (
+        <div className="rounded-md border p-5 space-y-3">
+          <h2 className="font-serif font-bold">Peer reviews</h2>
+          {reviews.data?.map((r) => (
+            <div key={r.id} className="text-sm border-b pb-2 last:border-0">
+              <div className="font-medium">{r.recommendation ?? "Review"}</div>
+              {r.comments && <p className="text-muted-foreground mt-1">{r.comments}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {uiStatus === "pending" && <DeskSubmissionReviewList submissions={[app]} />}
     </div>
   );
 }
