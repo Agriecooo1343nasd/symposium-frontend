@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Mic, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,40 +12,59 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useStore } from "@/hooks/use-store";
 import { useAuth } from "@/hooks/use-auth";
+import { useSymposium } from "@/hooks/api/useSymposium";
+import { useMyRegistrations } from "@/hooks/api/useRegistration";
+import { useCreateSubmission, useMySubmissions } from "@/hooks/api/useDashboard";
+import { isRegistrationPaid, primaryRegistration } from "@/lib/api/mappers/registration-helpers";
+import { filesService } from "@/lib/api/services";
+import { apiErrorMessage } from "@/lib/api/client";
+import type { PresentationType } from "@/lib/api/dto";
 import {
   patchStore,
   uid,
   calculateOrgPackageFee,
-  type PresentationType,
   type OrgType,
   type ParticipationType,
   type SponsorshipTier,
 } from "@/lib/store";
 import { ExhibitorPackageEstimator } from "@/components/apply/ExhibitorPackageEstimator";
+import { SUB_THEMES } from "@/lib/mock-data";
 import { toast } from "sonner";
+
+const UI_TO_API_TYPE: Record<string, PresentationType> = {
+  Oral: "oral",
+  Keynote: "oral",
+  Panel: "oral",
+  Workshop: "workshop",
+  Poster: "poster",
+};
+
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
 
 export default function DashboardApplyPage() {
   const router = useRouter();
   const store = useStore();
   const { session } = useAuth();
+  const { symposiumId } = useSymposium();
+  const { registrations } = useMyRegistrations();
+  const { data: mySubmissions = [] } = useMySubmissions();
+  const createSubmission = useCreateSubmission();
   const [kind, setKind] = useState<"speaker" | "exhibitor">("speaker");
 
-  const paidReg = store.registrations.find((r) => r.email === session?.email && r.status === "paid");
-  const canApplySpeaker = !!paidReg;
+  const reg = primaryRegistration(registrations);
+  const canApplySpeaker = isRegistrationPaid(reg);
 
   const [speaker, setSpeaker] = useState({
-    name: session?.name ?? "",
-    email: session?.email ?? "",
-    phone: "",
-    country: "Rwanda",
-    about: "",
     title: "",
-    summary: "",
-    presentationType: "Panel" as PresentationType,
-    photoUrl: "",
-    documentName: "",
-    documentDataUrl: "",
+    abstract: "",
+    subTheme: "",
+    presentationType: "Oral",
+    affiliation: "",
+    fileUrl: "",
   });
+  const [submitting, setSubmitting] = useState(false);
 
   const [org, setOrg] = useState({
     companyName: "",
@@ -62,29 +82,48 @@ export default function DashboardApplyPage() {
   const [staffCount, setStaffCount] = useState(2);
   const availableBooths = store.booths.filter((b) => b.status === "available");
 
-  const readFile = (file: File, cb: (name: string, dataUrl: string) => void) => {
-    const reader = new FileReader();
-    reader.onload = () => cb(file.name, reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const submitSpeaker = (e: React.FormEvent) => {
+  const submitSpeaker = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canApplySpeaker) return toast.error("Paid registration required to apply as speaker.");
-    patchStore((s) => ({
-      ...s,
-      speakerApplications: [
-        {
-          id: uid("sa"),
-          ...speaker,
-          status: "pending",
-          submittedAt: new Date().toISOString().slice(0, 10),
-        },
-        ...s.speakerApplications,
-      ],
-    }));
-    toast.success("Speaker application submitted for review");
-    router.push("/dashboard");
+    if (!symposiumId) return toast.error("Symposium not loaded — please retry.");
+    if (countWords(speaker.abstract) > 300) return toast.error("Abstract must be 300 words or fewer.");
+    if (!session?.name) return toast.error("Profile name missing.");
+
+    try {
+      setSubmitting(true);
+      await createSubmission.mutateAsync({
+        symposiumId,
+        title: speaker.title.trim(),
+        abstract: speaker.abstract.trim(),
+        subTheme: speaker.subTheme || undefined,
+        presentationType: UI_TO_API_TYPE[speaker.presentationType] ?? "oral",
+        authors: [
+          {
+            name: session.name,
+            affiliation: speaker.affiliation || undefined,
+            isPrimary: true,
+          },
+        ],
+        fileUrl: speaker.fileUrl || undefined,
+      });
+      toast.success("Speaker application submitted for review");
+      router.push("/dashboard");
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAbstractFile = async (file: File | null) => {
+    if (!file) return;
+    try {
+      const res = await filesService.upload(file, "abstract");
+      setSpeaker((s) => ({ ...s, fileUrl: res.url }));
+      toast.success("Abstract uploaded");
+    } catch (e) {
+      toast.error(apiErrorMessage(e));
+    }
   };
 
   const submitOrg = (e: React.FormEvent) => {
@@ -105,7 +144,7 @@ export default function DashboardApplyPage() {
         ...s.organizationApplications,
       ],
     }));
-    toast.success("Organization application submitted");
+    toast.success("Organization application saved locally — exhibitor API pending");
     router.push("/dashboard");
   };
 
@@ -113,16 +152,29 @@ export default function DashboardApplyPage() {
     <div>
       <h1 className="font-serif text-3xl font-bold mb-2">Apply to speak or exhibit</h1>
       <p className="text-muted-foreground mb-6">
-        Speaker applications are reviewed by the registration desk. Exhibitor and sponsor applications go to the admin
-        team.
+        Speaker applications are submitted to the programme committee. Exhibitor applications use local storage until the
+        exhibitor API is available.
       </p>
 
       {!canApplySpeaker && kind === "speaker" && (
         <div className="rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm px-4 py-3 mb-6">
           You need a paid registration before applying to speak.{" "}
-          <a href="/register" className="font-semibold underline">
+          <Link href="/register" className="font-semibold underline">
             Register now
-          </a>
+          </Link>
+        </div>
+      )}
+
+      {mySubmissions.length > 0 && kind === "speaker" && (
+        <div className="rounded-xl border bg-secondary/40 p-4 mb-6 text-sm">
+          <div className="font-semibold mb-2">Your submissions</div>
+          <ul className="space-y-1 text-muted-foreground">
+            {mySubmissions.map((sub) => (
+              <li key={sub.id}>
+                {sub.title} — <span className="capitalize">{sub.status.replace(/_/g, " ")}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -138,72 +190,6 @@ export default function DashboardApplyPage() {
 
         <TabsContent value="speaker">
           <form onSubmit={submitSpeaker} className="rounded-2xl bg-card border border-border p-6 space-y-4">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Full name *</Label>
-                <Input
-                  required
-                  placeholder="e.g. Jean Uwimana"
-                  value={speaker.name}
-                  onChange={(e) => setSpeaker({ ...speaker, name: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Email *</Label>
-                <Input
-                  required
-                  type="email"
-                  placeholder="name@organization.org"
-                  value={speaker.email}
-                  onChange={(e) => setSpeaker({ ...speaker, email: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Phone *</Label>
-                <Input
-                  required
-                  placeholder="+250 788 000 000"
-                  value={speaker.phone}
-                  onChange={(e) => setSpeaker({ ...speaker, phone: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Country *</Label>
-                <Input
-                  required
-                  placeholder="Rwanda"
-                  value={speaker.country}
-                  onChange={(e) => setSpeaker({ ...speaker, country: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Profile photo</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                className="mt-1"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) readFile(f, (_name, dataUrl) => setSpeaker({ ...speaker, photoUrl: dataUrl }));
-                }}
-              />
-            </div>
-            <div>
-              <Label>About you *</Label>
-              <Textarea
-                required
-                rows={3}
-                placeholder="Brief professional background for the programme committee..."
-                value={speaker.about}
-                onChange={(e) => setSpeaker({ ...speaker, about: e.target.value })}
-                className="mt-1"
-              />
-            </div>
             <div>
               <Label>Presentation title *</Label>
               <Input
@@ -215,54 +201,77 @@ export default function DashboardApplyPage() {
               />
             </div>
             <div>
-              <Label>Summary *</Label>
+              <Label>Abstract * (max 300 words)</Label>
               <Textarea
                 required
-                rows={4}
-                placeholder="Abstract summary (max 300 words in production)..."
-                value={speaker.summary}
-                onChange={(e) => setSpeaker({ ...speaker, summary: e.target.value })}
+                rows={6}
+                placeholder="Abstract summary…"
+                value={speaker.abstract}
+                onChange={(e) => setSpeaker({ ...speaker, abstract: e.target.value })}
                 className="mt-1"
               />
+              <p className="text-xs text-muted-foreground mt-1">{countWords(speaker.abstract)} / 300 words</p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <Label>Presentation type *</Label>
+                <Select
+                  value={speaker.presentationType}
+                  onValueChange={(v) => setSpeaker({ ...speaker, presentationType: v })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["Oral", "Workshop", "Poster"].map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Sub-theme</Label>
+                <Select value={speaker.subTheme || "_none"} onValueChange={(v) => setSpeaker({ ...speaker, subTheme: v === "_none" ? "" : v })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Optional" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">None</SelectItem>
+                    {SUB_THEMES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
-              <Label>Presentation type *</Label>
-              <Select
-                value={speaker.presentationType}
-                onValueChange={(v) => setSpeaker({ ...speaker, presentationType: v as PresentationType })}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(["Keynote", "Panel", "Workshop", "Poster"] as const).map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Abstract document (PDF) *</Label>
+              <Label>Affiliation</Label>
               <Input
-                type="file"
-                accept=".pdf,image/*"
-                required
+                placeholder="Organization or institution"
+                value={speaker.affiliation}
+                onChange={(e) => setSpeaker({ ...speaker, affiliation: e.target.value })}
                 className="mt-1"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) readFile(f, (name, dataUrl) => setSpeaker({ ...speaker, documentName: name, documentDataUrl: dataUrl }));
-                }}
               />
             </div>
-            <Button type="submit" disabled={!canApplySpeaker} className="gradient-blue text-accent-foreground">
-              Submit application
+            <div>
+              <Label>Abstract document (PDF, optional)</Label>
+              <Input type="file" accept=".pdf" className="mt-1" onChange={(e) => handleAbstractFile(e.target.files?.[0] ?? null)} />
+            </div>
+            <Button type="submit" disabled={!canApplySpeaker || submitting} className="gradient-blue text-accent-foreground">
+              {submitting ? "Submitting…" : "Submit application"}
             </Button>
           </form>
         </TabsContent>
 
         <TabsContent value="exhibitor">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-sm px-4 py-3 mb-4">
+            Exhibitor/sponsor applications are not yet available via the API — this form saves locally for demo until the
+            backend endpoint is ready.
+          </div>
           <form onSubmit={submitOrg} className="rounded-2xl bg-card border border-border p-6 space-y-4">
             <ExhibitorPackageEstimator
               store={store}
@@ -299,13 +308,6 @@ export default function DashboardApplyPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="mt-2 rounded-lg bg-secondary/60 p-3 text-xs">
-                  {store.sponsorshipTiers
-                    .find((t) => t.tier === org.sponsorshipTier)
-                    ?.benefits.map((b) => (
-                      <div key={b}>- {b}</div>
-                    ))}
-                </div>
               </div>
             )}
             <div className="grid sm:grid-cols-2 gap-4">
@@ -313,7 +315,6 @@ export default function DashboardApplyPage() {
                 <Label>Company name *</Label>
                 <Input
                   required
-                  placeholder="Organization legal name"
                   value={org.companyName}
                   onChange={(e) => setOrg({ ...org, companyName: e.target.value })}
                   className="mt-1"
@@ -336,12 +337,7 @@ export default function DashboardApplyPage() {
               </div>
               <div>
                 <Label>Website</Label>
-                <Input
-                  placeholder="https://www.example.org"
-                  value={org.website}
-                  onChange={(e) => setOrg({ ...org, website: e.target.value })}
-                  className="mt-1"
-                />
+                <Input value={org.website} onChange={(e) => setOrg({ ...org, website: e.target.value })} className="mt-1" />
               </div>
             </div>
             <div>
@@ -349,7 +345,6 @@ export default function DashboardApplyPage() {
               <Textarea
                 required
                 rows={4}
-                placeholder="What products or services will you showcase at NAS 2026?"
                 value={org.description}
                 onChange={(e) => setOrg({ ...org, description: e.target.value })}
                 className="mt-1"
@@ -360,7 +355,6 @@ export default function DashboardApplyPage() {
                 <Label>Contact name *</Label>
                 <Input
                   required
-                  placeholder="Primary contact name"
                   value={org.contactName}
                   onChange={(e) => setOrg({ ...org, contactName: e.target.value })}
                   className="mt-1"
@@ -371,18 +365,8 @@ export default function DashboardApplyPage() {
                 <Input
                   required
                   type="email"
-                  placeholder="contact@company.com"
                   value={org.contactEmail}
                   onChange={(e) => setOrg({ ...org, contactEmail: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <Label>Contact phone</Label>
-                <Input
-                  placeholder="+250 788 000 000"
-                  value={org.contactPhone}
-                  onChange={(e) => setOrg({ ...org, contactPhone: e.target.value })}
                   className="mt-1"
                 />
               </div>
@@ -407,20 +391,14 @@ export default function DashboardApplyPage() {
                   <SelectItem value="_none">No preference</SelectItem>
                   {availableBooths.map((b) => (
                     <SelectItem key={b.id} value={b.id}>
-                      {b.code} - capacity {b.capacity}
+                      {b.code} — capacity {b.capacity}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                value={org.boothPreference}
-                onChange={(e) => setOrg({ ...org, boothPreference: e.target.value })}
-                className="mt-2"
-                placeholder="Notes: near entrance, digital zone..."
-              />
             </div>
             <Button type="submit" className="gradient-blue text-accent-foreground">
-              Submit application
+              Save application (local)
             </Button>
           </form>
         </TabsContent>

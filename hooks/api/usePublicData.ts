@@ -123,9 +123,7 @@ export function usePublicFaqs() {
 }
 
 export function useSubmitContact() {
-  const { symposiumId } = useSymposium();
   return useMutation({
-    mutationFn: (dto: Omit<CreateContactMessageDto, "symposiumId">) =>
-      cmsService.submitContact({ ...dto, symposiumId: symposiumId ?? undefined }),
+    mutationFn: (dto: CreateContactMessageDto) => cmsService.submitContact(dto),
   });
 }

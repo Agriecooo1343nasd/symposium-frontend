@@ -75,4 +75,20 @@ export const queryKeys = {
   auth: {
     session: ["auth", "session"] as const,
   },
+  notifications: {
+    mine: (params?: Record<string, unknown>) => ["notifications", "me", params] as const,
+  },
+  schedules: {
+    mine: (params?: Record<string, unknown>) => ["schedules", "me", params] as const,
+  },
+  refunds: {
+    mine: ["refund-requests", "me"] as const,
+  },
+  submissions: {
+    mine: ["submissions", "me"] as const,
+    detail: (id: string) => ["submissions", id] as const,
+  },
+  certificates: {
+    mine: ["certificates", "me"] as const,
+  },
 } as const;

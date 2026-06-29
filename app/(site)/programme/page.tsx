@@ -5,6 +5,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SessionCard } from "@/components/SessionCard";
 import { SUB_THEMES, type Session } from "@/lib/mock-data";
 import { usePublicSessions } from "@/hooks/api/usePublicData";
+import { useAddToSchedule, useMySchedule } from "@/hooks/api/useDashboard";
+import { useAuth } from "@/hooks/use-auth";
+import { apiErrorMessage } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -12,6 +15,9 @@ const TYPES: Session["type"][] = ["Keynote", "Plenary", "Panel", "Workshop", "Fi
 
 export default function Programme() {
   const { sessions: allSessions, raw, isLoading } = usePublicSessions();
+  const { isAuthenticated } = useAuth();
+  const { sessionIds } = useMySchedule();
+  const addToSchedule = useAddToSchedule();
   const [theme, setTheme] = useState<string>("All");
   const [type, setType] = useState<string>("All");
 
@@ -23,6 +29,23 @@ export default function Programme() {
 
   const resolveSpeakers = (s: Session) =>
     s.speakers.map((id) => speakerLookup.get(id)).filter(Boolean) as { id: string; name: string; photo: string }[];
+
+  const handleSave = async (sessionId: string, title: string) => {
+    if (!isAuthenticated) {
+      toast.error("Sign in to save sessions to your agenda");
+      return;
+    }
+    if (sessionIds.has(sessionId)) {
+      toast.info("Already in your schedule", { description: title });
+      return;
+    }
+    try {
+      await addToSchedule.mutateAsync(sessionId);
+      toast.success("Added to your schedule", { description: title });
+    } catch (e) {
+      toast.error(apiErrorMessage(e));
+    }
+  };
 
   const filtered = useMemo(
     () =>
@@ -96,7 +119,9 @@ export default function Programme() {
                       key={s.id}
                       session={s}
                       speakers={resolveSpeakers(s)}
-                      onSave={() => toast.success("Added to your schedule", { description: s.title })}
+                      saved={sessionIds.has(s.id)}
+                      unsaveLabel="Saved"
+                      onSave={() => handleSave(s.id, s.title)}
                     />
                   ))}
                 {filtered.filter((s) => s.day === d).length === 0 && (

@@ -1,6 +1,7 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type {
+  CreateGroupRegistrationDto,
   CreateRegistrationDto,
   RegistrationDto,
   RegistrationStatus,
@@ -17,7 +18,7 @@ export const registrationsService = {
       .patch<ApiResponse<RegistrationDto>>(`/registrations/${id}/category`, dto)
       .then(unwrapApi);
   },
-  createGroup(dto: Record<string, unknown>) {
+  createGroup(dto: CreateGroupRegistrationDto) {
     return apiClient.post<ApiResponse<RegistrationDto[]>>("/registrations/group", dto).then(unwrapApi);
   },
   joinWaitlist(id: string) {

@@ -17,13 +17,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getCountries } from "@/lib/platform-settings";
-import {
-  submitMediaRegistration,
-  MEDIA_PRESS_TYPE_LABELS,
-  type SubmitMediaRegistrationInput,
-} from "@/lib/media-registration";
+import { MEDIA_PRESS_TYPE_LABELS } from "@/lib/media-registration";
 import type { MediaPressType } from "@/lib/store";
-import { signIn } from "@/lib/auth";
+import { cmsService } from "@/lib/api/services";
+import { apiErrorMessage } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -33,9 +30,7 @@ export function MediaRegistrationFlow() {
   const router = useRouter();
   const countries = getCountries();
   const [step, setStep] = useState(0);
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [verifyCode, setVerifyCode] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -67,28 +62,30 @@ export function MediaRegistrationFlow() {
   const next = () => setStep((s) => Math.min(steps.length - 1, s + 1));
   const back = () => setStep((s) => Math.max(0, s - 1));
 
-  const canStep0 = form.fullName && form.email && emailVerified && form.phone && form.country;
+  const canStep0 = form.fullName && form.email && form.phone && form.country;
   const canStep1 = form.jobTitle && form.pressName && form.pressCountry && form.coverageBrief;
   const canStep2 = !!credential && !!letter;
 
-  const submit = () => {
-    const payload: SubmitMediaRegistrationInput = {
-      ...form,
-      credentialFileName: credential!.name,
-      credentialDataUrl: credential!.dataUrl,
-      letterFileName: letter!.name,
-      letterDataUrl: letter!.dataUrl,
-      assignmentFileName: assignment?.name,
-      assignmentDataUrl: assignment?.dataUrl,
-    };
-    const result = submitMediaRegistration(payload);
-    if (!result.ok) return toast.error(result.error);
-    signIn("attendee", {
-      name: form.fullName,
-      email: form.email.trim(),
-      category: "Media / Press (pending review)",
-    });
-    setStep(3);
+  const submit = async () => {
+    try {
+      setSubmitting(true);
+      await cmsService.submitMediaAccreditation({
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        phone: form.phone || undefined,
+        outletName: form.pressName.trim(),
+        outletType: MEDIA_PRESS_TYPE_LABELS[form.pressType] ?? form.pressType,
+        jobTitle: form.jobTitle || undefined,
+        country: form.country || undefined,
+        coverageType: form.coverageBrief || undefined,
+        equipmentNeeds: form.socialHandle || undefined,
+      });
+      setStep(3);
+    } catch (e) {
+      toast.error(apiErrorMessage(e));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -155,47 +152,13 @@ export function MediaRegistrationFlow() {
             </div>
             <div className="sm:col-span-2">
               <Label>Email *</Label>
-              <div className="flex gap-2 mt-1">
-                <Input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => {
-                    setForm({ ...form, email: e.target.value });
-                    setEmailVerified(false);
-                  }}
-                  disabled={emailVerified}
-                  className="flex-1"
-                />
-                {emailVerified ? (
-                  <span className="text-xs text-green font-semibold flex items-center gap-1 px-3 border border-green/20 rounded-lg bg-green/10">
-                    <Check className="h-3.5 w-3.5" /> Verified
-                  </span>
-                ) : (
-                  form.email && (
-                    <Button type="button" size="sm" onClick={() => { setVerifying(true); toast.success("Code 1234 sent (demo)"); }}>
-                      Verify
-                    </Button>
-                  )
-                )}
-              </div>
-              {verifying && !emailVerified && (
-                <div className="mt-2 flex gap-2 max-w-xs">
-                  <Input value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)} placeholder="1234" className="w-24" />
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      if (verifyCode === "1234") {
-                        setEmailVerified(true);
-                        setVerifying(false);
-                        toast.success("Email verified");
-                      } else toast.error("Invalid code");
-                    }}
-                  >
-                    Confirm
-                  </Button>
-                </div>
-              )}
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="mt-1"
+                placeholder="you@outlet.com"
+              />
             </div>
             <div className="sm:col-span-2">
               <Label>Mobile phone *</Label>
@@ -360,9 +323,9 @@ export function MediaRegistrationFlow() {
               type="button"
               className="gradient-blue text-accent-foreground"
               onClick={submit}
-              disabled={!canStep2 || !form.consentPolicy}
+              disabled={!canStep2 || !form.consentPolicy || submitting}
             >
-              Submit application
+              {submitting ? "Submitting…" : "Submit application"}
             </Button>
           )}
         </div>

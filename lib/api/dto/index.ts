@@ -190,13 +190,21 @@ export type CreateTicketCategoryDto = {
 
 export type UpdateTicketCategoryDto = Partial<Omit<CreateTicketCategoryDto, "symposiumId">>;
 
+export type Currency = "USD" | "RWF";
+
 export type RegistrationStatus =
   | "draft"
+  | "pending"
   | "pending_payment"
+  | "confirmed"
+  | "paid"
   | "pending_verification"
   | "active"
+  | "rejected"
   | "cancelled"
   | "expired"
+  | "refund_requested"
+  | "refunded"
   | "waitlisted";
 
 export type TicketCategorySummaryDto = {
@@ -236,40 +244,91 @@ export type RegistrationDto = {
   updatedAt: string;
 };
 
+export type AttendanceType = "in_person" | "virtual" | "hybrid";
+
 export type CreateRegistrationDto = {
   symposiumId: string;
-  attendanceType?: string;
+  attendanceType?: AttendanceType;
   referralSource?: string;
+  consents?: Record<string, boolean>;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  organization?: string;
+  country?: string;
+  title?: string;
+};
+
+export type UpdateRegistrationCategoryDto = {
+  ticketCategoryId: string;
+  currency: Currency;
+  verificationDocUrl?: string;
+};
+
+export type GroupRegistrationMemberDto = {
+  userId?: string;
+  email?: string;
+  ticketCategoryId: string;
+  attendanceType?: AttendanceType;
   consents?: Record<string, boolean>;
 };
 
-export type UpdateRegistrationCategoryDto = { ticketCategoryId: string };
+export type CreateGroupRegistrationDto = {
+  symposiumId: string;
+  organizationName: string;
+  currency: Currency;
+  members: GroupRegistrationMemberDto[];
+};
+
+export type PaymentProvider = "mtn" | "airtel";
 
 export type InitiatePaymentDto = {
   registrationId: string;
-  phoneNumber: string;
-  method?: string;
+  provider: PaymentProvider;
+  phone: string;
+  description?: string;
 };
 
-export type BankTransferProformaDto = { registrationId: string };
+export type BankTransferProformaDto = { registrationId: string; notes?: string };
 
 export type PaymentTransactionDto = {
   id: string;
   registrationId: string;
-  amountUsd: number;
-  amountRwf: number;
-  currency: string;
+  amount: number;
+  currency: Currency;
   method: string;
   provider: string;
   status: string;
-  reference?: string | null;
+  externalTransId?: string | null;
+  phone?: string | null;
+  idempotencyKey: string;
   createdAt: string;
   updatedAt: string;
 };
 
-export type PaymentInitiateResponseDto = {
-  transaction: PaymentTransactionDto;
-  providerResponse?: Record<string, unknown>;
+export type PaymentInitiateResponseDto = PaymentTransactionDto & {
+  registrationCompleted: boolean;
+  registrationStatus?: RegistrationStatus;
+  message?: string;
+};
+
+export type UploadFileType =
+  | "avatar"
+  | "abstract"
+  | "paper"
+  | "sponsor_logo"
+  | "verification_doc"
+  | "certificate_template"
+  | "symposium_asset"
+  | "announcement_image"
+  | "exhibitor_material";
+
+export type UploadFileResponseDto = {
+  url: string;
+  publicId: string;
+  type: UploadFileType;
+  mimeType: string;
+  bytes: number;
 };
 
 export type AnnouncementDto = {
@@ -308,7 +367,6 @@ export type CreateContactMessageDto = {
   email: string;
   subject: string;
   message: string;
-  symposiumId?: string;
 };
 
 export type SponsorDto = {
@@ -369,4 +427,94 @@ export type AttendanceCheckInDto = {
   registrationId: string;
   method: string;
   checkedInAt: string;
+};
+
+export type NotificationDto = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown> | null;
+  readAt?: string | null;
+  createdAt: string;
+};
+
+export type UserScheduleEntryDto = {
+  id: string;
+  sessionId: string;
+  createdAt: string;
+  session: SessionDto;
+};
+
+export type RefundType = "full" | "partial";
+export type RefundStatus =
+  | "pending"
+  | "requested"
+  | "secretariat_review"
+  | "approved"
+  | "rejected"
+  | "processed"
+  | "completed";
+
+export type CreateRefundRequestDto = {
+  registrationId: string;
+  type: RefundType;
+  reason: string;
+};
+
+export type RefundRequestDto = {
+  id: string;
+  registrationId: string;
+  userId: string;
+  type: RefundType;
+  reason: string;
+  status: RefundStatus;
+  adminNotes?: string | null;
+  processedById?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PresentationType = "oral" | "poster" | "workshop";
+
+export type SubmissionAuthorDto = {
+  name: string;
+  affiliation?: string;
+  isPrimary?: boolean;
+};
+
+export type CreateSubmissionDto = {
+  symposiumId: string;
+  title: string;
+  abstract: string;
+  subTheme?: string;
+  presentationType: PresentationType;
+  authors: SubmissionAuthorDto[];
+  fileUrl?: string;
+};
+
+export type SubmissionDto = {
+  id: string;
+  symposiumId: string;
+  userId: string;
+  title: string;
+  abstract: string;
+  subTheme?: string | null;
+  presentationType: PresentationType;
+  fileUrl?: string | null;
+  status: string;
+  deadlineOverride?: boolean;
+  authors: Array<{ id: string; name: string; affiliation?: string | null; isPrimary: boolean }>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CertificateDto = {
+  id: string;
+  registrationId: string;
+  fileUrl: string;
+  issuedAt: string;
+  issuedById?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
