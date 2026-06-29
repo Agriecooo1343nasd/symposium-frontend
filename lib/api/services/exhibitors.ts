@@ -7,6 +7,7 @@ import type {
   ExhibitorAdminDto,
   ExhibitorLeadDto,
   ExhibitorMaterialDto,
+  ExhibitorPackageDto,
   ExhibitorProfileDto,
   ExhibitorStaffPassDto,
   ScanExhibitorLeadDto,
@@ -69,5 +70,13 @@ export const exhibitorsService = {
   },
   removeAdmin(id: string) {
     return apiClient.delete(`/exhibitors/admin/${id}`);
+  },
+  listPackages(symposiumId: string) {
+    return apiClient
+      .get<ApiResponse<ExhibitorPackageDto[]>>("/exhibitors/packages", { params: { symposiumId } })
+      .then(unwrapApi);
+  },
+  getPackage(id: string) {
+    return apiClient.get<ApiResponse<ExhibitorPackageDto>>(`/exhibitors/packages/${id}`).then(unwrapApi);
   },
 };

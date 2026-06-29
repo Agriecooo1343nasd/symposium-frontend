@@ -1,6 +1,7 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type {
+  AdminDeadlineOverrideDto,
   AdminListSubmissionsParams,
   CreateSubmissionDto,
   SubmissionDecisionDto,
@@ -26,6 +27,11 @@ export const submissionsService = {
   recordDecision(id: string, dto: SubmissionDecisionDto) {
     return apiClient
       .post<ApiResponse<{ message: string }>>(`/submissions/${id}/decision`, dto)
+      .then(unwrapApi);
+  },
+  setDeadlineOverride(id: string, dto: AdminDeadlineOverrideDto) {
+    return apiClient
+      .patch<ApiResponse<SubmissionDto>>(`/submissions/${id}/deadline-override`, dto)
       .then(unwrapApi);
   },
 };
