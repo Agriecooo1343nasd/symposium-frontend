@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "./auth";
+import { getAccessToken } from "./api/client";
 import { canAccessPortal } from "./permissions";
 import type { Role } from "./mock-data";
 
@@ -7,7 +8,7 @@ export function requirePortalAccess(portalPrefix: string) {
   return () => {
     if (typeof window === "undefined") return;
     const session = getSession();
-    if (!session || !canAccessPortal(portalPrefix, session.role)) {
+    if (!getAccessToken() || !session || !canAccessPortal(portalPrefix, session.role)) {
       redirect("/login");
     }
   };

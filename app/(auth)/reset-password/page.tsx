@@ -2,12 +2,14 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Leaf, Lock, CheckCircle2 } from "lucide-react";
+import { Leaf, Lock, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { findStaffByInviteToken, patchStore } from "@/lib/store";
 import { signIn } from "@/lib/auth";
+import { useResetPassword } from "@/hooks/api/useAuthSession";
+import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "sonner";
 
 function ResetPasswordForm() {
@@ -15,16 +17,18 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
   const staff = token ? findStaffByInviteToken(token) : undefined;
+  const resetPassword = useResetPassword();
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 8) return toast.error("Password must be at least 8 characters");
     if (password !== confirm) return toast.error("Passwords do not match");
 
+    // Exhibitor staff invite onboarding (local flow until exhibitor sprint).
     if (token && staff) {
       patchStore((s) => ({
         ...s,
@@ -35,9 +39,17 @@ function ResetPasswordForm() {
       signIn("attendee", { name: staff.name, email: staff.email, category: "Exhibitor Staff Pass" });
       toast.success("Account activated — welcome to NAS 2026");
       router.push("/dashboard");
-    } else {
+      return;
+    }
+
+    if (!token) return toast.error("Missing or invalid reset link. Request a new one.");
+
+    try {
+      await resetPassword.mutateAsync({ token, newPassword: password });
       setSuccess(true);
       toast.success("Password reset successfully!");
+    } catch (error) {
+      toast.error(apiErrorMessage(error));
     }
   };
 
@@ -75,8 +87,14 @@ function ResetPasswordForm() {
         <Label>Confirm password</Label>
         <Input type="password" required placeholder="Repeat password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="mt-1" />
       </div>
-      <Button type="submit" className="w-full gradient-blue text-accent-foreground">
-        Reset &amp; Sign In
+      <Button type="submit" disabled={resetPassword.isPending} className="w-full gradient-blue text-accent-foreground">
+        {resetPassword.isPending ? (
+          <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Resetting…</>
+        ) : staff ? (
+          "Reset & Sign In"
+        ) : (
+          "Reset password"
+        )}
       </Button>
     </form>
   );

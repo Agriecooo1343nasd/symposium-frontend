@@ -4,18 +4,25 @@ import { Filter } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SessionCard } from "@/components/SessionCard";
 import { SUB_THEMES, type Session } from "@/lib/mock-data";
-import { getProgrammeSessions } from "@/lib/sessions";
-import { useStore } from "@/hooks/use-store";
+import { usePublicSessions } from "@/hooks/api/usePublicData";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const TYPES: Session["type"][] = ["Keynote", "Plenary", "Panel", "Workshop", "Field Visit"];
 
 export default function Programme() {
-  useStore();
-  const allSessions = getProgrammeSessions();
+  const { sessions: allSessions, raw, isLoading } = usePublicSessions();
   const [theme, setTheme] = useState<string>("All");
   const [type, setType] = useState<string>("All");
+
+  const speakerLookup = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; photo: string }>();
+    raw.forEach((s) => (s.speakers ?? []).forEach((sp) => map.set(sp.id, { id: sp.id, name: sp.name, photo: sp.photoUrl ?? "" })));
+    return map;
+  }, [raw]);
+
+  const resolveSpeakers = (s: Session) =>
+    s.speakers.map((id) => speakerLookup.get(id)).filter(Boolean) as { id: string; name: string; photo: string }[];
 
   const filtered = useMemo(
     () =>
@@ -88,11 +95,14 @@ export default function Programme() {
                     <SessionCard
                       key={s.id}
                       session={s}
+                      speakers={resolveSpeakers(s)}
                       onSave={() => toast.success("Added to your schedule", { description: s.title })}
                     />
                   ))}
                 {filtered.filter((s) => s.day === d).length === 0 && (
-                  <div className="col-span-full text-center py-16 text-muted-foreground">No sessions match your filters.</div>
+                  <div className="col-span-full text-center py-16 text-muted-foreground">
+                    {isLoading ? "Loading sessions…" : "No sessions scheduled yet for this day."}
+                  </div>
                 )}
               </div>
             </TabsContent>

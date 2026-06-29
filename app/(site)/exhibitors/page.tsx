@@ -1,46 +1,27 @@
 "use client";
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Store, Sparkles, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Store, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { loadStore } from "@/lib/store";
 import { EXHIBITORS } from "@/lib/mock-data";
+import { usePublicSponsors } from "@/hooks/api/usePublicData";
 
 export default function Exhibitors() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const { data: sponsors } = usePublicSponsors();
 
-  const store = mounted ? loadStore() : null;
-  const sponsors =
-    store?.approvedOrganizations.filter((o) => o.participation === "sponsor" || o.participation === "both") ?? [];
-  const exhibitorsList =
-    store?.approvedOrganizations.filter((o) => o.participation === "exhibitor" || o.participation === "both") ?? [];
-
-  const sponsorCards = sponsors.map((s) => ({
+  const sponsorCards = (sponsors ?? []).map((s) => ({
     id: s.id,
     name: s.name,
-    blurb: s.description,
-    tier: s.sponsorshipTier ?? "Silver",
+    blurb: s.description ?? "",
+    tier: s.tier ? s.tier.charAt(0).toUpperCase() + s.tier.slice(1) : "Silver",
   }));
 
-  const exhibitorCards =
-    exhibitorsList.length > 0
-      ? exhibitorsList.map((e) => ({
-        id: e.id,
-        name: e.name,
-        blurb: e.description,
-        booth: e.booth,
-        category: e.category,
-      }))
-      : EXHIBITORS.map((e) => ({
-        id: e.id,
-        name: e.name,
-        blurb: e.description,
-        booth: e.booth,
-        category: e.category,
-      }));
+  const exhibitorCards = EXHIBITORS.map((e) => ({
+    id: e.id,
+    name: e.name,
+    blurb: e.description,
+    booth: e.booth,
+    category: e.category,
+  }));
 
   const tierColor = (t: string) =>
     t === "Platinum" ? "bg-slate-200 text-slate-900" : t === "Gold" ? "bg-amber-100 text-amber-900" : "bg-zinc-200 text-zinc-900";

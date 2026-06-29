@@ -1,9 +1,23 @@
-// Mock auth — stored in localStorage; safe across SSR
+// Session bridge — derived session cached in localStorage; safe across SSR.
+// Real authentication tokens live in lib/api/client (JWT). This module exposes a
+// MockSession-shaped view consumed by portal UI across the app.
 import { DEMO_USER, type MockSession, type Role } from "./mock-data";
 import { findUserByEmail } from "./store";
+import { clearTokens } from "./api/client";
 
 const KEY = "nas2026_session";
 const LISTENERS = new Set<() => void>();
+
+function notify() {
+  LISTENERS.forEach((fn) => fn());
+}
+
+/** Persist a real authenticated session (called after API login / hydration). */
+export function writeSession(session: MockSession) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(KEY, JSON.stringify(session));
+  notify();
+}
 
 export function getSession(): MockSession | null {
   if (typeof window === "undefined") return null;
@@ -90,9 +104,10 @@ export function getExhibitorParticipation(): "exhibitor" | "sponsor" | "both" {
 }
 
 export function signOut() {
+  clearTokens();
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(KEY);
-    LISTENERS.forEach((fn) => fn());
+    notify();
   }
 }
 

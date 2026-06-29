@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, Sparkles, Target, Trophy, MapPin, Calendar, Users, Globe2, Sprout, ChevronRight } from "lucide-react";
+import { ArrowRight, Target, Trophy, MapPin, Calendar, Users, Globe2, Sprout, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { SponsorMarquee } from "@/components/SponsorMarquee";
@@ -10,21 +10,39 @@ import { SessionCard } from "@/components/SessionCard";
 import { SpeakerCard } from "@/components/SpeakerCard";
 import { StatsCounter } from "@/components/StatsCounter";
 import { CurrencyToggle, formatPrice } from "@/components/CurrencyToggle";
-import { EVENT, SESSIONS, SPEAKERS, NEWS } from "@/lib/mock-data";
+import { EVENT } from "@/lib/mock-data";
 import { useStore } from "@/hooks/use-store";
 import { DEFAULT_GROUP_REGISTRATION_SETTINGS } from "@/lib/store";
 import { GroupDiscountTiersCard } from "@/components/group/GroupDiscountTiersCard";
+import { useSymposium } from "@/hooks/api/useSymposium";
+import {
+  usePublicAnnouncements,
+  usePublicSessions,
+  usePublicSpeakers,
+  usePublicTicketCategories,
+} from "@/hooks/api/usePublicData";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
   const store = useStore();
+  const { symposium } = useSymposium();
   const [currency, setCurrency] = useState<"USD" | "RWF">("USD");
-  const ticketPlans = store.ticketPlans.filter((t) => !t.isMediaAccreditation);
+  const { ticketCategories } = usePublicTicketCategories();
+  const { sessions, raw: sessionsRaw } = usePublicSessions();
+  const { speakers } = usePublicSpeakers();
+  const { news } = usePublicAnnouncements();
+  const ticketPlans = ticketCategories;
+  const exchangeRate = symposium?.exchangeRateUsdRwf ?? EVENT.exchangeRate;
   const groupSettings = {
     ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
     ...store.platformSettings.groupRegistration,
   };
   const popularPlan = ticketPlans.find((t) => t.popular) ?? ticketPlans[0];
+  const featuredSpeakers = (speakers.filter((s) => s.featured).length ? speakers.filter((s) => s.featured) : speakers).slice(0, 6);
+  const speakerPhotoById = new Map(
+    sessionsRaw.flatMap((s) => (s.speakers ?? []).map((sp) => [sp.id, { name: sp.name, photo: sp.photoUrl ?? "" }])),
+  );
+  const previewSessions = sessions.slice(0, 4);
 
   return (
     <>
@@ -73,7 +91,7 @@ export default function Home() {
 
             <div className="animate-fade-up delay-3">
               <div className="text-xs uppercase tracking-widest text-white/60 mb-3 text-center lg:text-left">Countdown to opening ceremony</div>
-              <CountdownTimer light />
+              <CountdownTimer light target={symposium?.countdownTarget ?? undefined} />
             </div>
           </div>
         </div>
@@ -144,8 +162,18 @@ export default function Home() {
             </Button>
           </div>
           <div className="grid md:grid-cols-2 gap-5">
-            {SESSIONS.slice(0, 4).map((s) => (
-              <SessionCard key={s.id} session={s} expandable={false} />
+            {previewSessions.map((s) => (
+              <SessionCard
+                key={s.id}
+                session={s}
+                expandable={false}
+                speakers={s.speakers
+                  .map((id) => {
+                    const sp = speakerPhotoById.get(id);
+                    return sp ? { id, name: sp.name, photo: sp.photo } : null;
+                  })
+                  .filter(Boolean) as { id: string; name: string; photo: string }[]}
+              />
             ))}
           </div>
         </div>
@@ -162,7 +190,7 @@ export default function Home() {
           </Button>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          {SPEAKERS.filter((s) => s.featured).slice(0, 6).map((s) => (
+          {featuredSpeakers.map((s) => (
             <SpeakerCard key={s.id} speaker={s} />
           ))}
         </div>
@@ -207,7 +235,7 @@ export default function Home() {
               )}
               <h3 className="font-serif text-base font-bold leading-tight">{t.name}</h3>
               <div className="mt-3 mb-4">
-                <div className="font-serif text-3xl font-bold text-foreground">{formatPrice(t.usd, currency, EVENT.exchangeRate)}</div>
+                <div className="font-serif text-3xl font-bold text-foreground">{formatPrice(t.usd, currency, exchangeRate)}</div>
                 {t.note && <div className="text-[11px] text-muted-foreground mt-1">{t.note}</div>}
               </div>
               <p className="text-xs text-muted-foreground mb-4 flex-1">{t.description}</p>
@@ -224,7 +252,7 @@ export default function Home() {
               settings={groupSettings}
               examplePriceUsd={popularPlan?.usd ?? 150}
               currency={currency}
-              exchangeRate={EVENT.exchangeRate}
+              exchangeRate={exchangeRate}
             />
             <div className="mt-4 text-center">
               <Button asChild className="gradient-blue text-accent-foreground">
@@ -249,7 +277,7 @@ export default function Home() {
             </Button>
           </div>
           <div className="grid md:grid-cols-3 gap-5">
-            {NEWS.slice(0, 3).map((n) => (
+            {news.slice(0, 3).map((n) => (
               <Link key={n.slug} href={`/news/${n.slug}`} className="group block rounded-2xl overflow-hidden bg-card border border-border hover-lift">
                 <div className="aspect-[16/9] overflow-hidden bg-secondary">
                   <img src={n.image} alt={n.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
@@ -261,6 +289,9 @@ export default function Home() {
                 </div>
               </Link>
             ))}
+            {news.length === 0 && (
+              <p className="col-span-full text-center text-muted-foreground text-sm py-8">No updates yet — check back soon.</p>
+            )}
           </div>
         </div>
       </section>

@@ -1,20 +1,29 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Mail, Leaf, Check } from "lucide-react";
+import { ArrowLeft, Mail, Leaf, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useForgotPassword } from "@/hooks/api/useAuthSession";
+import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "sonner";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const forgotPassword = useForgotPassword();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSent(true);
-    toast.success("Reset link sent if the account exists.");
+    if (forgotPassword.isPending) return;
+    try {
+      await forgotPassword.mutateAsync({ email: email.trim() });
+      setSent(true);
+      toast.success("Reset link sent if the account exists.");
+    } catch (error) {
+      toast.error(apiErrorMessage(error));
+    }
   };
 
   return (
@@ -36,9 +45,6 @@ export default function ForgotPassword() {
             </div>
             <p className="text-sm font-medium text-foreground">Verification email sent!</p>
             <p className="text-xs text-muted-foreground mt-1">We sent a recovery link to <strong>{email}</strong>.</p>
-            <Button asChild variant="outline" size="sm" className="mt-4 w-full">
-              <Link href="/reset-password">Go to Reset Screen (Demo)</Link>
-            </Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -49,7 +55,13 @@ export default function ForgotPassword() {
                 <Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="pl-9" />
               </div>
             </div>
-            <Button type="submit" className="w-full gradient-blue text-accent-foreground">Send reset link</Button>
+            <Button type="submit" disabled={forgotPassword.isPending} className="w-full gradient-blue text-accent-foreground">
+              {forgotPassword.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Sending…</>
+              ) : (
+                "Send reset link"
+              )}
+            </Button>
           </form>
         )}
 

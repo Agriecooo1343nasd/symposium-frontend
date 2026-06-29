@@ -13,7 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
-import { signOut, dashboardPathForRole } from "@/lib/auth";
+import { useLogout } from "@/hooks/api/useAuthSession";
+import { dashboardPathForRole } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -32,6 +33,7 @@ export function PublicHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const { session } = useAuth();
+  const logout = useLogout();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -47,8 +49,8 @@ export function PublicHeader() {
   const initials = session?.name?.split(" ").map((w) => w[0]).slice(0, 2).join("") ?? "";
   const dashboardPath = session ? dashboardPathForRole(session.role) : "/dashboard";
 
-  const handleSignOut = () => {
-    signOut();
+  const handleSignOut = async () => {
+    await logout.mutateAsync();
     router.push("/");
   };
 

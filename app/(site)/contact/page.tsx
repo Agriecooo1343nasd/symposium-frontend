@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,9 +8,40 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { EVENT } from "@/lib/mock-data";
-import type { Metadata } from "next";
+import { useSubmitContact } from "@/hooks/api/usePublicData";
+import { apiErrorMessage } from "@/lib/api/client";
+
+const SUBJECTS: Record<string, string> = {
+  general: "General enquiry",
+  sponsorship: "Sponsorship team",
+  press: "Press & media",
+  registration: "Registration support",
+};
 
 export default function Contact() {
+  const submit = useSubmitContact();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [reach, setReach] = useState("general");
+  const [message, setMessage] = useState("");
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submit.mutate(
+      { name, email, subject: SUBJECTS[reach] ?? "General enquiry", message },
+      {
+        onSuccess: () => {
+          toast.success("Message sent — we'll be in touch within 48 hours.");
+          setName("");
+          setEmail("");
+          setReach("general");
+          setMessage("");
+        },
+        onError: (err) => toast.error(apiErrorMessage(err)),
+      },
+    );
+  };
+
   return (
     <>
       <section className="gradient-navy grain-overlay text-white py-16">
@@ -44,22 +76,22 @@ export default function Contact() {
         </div>
 
         <form
-          onSubmit={(e) => { e.preventDefault(); toast.success("Message sent — we'll be in touch within 48 hours."); }}
+          onSubmit={onSubmit}
           className="space-y-4 rounded-2xl border border-border bg-card p-8 shadow-sm"
         >
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <Label>Full name</Label>
-              <Input required placeholder="Your name" className="mt-1" />
+              <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="mt-1" />
             </div>
             <div>
               <Label>Email</Label>
-              <Input required type="email" placeholder="you@example.com" className="mt-1" />
+              <Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="mt-1" />
             </div>
           </div>
           <div>
             <Label>I&apos;d like to reach</Label>
-            <Select defaultValue="general">
+            <Select value={reach} onValueChange={setReach}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="general">General enquiry</SelectItem>
@@ -71,9 +103,11 @@ export default function Contact() {
           </div>
           <div>
             <Label>Message</Label>
-            <Textarea required rows={5} placeholder="How can we help?" className="mt-1" />
+            <Textarea required value={message} onChange={(e) => setMessage(e.target.value)} rows={5} placeholder="How can we help?" className="mt-1" />
           </div>
-          <Button type="submit" className="w-full gradient-blue text-accent-foreground">Send message</Button>
+          <Button type="submit" disabled={submit.isPending} className="w-full gradient-blue text-accent-foreground">
+            {submit.isPending ? "Sending…" : "Send message"}
+          </Button>
         </form>
       </section>
     </>

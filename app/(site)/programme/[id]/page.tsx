@@ -6,15 +6,21 @@ import { Button } from "@/components/ui/button";
 import { SubThemeBadge } from "@/components/SubThemeBadge";
 import { SessionMaterialsPanel } from "@/components/session/SessionMaterialsPanel";
 import { SessionRatingPanel } from "@/components/session/SessionRatingPanel";
-import { SPEAKERS } from "@/lib/mock-data";
-import { getSessionById, getProgrammeSessions } from "@/lib/sessions";
 import { canViewSessionProgramme } from "@/lib/access";
+import { usePublicSession, usePublicSessions } from "@/hooks/api/usePublicData";
 import { toast } from "sonner";
 
 export default function SessionDetail() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
-  const session = getSessionById(id);
+  const { session, raw, isLoading } = usePublicSession(id);
+  const { sessions: allSessions } = usePublicSessions();
+
+  if (isLoading) {
+    return (
+      <section className="mx-auto max-w-3xl px-4 py-24 text-center text-muted-foreground">Loading session…</section>
+    );
+  }
 
   if (!session) {
     notFound();
@@ -41,9 +47,15 @@ export default function SessionDetail() {
     );
   }
 
-  const speakers = session.speakers.map((sId) => SPEAKERS.find((s) => s.id === sId)!).filter(Boolean);
-  const related = getProgrammeSessions()
-    .filter((s) => s.id !== session.id && s.subTheme === session.subTheme)
+  const speakers = (raw?.speakers ?? []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    title: s.title ?? "",
+    org: s.organization ?? "",
+    photo: s.photoUrl ?? "",
+  }));
+  const related = allSessions
+    .filter((s) => s.id !== session.id && s.type === session.type)
     .slice(0, 3);
 
   return (

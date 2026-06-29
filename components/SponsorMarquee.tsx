@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { loadStore, type ApprovedOrganization, type ParticipationType } from "@/lib/store";
+import { useMemo } from "react";
+import { usePublicSponsors } from "@/hooks/api/usePublicData";
+import type { SponsorDto } from "@/lib/api/dto";
 import { cn } from "@/lib/utils";
 
 type Item = {
@@ -11,25 +12,22 @@ type Item = {
   sublabel: string;
 };
 
-function participationBadge(p: ParticipationType, tier?: string) {
-  if (p === "both") return { badge: tier ?? "Partner", sublabel: "Sponsor & exhibitor" };
-  if (p === "sponsor") return { badge: tier ?? "Sponsor", sublabel: "Sponsor" };
-  return { badge: "Exhibitor", sublabel: "Exhibitor booth" };
+const TIER_ORDER: Record<string, number> = { platinum: 0, gold: 1, silver: 2, bronze: 3 };
+
+function tierLabel(tier: string): string {
+  if (!tier) return "Partner";
+  return tier.charAt(0).toUpperCase() + tier.slice(1);
 }
 
-function toItems(orgs: ApprovedOrganization[]): Item[] {
-  const tierOrder = { Platinum: 0, Gold: 1, Silver: 2 };
-  return [...orgs]
+function toItems(sponsors: SponsorDto[]): Item[] {
+  return [...sponsors]
     .sort((a, b) => {
-      const ta = tierOrder[a.sponsorshipTier ?? "Silver"] ?? 3;
-      const tb = tierOrder[b.sponsorshipTier ?? "Silver"] ?? 3;
+      const ta = TIER_ORDER[a.tier?.toLowerCase()] ?? 4;
+      const tb = TIER_ORDER[b.tier?.toLowerCase()] ?? 4;
       if (ta !== tb) return ta - tb;
-      return a.name.localeCompare(b.name);
+      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name);
     })
-    .map((o) => {
-      const { badge, sublabel } = participationBadge(o.participation, o.sponsorshipTier);
-      return { id: o.id, name: o.name, badge, sublabel };
-    });
+    .map((s) => ({ id: s.id, name: s.name, badge: tierLabel(s.tier), sublabel: "Sponsor" }));
 }
 
 /** Repeat base set so one half of the loop fills at least ~screen width on large displays. */
@@ -42,13 +40,8 @@ function buildLoop(items: Item[]): Item[] {
 }
 
 export function SponsorMarquee() {
-  const [items, setItems] = useState<Item[]>([]);
-
-  useEffect(() => {
-    const store = loadStore();
-    setItems(toItems(store.approvedOrganizations));
-  }, []);
-
+  const { data } = usePublicSponsors();
+  const items = useMemo(() => toItems(data ?? []), [data]);
   const loop = useMemo(() => buildLoop(items), [items]);
 
   if (loop.length === 0) return null;
