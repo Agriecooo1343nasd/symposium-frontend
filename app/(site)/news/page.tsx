@@ -1,14 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getNewsPosts } from "@/lib/platform-settings";
+import { announcementsService } from "@/lib/api/services";
+import { mapAnnouncements, type NewsView } from "@/lib/api/mappers/announcement";
 
 export const metadata: Metadata = {
   title: "News & Blog — NAS 2026",
   description: "Latest news and announcements from the NAS 2026 secretariat.",
 };
 
-export default function News() {
-  const posts = getNewsPosts();
+export const revalidate = 300;
+
+async function loadPosts(): Promise<NewsView[]> {
+  try {
+    const res = await announcementsService.listPublished({ limit: 50 });
+    return mapAnnouncements(res.items);
+  } catch {
+    return [];
+  }
+}
+
+export default async function News() {
+  const posts = await loadPosts();
   if (posts.length === 0) {
     return (
       <section className="mx-auto max-w-7xl px-4 py-20">

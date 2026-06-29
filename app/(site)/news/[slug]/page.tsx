@@ -2,16 +2,28 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getNewsPosts } from "@/lib/platform-settings";
+import { announcementsService } from "@/lib/api/services";
+import { mapAnnouncementDto, type NewsView } from "@/lib/api/mappers/announcement";
 import type { Metadata } from "next";
 
 type Props = {
   params: Promise<{ slug: string }>;
 };
 
+export const revalidate = 300;
+
+async function loadPost(slug: string): Promise<NewsView | null> {
+  try {
+    const dto = await announcementsService.getBySlug(slug);
+    return mapAnnouncementDto(dto);
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = getNewsPosts().find((n) => n.slug === slug);
+  const post = await loadPost(slug);
   if (!post) return {};
   return {
     title: `${post.title} — NAS 2026`,
@@ -27,7 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function NewsPost({ params }: Props) {
   const { slug } = await params;
-  const post = getNewsPosts().find((n) => n.slug === slug);
+  const post = await loadPost(slug);
   if (!post) {
     notFound();
   }
@@ -46,8 +58,8 @@ export default async function NewsPost({ params }: Props) {
           <span className="inline-flex items-center gap-1"><User className="h-3.5 w-3.5" /> {post.author}</span>
         </div>
         <h1 className="font-serif text-3xl sm:text-5xl font-bold tracking-tight">{post.title}</h1>
-        <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{post.excerpt}</p>
-        <div className="prose prose-lg max-w-none mt-8 text-foreground/90 leading-relaxed">
+        {post.excerpt && <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{post.excerpt}</p>}
+        <div className="prose prose-lg max-w-none mt-8 text-foreground/90 leading-relaxed whitespace-pre-line">
           <p>{post.body}</p>
         </div>
       </div>

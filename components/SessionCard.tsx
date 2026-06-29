@@ -13,10 +13,27 @@ const TYPE_STYLES: Record<Session["type"], string> = {
   "Field Visit": "bg-amber-100 text-amber-800 border-amber-300",
 };
 
-export function SessionCard({ session, expandable = true, onSave }: { session: Session; expandable?: boolean; onSave?: () => void }) {
+type ResolvedSpeaker = { id: string; name: string; photo: string };
+
+export function SessionCard({
+  session,
+  expandable = true,
+  onSave,
+  speakers: speakersOverride,
+}: {
+  session: Session;
+  expandable?: boolean;
+  onSave?: () => void;
+  speakers?: ResolvedSpeaker[];
+}) {
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState(false);
-  const speakers = session.speakers.map((id) => SPEAKERS.find((s) => s.id === id)).filter(Boolean) as typeof SPEAKERS;
+  const speakers: ResolvedSpeaker[] =
+    speakersOverride ??
+    (session.speakers
+      .map((id) => SPEAKERS.find((s) => s.id === id))
+      .filter(Boolean)
+      .map((s) => ({ id: s!.id, name: s!.name, photo: s!.photo })) as ResolvedSpeaker[]);
 
   return (
     <article className="glass-card rounded-2xl p-5 hover-lift group">

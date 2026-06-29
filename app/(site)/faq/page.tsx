@@ -1,8 +1,15 @@
 "use client";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { FAQS } from "@/lib/mock-data";
+import { usePublicFaqs } from "@/hooks/api/usePublicData";
 
 export default function FAQ() {
+  const { data, isLoading } = usePublicFaqs();
+  const faqs = (data ?? []).length
+    ? (data ?? []).map((f) => ({ q: f.question, a: f.answer }))
+    : isLoading
+      ? []
+      : FAQS;
   return (
     <>
       <section className="gradient-navy grain-overlay text-white py-16">
@@ -16,7 +23,7 @@ export default function FAQ() {
 
       <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-16">
         <Accordion type="single" collapsible className="space-y-3">
-          {FAQS.map((f, i) => (
+          {faqs.map((f, i) => (
             <AccordionItem key={i} value={`item-${i}`} className="rounded-2xl border border-border bg-card px-5 data-[state=open]:shadow-md transition-shadow">
               <AccordionTrigger className="text-left font-serif text-base font-bold hover:no-underline">{f.q}</AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed">{f.a}</AccordionContent>

@@ -3,21 +3,23 @@ import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SpeakerCard } from "@/components/SpeakerCard";
-import { SPEAKERS, SUB_THEMES } from "@/lib/mock-data";
+import { SUB_THEMES } from "@/lib/mock-data";
+import { usePublicSpeakers } from "@/hooks/api/usePublicData";
 import { cn } from "@/lib/utils";
 
 export default function Speakers() {
+  const { speakers, isLoading } = usePublicSpeakers();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("All");
 
   const list = useMemo(() => {
-    return SPEAKERS.filter((s) => {
+    return speakers.filter((s) => {
       const matchQ = !q || [s.name, s.org, s.country].some((f) => f.toLowerCase().includes(q.toLowerCase()));
       return matchQ;
     });
-  }, [q, filter]);
+  }, [q, speakers]);
 
-  const featured = SPEAKERS.filter((s) => s.featured);
+  const featured = speakers.filter((s) => s.featured);
 
   return (
     <>
@@ -31,12 +33,14 @@ export default function Speakers() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-        <div className="mb-12">
-          <h2 className="font-serif text-2xl font-bold mb-6">Featured keynote speakers</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {featured.map((s) => <SpeakerCard key={s.id} speaker={s} />)}
+        {featured.length > 0 && (
+          <div className="mb-12">
+            <h2 className="font-serif text-2xl font-bold mb-6">Featured keynote speakers</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              {featured.map((s) => <SpeakerCard key={s.id} speaker={s} />)}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pt-6 border-t border-border">
           <h2 className="font-serif text-2xl font-bold">All speakers</h2>
@@ -56,7 +60,11 @@ export default function Speakers() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
           {list.map((s) => <SpeakerCard key={s.id} speaker={s} />)}
-          {list.length === 0 && <div className="col-span-full text-center py-16 text-muted-foreground">No speakers match your search.</div>}
+          {list.length === 0 && (
+            <div className="col-span-full text-center py-16 text-muted-foreground">
+              {isLoading ? "Loading speakers…" : "No speakers match your search."}
+            </div>
+          )}
         </div>
       </section>
     </>

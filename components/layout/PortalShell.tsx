@@ -6,8 +6,8 @@ import { useEffect, useState, type ComponentType } from "react";
 import { Leaf, LogOut, Menu, X, Bell, Search, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getSession, signOut } from "@/lib/auth";
-import type { MockSession } from "@/lib/mock-data";
+import { useAuth } from "@/hooks/use-auth";
+import { useLogout } from "@/hooks/api/useAuthSession";
 import { cn } from "@/lib/utils";
 import { AnnouncementBanner } from "@/components/admin/AnnouncementBanner";
 import { useAdminCommandPaletteOptional } from "@/components/admin/AdminCommandPaletteProvider";
@@ -23,13 +23,16 @@ export type PortalNavItem = {
 export function PortalShell({ title, subtitle, nav, children }: { title: string; subtitle: string; nav: readonly PortalNavItem[]; children?: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [session, setSession] = useState<MockSession | null>(null);
+  const { session } = useAuth();
+  const logout = useLogout();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => { setSession(getSession()); }, []);
   useEffect(() => setMobileOpen(false), [pathname]);
 
-  const handleLogout = () => { signOut(); router.push("/login"); };
+  const handleLogout = async () => {
+    await logout.mutateAsync();
+    router.push("/login");
+  };
   const initials = session?.name?.split(" ").map((w) => w[0]).slice(0, 2).join("") ?? "";
 
   const crumbs = pathname.split("/").filter(Boolean);

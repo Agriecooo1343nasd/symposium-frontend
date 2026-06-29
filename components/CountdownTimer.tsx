@@ -16,15 +16,30 @@ function calc(target: Date) {
   };
 }
 
-export function CountdownTimer({ light = false, compact = false }: { light?: boolean; compact?: boolean }) {
+export function CountdownTimer({
+  light = false,
+  compact = false,
+  target,
+}: {
+  light?: boolean;
+  compact?: boolean;
+  target?: Date | string | null;
+}) {
   useStore();
   const [t, setT] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, done: true });
   useEffect(() => {
-    const update = () => setT(calc(getCountdownTarget()));
+    const resolveTarget = () => {
+      if (target) {
+        const d = typeof target === "string" ? new Date(target) : target;
+        if (!Number.isNaN(d.getTime())) return d;
+      }
+      return getCountdownTarget();
+    };
+    const update = () => setT(calc(resolveTarget()));
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [target]);
 
   const items = [
     { v: t.days, l: "Days" },
