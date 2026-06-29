@@ -1,65 +1,94 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { SUB_THEMES, type SubTheme } from "@/lib/mock-data";
-import { useStore } from "@/hooks/use-store";
+import { SUB_THEMES } from "@/lib/mock-data";
 import { useAuth } from "@/hooks/use-auth";
-import { patchStore, uid } from "@/lib/store";
+import { useSymposium } from "@/hooks/api/useSymposium";
+import { useCreateSubmission, useMySubmissions } from "@/hooks/api/useDashboard";
+import { filesService } from "@/lib/api/services";
+import { apiErrorMessage } from "@/lib/api/client";
+import type { PresentationType } from "@/lib/api/dto";
 import { toast } from "sonner";
 
+const UI_TO_API: Record<string, PresentationType> = {
+  Oral: "oral",
+  Workshop: "workshop",
+  Poster: "poster",
+};
+
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 export default function SpeakerAbstractsPage() {
-  const store = useStore();
   const { session } = useAuth();
+  const { symposiumId } = useSymposium();
+  const { data: submissions = [], isLoading } = useMySubmissions();
+  const createSubmission = useCreateSubmission();
   const [open, setOpen] = useState(false);
-  const [docFile, setDocFile] = useState<{ name: string; dataUrl: string } | null>(null);
-  const [form, setForm] = useState<{ title: string; authors: string; track: SubTheme; body: string }>({
+  const [submitting, setSubmitting] = useState(false);
+  const [fileUrl, setFileUrl] = useState("");
+  const [form, setForm] = useState({
     title: "",
     authors: "",
-    track: SUB_THEMES[0],
+    subTheme: SUB_THEMES[0] as string,
     body: "",
+    presentationType: "Oral",
   });
 
-  const mine = store.speakerAbstracts.filter((a) => a.speakerEmail === session?.email);
-
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!docFile) {
-      toast.error("Abstract document (PDF) is required");
-      return;
+    if (!symposiumId) return toast.error("Symposium not loaded");
+    if (!session?.name) return toast.error("Profile name missing");
+    if (countWords(form.body) > 300) return toast.error("Abstract must be 300 words or fewer");
+
+    const authorNames = form.authors
+      .split(",")
+      .map((n) => n.trim())
+      .filter(Boolean);
+    const authors =
+      authorNames.length > 0
+        ? authorNames.map((name, i) => ({ name, isPrimary: i === 0 }))
+        : [{ name: session.name, isPrimary: true }];
+
+    try {
+      setSubmitting(true);
+      await createSubmission.mutateAsync({
+        symposiumId,
+        title: form.title.trim(),
+        abstract: form.body.trim(),
+        subTheme: form.subTheme || undefined,
+        presentationType: UI_TO_API[form.presentationType] ?? "oral",
+        authors,
+        fileUrl: fileUrl || undefined,
+      });
+      toast.success("Abstract submitted for review");
+      setOpen(false);
+      setFileUrl("");
+      setForm({ title: "", authors: "", subTheme: SUB_THEMES[0], body: "", presentationType: "Oral" });
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    } finally {
+      setSubmitting(false);
     }
-    if (!session?.email) {
-      toast.error("Sign in required");
-      return;
+  };
+
+  const handleFile = async (file: File | null) => {
+    if (!file) return;
+    try {
+      const uploaded = await filesService.upload(file, "abstract");
+      setFileUrl(uploaded.url);
+      toast.success("PDF attached");
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
     }
-    patchStore((s) => ({
-      ...s,
-      speakerAbstracts: [
-        {
-          id: uid("ab"),
-          speakerEmail: session.email,
-          title: form.title,
-          authors: form.authors,
-          track: form.track,
-          body: form.body,
-          documentName: docFile.name,
-          documentDataUrl: docFile.dataUrl,
-          status: "submitted",
-          submittedAt: new Date().toISOString().slice(0, 10),
-        },
-        ...s.speakerAbstracts,
-      ],
-    }));
-    toast.success("Abstract submitted for review");
-    setOpen(false);
-    setDocFile(null);
-    setForm({ title: "", authors: "", track: SUB_THEMES[0], body: "" });
   };
 
   return (
@@ -67,7 +96,7 @@ export default function SpeakerAbstractsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
         <div>
           <h1 className="font-serif text-3xl font-bold">My abstracts</h1>
-          <p className="text-muted-foreground">Session materials for the programme committee. PDF upload required.</p>
+          <p className="text-muted-foreground">Submissions for the programme committee via the API.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -82,17 +111,44 @@ export default function SpeakerAbstractsPage() {
             <form onSubmit={submit} className="space-y-4">
               <div>
                 <Label>Title *</Label>
-                <Input required placeholder="Presentation title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1" />
+                <Input
+                  required
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  className="mt-1"
+                />
               </div>
               <div>
                 <Label>Authors *</Label>
-                <Input required placeholder="Lead author, co-authors…" value={form.authors} onChange={(e) => setForm({ ...form, authors: e.target.value })} className="mt-1" />
+                <Input
+                  required
+                  placeholder="Lead author, co-authors…"
+                  value={form.authors}
+                  onChange={(e) => setForm({ ...form, authors: e.target.value })}
+                  className="mt-1"
+                />
               </div>
               <div>
-                <Label>Sub-theme *</Label>
-                <Select value={form.track} onValueChange={(v) => setForm({ ...form, track: v as SubTheme })}>
+                <Label>Presentation type</Label>
+                <Select
+                  value={form.presentationType}
+                  onValueChange={(v) => setForm({ ...form, presentationType: v })}
+                >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select sub-theme" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Oral">Oral</SelectItem>
+                    <SelectItem value="Workshop">Workshop</SelectItem>
+                    <SelectItem value="Poster">Poster</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Sub-theme</Label>
+                <Select value={form.subTheme} onValueChange={(v) => setForm({ ...form, subTheme: v })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {SUB_THEMES.map((t) => (
@@ -105,28 +161,28 @@ export default function SpeakerAbstractsPage() {
               </div>
               <div>
                 <Label>Abstract text *</Label>
-                <Textarea required placeholder="Max 300 words summary…" rows={5} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} className="mt-1" />
+                <Textarea
+                  required
+                  rows={5}
+                  value={form.body}
+                  onChange={(e) => setForm({ ...form, body: e.target.value })}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">{countWords(form.body)} / 300 words</p>
               </div>
               <div>
-                <Label>Abstract document (PDF) *</Label>
+                <Label>Abstract document (PDF)</Label>
                 <Input
                   type="file"
                   accept=".pdf,application/pdf"
-                  required
                   className="mt-1"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    const reader = new FileReader();
-                    reader.onload = () => setDocFile({ name: f.name, dataUrl: reader.result as string });
-                    reader.readAsDataURL(f);
-                  }}
+                  onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
                 />
-                {docFile && <p className="text-xs text-green mt-1">{docFile.name} attached</p>}
+                {fileUrl && <p className="text-xs text-green mt-1">PDF uploaded</p>}
               </div>
               <DialogFooter>
-                <Button type="submit" className="gradient-blue text-accent-foreground">
-                  Submit
+                <Button type="submit" className="gradient-blue text-accent-foreground" disabled={submitting}>
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
                 </Button>
               </DialogFooter>
             </form>
@@ -134,33 +190,45 @@ export default function SpeakerAbstractsPage() {
         </Dialog>
       </div>
 
-      <div className="space-y-3">
-        {(mine.length ? mine : store.speakerAbstracts.slice(0, 2)).map((a) => (
-          <div key={a.id} className="rounded-md bg-card border border-border p-5">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="font-serif font-bold">{a.title}</div>
-                <div className="text-xs text-muted-foreground">
-                  {a.authors} · {a.track}
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading submissions…
+        </div>
+      ) : submissions.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No submissions yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {submissions.map((a) => (
+            <div key={a.id} className="rounded-md bg-card border border-border p-5">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-serif font-bold">{a.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {a.authors.map((x) => x.name).join(", ")}
+                    {a.subTheme ? ` · ${a.subTheme}` : ""} · {a.presentationType}
+                  </div>
+                  {a.fileUrl && (
+                    <a href={a.fileUrl} target="_blank" rel="noreferrer" className="text-xs text-accent mt-1 inline-block">
+                      View PDF
+                    </a>
+                  )}
                 </div>
-                {a.documentName && (
-                  <div className="text-xs font-mono mt-1">📎 {a.documentName}</div>
-                )}
-              </div>
-              <span
-                className={`text-xs px-2 py-1 rounded font-semibold capitalize ${a.status === "accepted"
-                    ? "bg-green/15 text-green"
-                    : a.status === "rejected"
-                      ? "bg-red-100 text-red-700"
-                      : "bg-amber-100 text-amber-800"
+                <span
+                  className={`text-xs px-2 py-1 rounded font-semibold capitalize ${
+                    a.status === "accepted"
+                      ? "bg-green/15 text-green"
+                      : a.status === "rejected"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-amber-100 text-amber-800"
                   }`}
-              >
-                {a.status.replace("-", " ")}
-              </span>
+                >
+                  {a.status.replace(/_/g, " ")}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

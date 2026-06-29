@@ -1,6 +1,6 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
-import type { CreateSpeakerDto, SpeakerDto, UpdateSpeakerDto } from "../dto";
+import type { CreateSpeakerDto, SpeakerDashboardDto, SpeakerDto, UpdateSpeakerDto } from "../dto";
 import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
 
 export const speakersService = {
@@ -15,7 +15,7 @@ export const speakersService = {
     return apiClient.get<ApiResponse<SpeakerDto>>(`/speakers/${id}`).then(unwrapApi);
   },
   getMyDashboard() {
-    return apiClient.get<ApiResponse<Record<string, unknown>>>("/speakers/me/dashboard").then(unwrapApi);
+    return apiClient.get<ApiResponse<SpeakerDashboardDto>>("/speakers/me/dashboard").then(unwrapApi);
   },
   createAdmin(dto: CreateSpeakerDto) {
     return apiClient.post<ApiResponse<SpeakerDto>>("/speakers/admin", dto).then(unwrapApi);

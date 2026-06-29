@@ -546,25 +546,122 @@ export type SponsorDto = {
   updatedAt: string;
 };
 
-export type ExhibitorProfileDto = {
+export type ExhibitorPackageDto = {
   id: string;
   symposiumId: string;
   name: string;
+  slug: string;
   description?: string | null;
-  logoUrl?: string | null;
-  websiteUrl?: string | null;
+  staffPassQuota: number;
+  boothSize?: string | null;
+  priceUsd: number;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ExhibitorMaterialDto = {
+  id: string;
+  exhibitorId: string;
+  fileUrl: string;
+  fileName: string;
+  fileType?: string | null;
+  createdAt: string;
+};
+
+export type ExhibitorProfileDto = {
+  id: string;
+  symposiumId: string;
+  sponsorId?: string | null;
+  packageId?: string | null;
+  contactUserId: string;
+  companyName?: string | null;
   boothNumber?: string | null;
-  tier?: string | null;
+  staffPassQuota: number;
+  package?: ExhibitorPackageDto | null;
+  sponsorName?: string | null;
+  materials: ExhibitorMaterialDto[];
+  staffPassesUsed: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UpdateExhibitorProfileDto = {
+  companyName?: string;
+  boothNumber?: string | null;
+};
+
+export type CreateExhibitorMaterialDto = {
+  fileUrl: string;
+  fileName: string;
+  fileType?: string;
+};
+
+export type ExhibitorStaffPassDto = {
+  id: string;
+  exhibitorId: string;
+  email: string;
+  holderName: string;
+  registrationId?: string | null;
   status: string;
+  createdAt: string;
+};
+
+export type CreateExhibitorStaffPassDto = {
+  email: string;
+  holderName: string;
+};
+
+export type ScanExhibitorLeadDto = {
+  registrationId?: string;
+  qrPayload?: string;
+  consentGiven: boolean;
 };
 
 export type ExhibitorLeadDto = {
   id: string;
   exhibitorId: string;
+  registrationId: string;
   scannedAt: string;
+  consentGiven: boolean;
   attendeeName?: string | null;
   attendeeEmail?: string | null;
-  notes?: string | null;
+};
+
+export type SpeakerDashboardSessionDto = {
+  id: string;
+  title: string;
+  startTime: string;
+  endTime: string;
+};
+
+export type SpeakerDashboardDto = {
+  speakerId: string;
+  symposiumId: string;
+  name: string;
+  sessionsCount: number;
+  submissionsCount: number;
+  materialsCount: number;
+  upcomingSessions: SpeakerDashboardSessionDto[];
+};
+
+export type SpeakerMaterialDto = {
+  id: string;
+  sessionId: string;
+  speakerId: string;
+  fileUrl: string;
+  equipmentRequirements?: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateSpeakerMaterialDto = {
+  fileUrl: string;
+};
+
+export type UpdateSpeakerMaterialEquipmentDto = {
+  equipmentRequirements: Record<string, unknown>;
 };
 
 export type FinanceTransactionDto = {

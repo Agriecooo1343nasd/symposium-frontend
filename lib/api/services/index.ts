@@ -21,3 +21,4 @@ export { submissionsService } from "./submissions";
 export { certificatesService } from "./certificates";
 export { reviewsService } from "./reviews";
 export { rolesService } from "./roles";
+export { speakerMaterialsService } from "./speaker-materials";
