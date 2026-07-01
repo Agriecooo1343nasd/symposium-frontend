@@ -23,6 +23,32 @@ export function registrationCategoryLabel(reg?: RegistrationDto | null): string 
   return reg?.ticketCategory?.name ?? "Delegate";
 }
 
+export function registrationDisplayAmount(
+  reg: RegistrationDto,
+  currency: "USD" | "RWF" = "USD",
+  exchangeRate = 1300,
+): string {
+  const c = (reg.currency as "USD" | "RWF") ?? currency;
+  if (c === "RWF" && reg.amountRwf != null) {
+    return `RWF ${Math.round(reg.amountRwf).toLocaleString()}`;
+  }
+  if (reg.amountUsd != null) {
+    return `$${reg.amountUsd.toLocaleString()}`;
+  }
+  if (reg.ticketCategory) {
+    if (c === "RWF") return `RWF ${Math.round(reg.ticketCategory.priceRwf).toLocaleString()}`;
+    return `$${reg.ticketCategory.priceUsd.toLocaleString()}`;
+  }
+  return "—";
+}
+
+export function formatRegistrationExpiry(expiresAt?: string | null): string | null {
+  if (!expiresAt) return null;
+  const date = new Date(expiresAt);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
 export function registrationStatusLabel(status: RegistrationStatus): string {
   const labels: Record<string, string> = {
     draft: "Draft",

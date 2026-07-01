@@ -8,11 +8,6 @@ import {
   Check,
   ChevronRight,
   ChevronLeft,
-  CreditCard,
-  Building2,
-  Smartphone,
-  ShieldCheck,
-  Lock,
   Calendar,
   Share2,
   Newspaper,
@@ -31,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CurrencyToggle, formatPrice } from "@/components/CurrencyToggle";
 import { SUB_THEMES, buildEventICS, EVENT } from "@/lib/mock-data";
 import { getCountries, isFeatureOpen } from "@/lib/platform-settings";
@@ -42,6 +37,7 @@ import { MediaRegistrationFlow } from "@/components/media/MediaRegistrationFlow"
 import { GroupMembersFields } from "@/components/group/GroupMembersFields";
 import { GroupPricingSummary } from "@/components/group/GroupPricingSummary";
 import { GroupDiscountTiersCard } from "@/components/group/GroupDiscountTiersCard";
+import { RegistrationPaymentForm } from "@/components/registration/RegistrationPaymentForm";
 import {
   calculateGroupPricing,
   type GroupMemberInput,
@@ -52,27 +48,21 @@ import { useSymposium } from "@/hooks/api/useSymposium";
 import { usePublicTicketCategories } from "@/hooks/api/usePublicData";
 import { useRegisterAccount } from "@/hooks/api/useAuthSession";
 import {
-  useBankTransfer,
   useCreateGroup,
   useCreateRegistration,
-  useInitiatePayment,
   useSelectCategory,
   useUploadVerificationDoc,
 } from "@/hooks/api/useRegistration";
+import {
+  formatRegistrationExpiry,
+  registrationDisplayAmount,
+} from "@/lib/api/mappers/registration-helpers";
 import { mapTicketCategoryToPlan } from "@/lib/api/mappers/ticketCategory";
 import { registrationsService } from "@/lib/api/services";
 import { apiErrorMessage } from "@/lib/api/client";
-import type { Currency, PaymentProvider, RegistrationDto } from "@/lib/api/dto";
+import type { Currency, RegistrationDto } from "@/lib/api/dto";
 
 type Plan = ReturnType<typeof mapTicketCategoryToPlan>;
-
-function normalizeRwandanPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.startsWith("250")) return digits;
-  if (digits.startsWith("0")) return `250${digits.slice(1)}`;
-  if (digits.length === 9) return `250${digits}`;
-  return digits;
-}
 
 function TicketQr({ value }: { value: string }) {
   const [src, setSrc] = useState("");
@@ -103,20 +93,18 @@ export default function Register() {
   const registerAccount = useRegisterAccount();
   const createReg = useCreateRegistration();
   const selectCategory = useSelectCategory();
-  const initiatePayment = useInitiatePayment();
-  const bankTransfer = useBankTransfer();
   const createGroup = useCreateGroup();
   const uploadDoc = useUploadVerificationDoc();
 
   const [regMode, setRegMode] = useState<"delegate" | "media">("delegate");
+  const [phase, setPhase] = useState<"wizard" | "done">("wizard");
   const [step, setStep] = useState(0);
   const [currency, setCurrency] = useState<Currency>("USD");
   const [picked, setPicked] = useState<Plan | null>(null);
   const [waitlistPlan, setWaitlistPlan] = useState<Plan | null>(null);
   const [verifyFile, setVerifyFile] = useState<File | null>(null);
   const [verifyDocUrl, setVerifyDocUrl] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState("momo");
-  const [momoPhone, setMomoPhone] = useState("");
+  const [showPayment, setShowPayment] = useState(false);
   const [regKind, setRegKind] = useState<"individual" | "group">("individual");
   const [groupSize, setGroupSize] = useState(() => groupSettings.minSize);
   const [groupMembers, setGroupMembers] = useState<GroupMemberInput[]>([]);
@@ -157,18 +145,16 @@ export default function Register() {
   const steps = useMemo(
     () => [
       "Details",
-      "Category",
-      ...(picked?.requiresVerification ? ["Verification"] : []),
-      "Payment",
-      "Confirm",
+      "Pass",
+      ...(picked?.requiresVerification ? ["Verify"] : []),
+      "Review",
     ],
     [picked],
   );
   const detailsStep = 0;
   const categoryStep = 1;
-  const verifyStep = steps.indexOf("Verification");
-  const paymentStep = steps.indexOf("Payment");
-  const confirmStep = steps.indexOf("Confirm");
+  const verifyStep = steps.indexOf("Verify");
+  const reviewStep = steps.indexOf("Review");
 
   const next = () => setStep((s) => Math.min(steps.length - 1, s + 1));
   const back = () => setStep((s) => Math.max(0, s - 1));
@@ -317,74 +303,60 @@ export default function Register() {
     }
   };
 
-  const goToConfirm = () => setStep(confirmStep);
-
-  const handleMobilePay = async (provider: PaymentProvider) => {
-    const phone = normalizeRwandanPhone(momoPhone);
-    if (!/^250\d{9}$/.test(phone))
-      return toast.error("Enter a valid Rwandan number, e.g. 0788123456.");
-    try {
-      setSubmitting(true);
-      const id = await ensureRegistration();
-      const res = await initiatePayment.mutateAsync({ registrationId: id, provider, phone });
-      await loadFinalRegistration(id);
-      if (res.registrationCompleted) {
-        toast.success("Payment confirmed");
-      } else {
-        toast.message(res.message ?? "Payment is processing — we'll confirm shortly.");
-      }
-      goToConfirm();
-    } catch (e) {
-      toast.error(apiErrorMessage(e));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleBankTransfer = async () => {
-    try {
-      setSubmitting(true);
-      const id = await ensureRegistration();
-      await bankTransfer.mutateAsync({ registrationId: id });
-      await loadFinalRegistration(id);
-      toast.success("Proforma invoice generated — check your email.");
-      goToConfirm();
-    } catch (e) {
-      toast.error(apiErrorMessage(e));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleGroupCreate = async () => {
+  const handleCompleteRegistration = async () => {
     if (!symposiumId) return toast.error("Symposium not loaded yet — please retry.");
     if (!picked) return toast.error("Select a ticket category first.");
-    const additional = groupMembers
-      .slice(0, groupSize - 1)
-      .filter((m) => m.email.trim())
-      .map((m) => ({ email: m.email.trim(), ticketCategoryId: picked.id }));
+
+    if (regKind === "group") {
+      const additional = groupMembers
+        .slice(0, groupSize - 1)
+        .filter((m) => m.email.trim())
+        .map((m) => ({ email: m.email.trim(), ticketCategoryId: picked.id }));
+      try {
+        setSubmitting(true);
+        const created = await createGroup.mutateAsync({
+          symposiumId,
+          organizationName: form.org || form.fullName,
+          currency,
+          members: [{ ticketCategoryId: picked.id }, ...additional],
+        });
+        const first = created[0] ?? null;
+        setFinalRegistration(first);
+        if (first) setRegistrationId(first.id);
+        toast.success(`Group registration created for ${created.length} delegates.`);
+        setPhase("done");
+      } catch (e) {
+        toast.error(apiErrorMessage(e));
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     try {
       setSubmitting(true);
-      const created = await createGroup.mutateAsync({
-        symposiumId,
-        organizationName: form.org || form.fullName,
-        currency,
-        members: [{ ticketCategoryId: picked.id }, ...additional],
-      });
-      setFinalRegistration(created[0] ?? null);
-      toast.success(`Group registration created for ${created.length} delegates.`);
-      goToConfirm();
+      const id = await ensureRegistration();
+      await loadFinalRegistration(id);
+      toast.success("You're registered — pay now or anytime from your dashboard.");
+      setPhase("done");
     } catch (e) {
       toast.error(apiErrorMessage(e));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handlePaymentComplete = async () => {
+    if (!registrationId) return;
+    await loadFinalRegistration(registrationId);
+    setShowPayment(false);
   };
 
   const confirmStatus = finalRegistration?.status;
   const isConfirmActive = confirmStatus === "active";
   const isPendingVerification = confirmStatus === "pending_verification";
   const isPendingPayment = confirmStatus === "pending_payment";
+  const paymentDeadline = formatRegistrationExpiry(finalRegistration?.expiresAt);
 
   if (!registrationOpen) {
     return (
@@ -407,7 +379,7 @@ export default function Register() {
           <p className="text-muted-foreground mt-2">
             {regMode === "media"
               ? "Complimentary access for accredited media — submit credentials for review."
-              : "Takes under 5 minutes. Pay with mobile money or bank transfer."}
+              : "Register in a few steps. Pay now or later from your dashboard."}
           </p>
         </div>
 
@@ -416,6 +388,7 @@ export default function Register() {
           onValueChange={(v) => {
             setRegMode(v as "delegate" | "media");
             setStep(0);
+            setPhase("wizard");
           }}
           className="max-w-md mx-auto mb-8"
         >
@@ -436,6 +409,7 @@ export default function Register() {
         ) : (
           <>
             {/* Stepper */}
+            {phase === "wizard" && (
             <div className="mb-10">
               <div className="flex items-center justify-between max-w-2xl mx-auto">
                 {steps.map((s, i) => (
@@ -460,10 +434,11 @@ export default function Register() {
                 ))}
               </div>
             </div>
+            )}
 
             <div className="rounded-3xl border border-border bg-card shadow-xl p-6 sm:p-10 min-h-[480px]">
               <AnimatePresence mode="wait">
-                {step === detailsStep && (
+                {phase === "wizard" && step === detailsStep && (
                   <motion.div
                     key="details"
                     initial={{ opacity: 0, x: 30 }}
@@ -726,7 +701,7 @@ export default function Register() {
                   </motion.div>
                 )}
 
-                {step === categoryStep && (
+                {phase === "wizard" && step === categoryStep && (
                   <motion.div
                     key="category"
                     initial={{ opacity: 0, x: 30 }}
@@ -865,7 +840,7 @@ export default function Register() {
                   </motion.div>
                 )}
 
-                {verifyStep !== -1 && step === verifyStep && picked?.requiresVerification && (
+                {phase === "wizard" && verifyStep !== -1 && step === verifyStep && picked?.requiresVerification && (
                   <motion.div
                     key="verify"
                     initial={{ opacity: 0, x: 30 }}
@@ -900,132 +875,55 @@ export default function Register() {
                       </label>
                     </div>
                     <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-4">
-                      You may complete payment now. Your pass remains pending verification until approved by the desk.
+                      You can finish registration without paying now. If your pass requires verification, the desk will
+                      review your document after payment.
                     </p>
                   </motion.div>
                 )}
 
-                {step === paymentStep && picked && (
+                {phase === "wizard" && step === reviewStep && picked && (
                   <motion.div
-                    key="payment"
+                    key="review"
                     initial={{ opacity: 0, x: 30 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -30 }}
                     transition={{ duration: 0.25 }}
                   >
-                    <h2 className="font-serif text-2xl font-bold mb-2">Payment</h2>
-                    <p className="text-xs text-muted-foreground mb-4">
-                      Refunds follow the policy you accepted in step 1. Manage requests later in your dashboard.
+                    <h2 className="font-serif text-2xl font-bold mb-2">Review &amp; complete</h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Confirm your details below. You&apos;ll reserve your pass now — payment is optional and can be done
+                      later from your dashboard.
                     </p>
                     <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6">
-                      <div>
-                        {regKind === "group" ? (
-                          <div className="space-y-4">
-                            <p className="text-sm text-muted-foreground">
-                              We&apos;ll create pending registrations for all {groupSize} delegates under{" "}
-                              <span className="font-medium text-foreground">{form.org || form.fullName}</span>. Payment
-                              instructions are sent to the group representative.
-                            </p>
-                            <Button
-                              className="w-full gradient-blue text-accent-foreground"
-                              onClick={handleGroupCreate}
-                              disabled={submitting}
-                            >
-                              {submitting ? "Creating…" : "Create group registrations"}
-                            </Button>
+                      <div className="space-y-4 text-sm">
+                        <div className="rounded-xl border border-border p-4">
+                          <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">
+                            Attendee
                           </div>
-                        ) : (
-                          <Tabs value={paymentMethod} onValueChange={setPaymentMethod}>
-                            <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full mb-4 h-auto">
-                              <TabsTrigger value="momo" className="flex-col h-auto py-2 gap-1">
-                                <Smartphone className="h-4 w-4" />
-                                <span className="text-[11px]">MTN MoMo</span>
-                              </TabsTrigger>
-                              <TabsTrigger value="airtel" className="flex-col h-auto py-2 gap-1">
-                                <Smartphone className="h-4 w-4" />
-                                <span className="text-[11px]">Airtel Money</span>
-                              </TabsTrigger>
-                              <TabsTrigger value="card" className="flex-col h-auto py-2 gap-1">
-                                <CreditCard className="h-4 w-4" />
-                                <span className="text-[11px]">Card</span>
-                              </TabsTrigger>
-                              <TabsTrigger value="bank" className="flex-col h-auto py-2 gap-1">
-                                <Building2 className="h-4 w-4" />
-                                <span className="text-[11px]">Bank Transfer</span>
-                              </TabsTrigger>
-                            </TabsList>
-
-                            <TabsContent value="momo" className="space-y-3">
-                              <Label>MTN Mobile Money number</Label>
-                              <Input
-                                placeholder="0788 123 456"
-                                value={momoPhone}
-                                onChange={(e) => setMomoPhone(e.target.value)}
-                              />
-                              <Button
-                                className="w-full gradient-blue text-accent-foreground"
-                                disabled={submitting}
-                                onClick={() => handleMobilePay("mtn")}
-                              >
-                                {submitting ? "Processing…" : "Send Payment Request"}
-                              </Button>
-                              <p className="text-xs text-muted-foreground">
-                                You&apos;ll receive a prompt on your phone to authorize the payment.
-                              </p>
-                            </TabsContent>
-                            <TabsContent value="airtel" className="space-y-3">
-                              <Label>Airtel Money number</Label>
-                              <Input
-                                placeholder="0730 123 456"
-                                value={momoPhone}
-                                onChange={(e) => setMomoPhone(e.target.value)}
-                              />
-                              <Button
-                                className="w-full gradient-blue text-accent-foreground"
-                                disabled={submitting}
-                                onClick={() => handleMobilePay("airtel")}
-                              >
-                                {submitting ? "Processing…" : "Send Payment Request"}
-                              </Button>
-                            </TabsContent>
-                            <TabsContent value="card" className="space-y-3">
-                              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                                Card payments aren&apos;t available online yet. Please use MTN MoMo, Airtel Money, or bank
-                                transfer. Card payment can be taken at the registration desk.
-                              </div>
-                            </TabsContent>
-                            <TabsContent value="bank" className="space-y-2 text-sm">
-                              <p className="text-muted-foreground font-sans">
-                                A proforma invoice will be emailed to you with the secretariat&apos;s bank details. Your
-                                pass activates once finance confirms your transfer.
-                              </p>
-                              <Button
-                                className="w-full gradient-blue text-accent-foreground mt-4"
-                                disabled={submitting}
-                                onClick={handleBankTransfer}
-                              >
-                                {submitting ? "Generating…" : "Generate Proforma Invoice"}
-                              </Button>
-                            </TabsContent>
-                          </Tabs>
-                        )}
-
-                        <div className="flex items-center gap-4 mt-6 pt-6 border-t border-border text-xs text-muted-foreground">
-                          <span className="inline-flex items-center gap-1">
-                            <Lock className="h-3 w-3" /> SSL Secured
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <ShieldCheck className="h-3 w-3" /> Payments via ITEC Pay
-                          </span>
+                          <div className="font-medium">{form.fullName}</div>
+                          <div className="text-muted-foreground">{form.email}</div>
+                          <div className="text-muted-foreground">{form.org}</div>
+                          <div className="text-muted-foreground">{form.country}</div>
                         </div>
+                        {regKind === "group" && (
+                          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+                            <p className="font-medium">Group of {groupSize}</p>
+                            <p className="text-xs mt-1">
+                              We&apos;ll create a pending registration for each delegate. Each person pays separately
+                              from their own account.
+                            </p>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Refunds follow the policy you accepted in step 1.
+                        </p>
                       </div>
 
                       <aside className="rounded-2xl bg-secondary/60 border border-border p-5 h-fit">
                         <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">
-                          Order summary
+                          Your pass
                         </div>
                         <div className="font-serif font-bold">{picked.name}</div>
-                        <div className="text-sm text-muted-foreground">{form.fullName || "Attendee"}</div>
                         <div className="mt-4 pt-4 border-t border-border">
                           {regKind === "group" ? (
                             <GroupPricingSummary
@@ -1036,24 +934,21 @@ export default function Register() {
                               compact
                             />
                           ) : (
-                            <div className="space-y-1 text-sm">
-                              <div className="flex justify-between">
-                                <span>Subtotal</span>
-                                <span className="font-medium">{formatPrice(picked.usd, currency, exchangeRate)}</span>
-                              </div>
-                              <div className="flex justify-between text-base font-serif font-bold pt-2 border-t border-border mt-2">
-                                <span>Total</span>
-                                <span className="text-gradient">{formatPrice(picked.usd, currency, exchangeRate)}</span>
-                              </div>
+                            <div className="flex justify-between text-base font-serif font-bold">
+                              <span>Total due</span>
+                              <span className="text-gradient">{formatPrice(picked.usd, currency, exchangeRate)}</span>
                             </div>
                           )}
                         </div>
+                        <p className="text-xs text-muted-foreground mt-4">
+                          Payment not required to complete registration.
+                        </p>
                       </aside>
                     </div>
                   </motion.div>
                 )}
 
-                {step === confirmStep && (
+                {phase === "done" && (
                   <motion.div
                     key="confirm"
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -1078,18 +973,72 @@ export default function Register() {
                         : isPendingVerification
                           ? "Payment received — pending verification"
                           : isPendingPayment
-                            ? "Almost there — complete your transfer"
+                            ? "You're registered"
                             : "Registration created"}
                     </h2>
-                    <p className="text-muted-foreground mt-2 max-w-md mx-auto">
+                    <p className="text-muted-foreground mt-2 max-w-lg mx-auto">
                       {isConfirmActive
                         ? "Your e-ticket is ready. See you in Kigali on 13 August 2026."
                         : isPendingVerification
                           ? "We've received your payment. The registration desk will verify your document and activate your pass shortly."
                           : isPendingPayment
-                            ? "We've emailed your proforma invoice. Your pass activates as soon as finance confirms your bank transfer."
+                            ? regKind === "group"
+                              ? `Group registrations are set up for ${groupSize} delegates. Each person pays separately from their dashboard to activate their pass.`
+                              : `Your seat is reserved. Pay ${finalRegistration ? registrationDisplayAmount(finalRegistration, currency, exchangeRate) : formatPrice(picked?.usd ?? 0, currency, exchangeRate)} to activate your e-ticket.${paymentDeadline ? ` Complete payment by ${paymentDeadline}.` : ""}`
                             : "Check your email for next steps."}
                     </p>
+
+                    {isPendingPayment && registrationId && regKind === "individual" && (
+                      <div className="mt-8 max-w-lg mx-auto text-left">
+                        {!showPayment ? (
+                          <div className="rounded-2xl border border-border bg-secondary/40 p-5 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-sm">Ready to pay?</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Pay now with mobile money or bank transfer, or do it later from your dashboard.
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setShowPayment(true)}
+                            >
+                              Pay now
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="rounded-2xl border border-border bg-card p-5">
+                            <h3 className="font-serif font-bold mb-4 text-center">Pay now (optional)</h3>
+                            <RegistrationPaymentForm
+                              registrationId={registrationId}
+                              defaultPhone={form.phone}
+                              onPaid={handlePaymentComplete}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {isPendingPayment && registrationId && regKind === "group" && (
+                      <div className="mt-8 max-w-lg mx-auto text-left rounded-2xl border border-border bg-secondary/40 p-5">
+                        <p className="font-semibold text-sm">Pay for your own pass</p>
+                        <p className="text-xs text-muted-foreground mt-1 mb-4">
+                          As group representative, you can pay for your registration now. Other delegates pay from their
+                          accounts.
+                        </p>
+                        {!showPayment ? (
+                          <Button variant="outline" size="sm" onClick={() => setShowPayment(true)}>
+                            Pay for my pass
+                          </Button>
+                        ) : (
+                          <RegistrationPaymentForm
+                            registrationId={registrationId}
+                            defaultPhone={form.phone}
+                            onPaid={handlePaymentComplete}
+                          />
+                        )}
+                      </div>
+                    )}
 
                     {isConfirmActive && finalRegistration?.qrData && (
                       <div className="mt-8">
@@ -1110,8 +1059,8 @@ export default function Register() {
                     </div>
 
                     <div className="flex flex-wrap gap-3 justify-center mt-8">
-                      <Button onClick={() => router.push("/dashboard")} className="gradient-blue text-accent-foreground">
-                        Go to dashboard
+                      <Button onClick={() => router.push("/dashboard/ticket")} className="gradient-blue text-accent-foreground">
+                        {isPendingPayment ? "Pay later — go to dashboard" : "Go to dashboard"}
                       </Button>
                       <Button
                         variant="outline"
@@ -1147,21 +1096,24 @@ export default function Register() {
             </div>
 
             {/* Nav buttons */}
-            {step < paymentStep && (
+            {phase === "wizard" && (
               <div className="flex items-center justify-between mt-6">
                 <Button variant="ghost" onClick={back} disabled={step === 0 || submitting}>
                   <ChevronLeft className="h-4 w-4 mr-1" /> Back
                 </Button>
-                <Button onClick={handleNext} disabled={submitting} className="gradient-blue text-accent-foreground">
-                  {submitting ? "Please wait…" : "Continue"} <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
-            )}
-            {step === paymentStep && (
-              <div className="flex items-center justify-between mt-6">
-                <Button variant="ghost" onClick={back} disabled={submitting}>
-                  <ChevronLeft className="h-4 w-4 mr-1" /> Back
-                </Button>
+                {step < reviewStep ? (
+                  <Button onClick={handleNext} disabled={submitting} className="gradient-blue text-accent-foreground">
+                    {submitting ? "Please wait…" : "Continue"} <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleCompleteRegistration}
+                    disabled={submitting}
+                    className="gradient-blue text-accent-foreground"
+                  >
+                    {submitting ? "Saving…" : "Complete registration"} <Check className="h-4 w-4 ml-1" />
+                  </Button>
+                )}
               </div>
             )}
           </>
