@@ -28,7 +28,7 @@ export default function Page() {
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-serif text-3xl font-bold">Speakers</h1>
-          <p className="text-muted-foreground">{speakers.length} in directory (public `GET /speakers`)</p>
+          <p className="text-muted-foreground">{speakers.length} in directory</p>
         </div>
         <Button size="sm" className="gradient-blue text-accent-foreground" onClick={() => { setEdit(null); setOpen(true); }}>
           <Plus className="h-3.5 w-3.5 mr-1" /> Add speaker

@@ -9,7 +9,7 @@ export function AdminExhibitorsApiPanel() {
     <div className="space-y-4 mb-8">
       <div>
         <h2 className="font-serif font-bold text-lg">Exhibitors (API)</h2>
-        <p className="text-sm text-muted-foreground">From `GET /exhibitors/admin/list`. Booth map, applications, and sponsorship below remain local mock.</p>
+        <p className="text-sm text-muted-foreground">Exhibitor records from the live directory. Booth map, applications, and sponsorship below remain local mock.</p>
       </div>
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {isError && <p className="text-sm text-destructive">Could not load exhibitors.</p>}

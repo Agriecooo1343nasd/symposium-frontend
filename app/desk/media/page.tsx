@@ -13,7 +13,7 @@ export default function DeskMediaPage() {
       <div>
         <h1 className="font-serif text-3xl font-bold">Media accreditation</h1>
         <p className="text-muted-foreground">
-          Press applications from `GET /cms/admin/media-accreditations`.
+          Press accreditation applications from the desk queue.
         </p>
       </div>
 

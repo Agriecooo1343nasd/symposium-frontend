@@ -18,7 +18,7 @@ export default function Page() {
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-3xl font-bold">Abstract submissions</h1>
-        <p className="text-muted-foreground">Review submissions from `GET /submissions` (admin).</p>
+        <p className="text-muted-foreground">Review and decide on abstract submissions.</p>
       </div>
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading submissions…</p>}

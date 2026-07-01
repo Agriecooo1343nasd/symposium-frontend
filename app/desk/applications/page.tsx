@@ -21,7 +21,7 @@ export default function DeskApplicationsPage() {
         <div>
           <h1 className="font-serif text-3xl font-bold">Speaker submissions</h1>
           <p className="text-muted-foreground">
-            Review abstract submissions from `GET /submissions` (admin). Exhibitor apps remain local mock.
+            Review abstract submissions. Exhibitor apps remain local mock.
           </p>
         </div>
         <Button asChild variant="outline" size="sm">

@@ -19,10 +19,34 @@ import type { Role } from "@/lib/mock-data";
 import { useAdminCommandAction, useAdminTabNavigation } from "@/hooks/use-admin-command-action";
 import { useAdminBroadcast } from "@/hooks/api/useEngage";
 import { useSymposiumId } from "@/hooks/api/useSymposium";
+import { useAdminTicketCategories } from "@/hooks/api/useAdmin";
 import { apiErrorMessage } from "@/lib/api/client";
+import type { AdminBroadcastDto } from "@/lib/api/dto";
 
-const SEGMENTS = ["All Attendees", "By Category", "By Country", "Pending Payment", "Checked In", "Speakers", "Exhibitors", "Custom"];
+const SEGMENTS = [
+  { value: "all", label: "All attendees" },
+  { value: "paid", label: "Paid attendees" },
+  { value: "pending", label: "Pending payment" },
+  { value: "category", label: "By ticket category" },
+] as const;
+
+type SegmentValue = (typeof SEGMENTS)[number]["value"];
+
 const COMM_TABS = ["email", "invites", "auto", "announce"] as const;
+
+function buildBroadcastDto(
+  symposiumId: string,
+  title: string,
+  body: string,
+  segment: SegmentValue,
+  ticketCategoryId?: string,
+): AdminBroadcastDto {
+  const dto: AdminBroadcastDto = { symposiumId, title, body };
+  if (segment === "paid") dto.paymentStatus = "paid";
+  else if (segment === "pending") dto.paymentStatus = "pending";
+  else if (segment === "category" && ticketCategoryId) dto.ticketCategoryId = ticketCategoryId;
+  return dto;
+}
 
 export default function Page() {
   const [auto, setAuto] = useState(AUTOMATED_TEMPLATES);
@@ -31,7 +55,9 @@ export default function Page() {
   const { activeTab, onTabChange } = useAdminTabNavigation([...COMM_TABS], "email");
   const broadcast = useAdminBroadcast();
   const symposiumId = useSymposiumId();
-  const [segment, setSegment] = useState(SEGMENTS[0]);
+  const { categories } = useAdminTicketCategories();
+  const [segment, setSegment] = useState<SegmentValue>("all");
+  const [ticketCategoryId, setTicketCategoryId] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
@@ -42,17 +68,17 @@ export default function Page() {
   const sendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!symposiumId) return toast.error("No symposium selected");
+    if (segment === "category" && !ticketCategoryId) {
+      return toast.error("Select a ticket category");
+    }
     try {
-      const result = await broadcast.mutateAsync({
-        symposiumId,
-        title: subject.trim(),
-        body: body.trim(),
-        segment,
-        channels: ["in_app", "email"],
-      });
-      const queued = (result as { queued?: number })?.queued;
+      const result = await broadcast.mutateAsync(
+        buildBroadcastDto(symposiumId, subject.trim(), body.trim(), segment, ticketCategoryId || undefined),
+      );
       toast.success(
-        queued !== undefined ? `Broadcast queued for ${queued} recipients` : "Broadcast queued",
+        result.queued !== undefined
+          ? `Broadcast queued for ${result.queued} recipients`
+          : "Broadcast queued",
       );
       setSubject("");
       setBody("");
@@ -79,10 +105,56 @@ export default function Page() {
         <TabsContent value="email" className="mt-6 grid lg:grid-cols-[1fr_1fr] gap-6">
           <form onSubmit={sendBroadcast} className="rounded-2xl bg-card border border-border p-6 space-y-4">
             <h2 className="font-serif font-bold">Compose broadcast</h2>
-            <div><Label>Recipient segment</Label><Select value={segment} onValueChange={setSegment}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent>{SEGMENTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
-            <div><Label>Subject</Label><Input required className="mt-1" value={subject} onChange={(e) => setSubject(e.target.value)} /></div>
-            <div><Label>Body</Label><Textarea rows={8} required className="mt-1" value={body} onChange={(e) => setBody(e.target.value)} /></div>
-            <div className="flex gap-2"><Button type="submit" disabled={broadcast.isPending || !subject.trim() || !body.trim()} className="gradient-blue text-accent-foreground" size="sm"><Send className="h-3.5 w-3.5 mr-1" /> {broadcast.isPending ? "Sending…" : "Send broadcast"}</Button></div>
+            <div>
+              <Label>Recipients</Label>
+              <Select value={segment} onValueChange={(v) => setSegment(v as SegmentValue)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SEGMENTS.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {segment === "category" && (
+              <div>
+                <Label>Ticket category</Label>
+                <Select value={ticketCategoryId} onValueChange={setTicketCategoryId}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div>
+              <Label>Subject</Label>
+              <Input required className="mt-1" value={subject} onChange={(e) => setSubject(e.target.value)} />
+            </div>
+            <div>
+              <Label>Body</Label>
+              <Textarea rows={8} required className="mt-1" value={body} onChange={(e) => setBody(e.target.value)} />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                disabled={broadcast.isPending || !subject.trim() || !body.trim()}
+                className="gradient-blue text-accent-foreground"
+                size="sm"
+              >
+                <Send className="h-3.5 w-3.5 mr-1" /> {broadcast.isPending ? "Sending…" : "Send broadcast"}
+              </Button>
+            </div>
           </form>
           <div className="rounded-2xl bg-card border border-border p-6">
             <h2 className="font-serif font-bold mb-4">Sent campaigns</h2>
@@ -90,7 +162,9 @@ export default function Page() {
               {EMAIL_CAMPAIGNS.map((c) => (
                 <div key={c.id} className="border-b border-border last:border-0 pb-3 last:pb-0">
                   <div className="font-medium text-sm">{c.subject}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{c.segment} · {c.sent} · {c.recipients} recipients · {c.openRate} opens</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {c.segment} · {c.sent} · {c.recipients} recipients · {c.openRate} opens
+                  </div>
                 </div>
               ))}
             </div>
@@ -125,8 +199,19 @@ export default function Page() {
         <TabsContent value="auto" className="mt-6 space-y-3 max-w-2xl">
           {auto.map((t) => (
             <div key={t.id} className="rounded-2xl bg-card border border-border p-5 flex items-center justify-between">
-              <div><div className="font-medium">{t.label}</div><div className="text-xs text-muted-foreground">Triggered automatically by system events.</div></div>
-              <div className="flex items-center gap-3"><Button size="sm" variant="ghost">Edit template</Button><Switch checked={t.enabled} onCheckedChange={(c) => setAuto(auto.map((x) => x.id === t.id ? { ...x, enabled: c } : x))} /></div>
+              <div>
+                <div className="font-medium">{t.label}</div>
+                <div className="text-xs text-muted-foreground">Triggered automatically by system events.</div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button size="sm" variant="ghost">
+                  Edit template
+                </Button>
+                <Switch
+                  checked={t.enabled}
+                  onCheckedChange={(c) => setAuto(auto.map((x) => (x.id === t.id ? { ...x, enabled: c } : x)))}
+                />
+              </div>
             </div>
           ))}
         </TabsContent>
@@ -149,7 +234,8 @@ export default function Page() {
                     <div>
                       <div className="font-medium text-sm">{a.title}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        {a.audiences.map((x) => (x === "all" ? "Everyone" : roleLabel(x as Role))).join(", ")} · {a.createdAt.slice(0, 10)} · {a.createdBy}
+                        {a.audiences.map((x) => (x === "all" ? "Everyone" : roleLabel(x as Role))).join(", ")} ·{" "}
+                        {a.createdAt.slice(0, 10)} · {a.createdBy}
                       </div>
                       <p className="text-sm mt-1 text-muted-foreground line-clamp-2">{a.body}</p>
                     </div>

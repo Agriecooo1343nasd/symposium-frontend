@@ -53,7 +53,7 @@ export default function AdminOverview() {
   const funnelData = DAILY_REGS.map((d) => ({ day: d.day.split(" ")[1], visits: d.regs * 8, regs: d.regs }));
 
   const exportCsv = () => {
-    toast.error("Use Registrations page export — GET /admin/registrations/export");
+    toast.error("Use the Registrations page to export data.");
   };
 
   return (

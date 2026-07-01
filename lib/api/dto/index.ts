@@ -1150,12 +1150,19 @@ export type UpsertCmsPageDto = {
   content: Record<string, unknown>;
 };
 
+export type BroadcastPaymentFilter = "paid" | "pending" | "all";
+
 export type AdminBroadcastDto = {
   symposiumId: string;
   title: string;
   body: string;
-  segment?: string;
-  channels?: string[];
+  ticketCategoryId?: string;
+  paymentStatus?: BroadcastPaymentFilter;
+};
+
+export type AdminBroadcastResultDto = {
+  queued: number;
+  symposiumId: string;
 };
 
 export type AdminDeadlineOverrideDto = { deadlineOverride: boolean };

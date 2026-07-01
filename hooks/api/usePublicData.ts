@@ -63,7 +63,7 @@ export function usePublicSpeakers() {
   const { symposiumId } = useSymposium();
   const query = useQuery({
     queryKey: queryKeys.speakers.bySymposium(symposiumId ?? "none", { public: true }),
-    queryFn: () => speakersService.list(symposiumId as string, { limit: 100 }),
+    queryFn: () => speakersService.listPublic(symposiumId as string, { limit: 100 }),
     enabled: Boolean(symposiumId),
     staleTime: LONG_STALE,
   });

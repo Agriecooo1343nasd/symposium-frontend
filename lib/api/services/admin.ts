@@ -1,5 +1,6 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
+import type { AdminBroadcastDto, AdminBroadcastResultDto } from "../dto";
 import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
 
 export const adminService = {
@@ -23,8 +24,8 @@ export const adminService = {
       .get<ApiResponse<Record<string, unknown>>>("/admin/desk-audit", { params: { symposiumId } })
       .then(unwrapApi);
   },
-  broadcast(dto: Record<string, unknown>) {
-    return apiClient.post<ApiResponse<Record<string, unknown>>>("/admin/broadcast", dto).then(unwrapApi);
+  broadcast(dto: AdminBroadcastDto) {
+    return apiClient.post<ApiResponse<AdminBroadcastResultDto>>("/admin/broadcast", dto).then(unwrapApi);
   },
   exportRegistrations(params: Record<string, string>) {
     return apiClient.get("/admin/registrations/export", { params, responseType: "blob" });

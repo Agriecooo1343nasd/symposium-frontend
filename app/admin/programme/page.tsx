@@ -18,16 +18,15 @@ import { SUB_THEME_COLORS } from "@/lib/mock-data";
 import { getSessionRatingSummary } from "@/lib/session-ratings";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
-import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
-import { useSearchParams } from "next/navigation";
+import { useAdminCommandAction, useAdminTabNavigation } from "@/hooks/use-admin-command-action";
 
 
 export default function Page() {
   const store = useStore();
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab");
-  const validTabs = ["sessions", "timeline1", "timeline2", "rooms", "ratings"];
-  const activeTab = validTabs.includes(tabParam ?? "") ? tabParam! : "sessions";
+  const { activeTab, onTabChange } = useAdminTabNavigation(
+    ["sessions", "timeline1", "timeline2", "rooms", "ratings"],
+    "sessions",
+  );
   const [sessionOpen, setSessionOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<Session | null>(null);
   const [roomOpen, setRoomOpen] = useState(false);
@@ -64,7 +63,7 @@ export default function Page() {
         </div>
       </div>
 
-      <Tabs value={activeTab}>
+      <Tabs value={activeTab} onValueChange={onTabChange}>
         <TabsList>
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
           <TabsTrigger value="timeline1">Run of show · Day 1</TabsTrigger>
@@ -81,7 +80,7 @@ export default function Page() {
 
         <TabsContent value="sessions" className="mt-6">
           <AdminSessionsPanel />
-          <p className="text-xs text-muted-foreground mt-4">Run-of-show, rooms, and ratings tabs remain local mock (no API).</p>
+          <p className="text-xs text-muted-foreground mt-4">Run-of-show, rooms, and ratings use local data for now.</p>
         </TabsContent>
 
         <TabsContent value="ratings" className="mt-6">
