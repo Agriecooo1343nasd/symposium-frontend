@@ -12,13 +12,10 @@ import { useAdminUsers, useAuditLogs, useCreateAdminUser, useRoles, useUpdateAdm
 import { userDisplayName } from "@/lib/api/mappers/user";
 import type { UserDto } from "@/lib/api/dto";
 import { toast } from "sonner";
-import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
-import { useSearchParams } from "next/navigation";
+import { useAdminCommandAction, useAdminTabNavigation } from "@/hooks/use-admin-command-action";
 
 export default function Page() {
-  const searchParams = useSearchParams();
-  const validTabs = ["users", "invites", "roles", "audit"];
-  const activeTab = validTabs.includes(searchParams.get("tab") ?? "") ? searchParams.get("tab")! : "users";
+  const { activeTab, onTabChange } = useAdminTabNavigation(["users", "invites", "roles", "audit"], "users");
   const { users, isLoading, isError } = useAdminUsers({ limit: 100 });
   const roles = useRoles();
   const audit = useAuditLogs({ limit: 50 });
@@ -76,14 +73,14 @@ export default function Page() {
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-serif text-3xl font-bold">Users & roles</h1>
-          <p className="text-muted-foreground">{users.length} users from `GET /users`</p>
+          <p className="text-muted-foreground">{users.length} registered users</p>
         </div>
         <Button size="sm" className="gradient-blue text-accent-foreground" onClick={() => setInviteOpen(true)}>
           <UserPlus className="h-3.5 w-3.5 mr-1" /> Create user
         </Button>
       </div>
 
-      <Tabs value={activeTab}>
+      <Tabs value={activeTab} onValueChange={onTabChange}>
         <TabsList>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="invites">Invitations (mock)</TabsTrigger>

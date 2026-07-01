@@ -59,7 +59,7 @@ export function ManualRegistrationDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Walk-in registration</DialogTitle>
           <p className="text-sm text-muted-foreground font-normal">
-            Creates via `POST /registrations/desk/walk-in`. User must exist or be created separately.
+            Creates a walk-in registration. The attendee must already exist or be created separately.
           </p>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">

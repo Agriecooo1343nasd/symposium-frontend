@@ -17,7 +17,7 @@ export default function DeskVerificationsPage() {
       <div>
         <h1 className="font-serif text-3xl font-bold">Document verification</h1>
         <p className="text-muted-foreground">
-          Student cards and farmer organization letters — from `GET /attendance/pending-verifications`.
+          Student cards and farmer organization letters pending verification.
         </p>
       </div>
 

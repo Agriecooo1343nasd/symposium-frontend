@@ -80,7 +80,7 @@ export function AdminSessionsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">{sessions.length} sessions from API</p>
+        <p className="text-sm text-muted-foreground">{sessions.length} sessions</p>
         <Button size="sm" className="gradient-blue text-accent-foreground" onClick={() => { setForm(empty()); setOpen(true); }}>
           <Plus className="h-3.5 w-3.5 mr-1" /> Add session
         </Button>
