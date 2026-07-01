@@ -1,4 +1,4 @@
-import type { RegistrationDto, RegistrationStatus } from "../dto";
+import type { RegistrationDto, RegistrationStatus, UserDto } from "../dto";
 
 const PAID_STATUSES: RegistrationStatus[] = [
   "active",
@@ -39,4 +39,17 @@ export function registrationStatusLabel(status: RegistrationStatus): string {
     refunded: "Refunded",
   };
   return labels[status] ?? status;
+}
+
+export function registrationAttendeeLabel(
+  reg: RegistrationDto,
+  user?: Pick<UserDto, "firstName" | "lastName" | "email"> | null,
+): { name: string; email: string | null } {
+  if (user) {
+    const first = user.firstName?.trim();
+    const last = user.lastName?.trim();
+    const name = [first, last].filter(Boolean).join(" ") || user.email;
+    return { name, email: user.email };
+  }
+  return { name: `User ${reg.userId.slice(0, 8)}…`, email: null };
 }
