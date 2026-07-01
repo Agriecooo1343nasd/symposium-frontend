@@ -2,14 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Download, Calendar, MapPin, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RegistrationPaymentForm } from "@/components/registration/RegistrationPaymentForm";
 import { EVENT } from "@/lib/mock-data";
 import { useAuth } from "@/hooks/use-auth";
 import { useSymposium } from "@/hooks/api/useSymposium";
 import { useMyRegistrations } from "@/hooks/api/useRegistration";
 import {
+  formatRegistrationExpiry,
   isRegistrationPaid,
   primaryRegistration,
   registrationCategoryLabel,
+  registrationDisplayAmount,
   registrationStatusLabel,
 } from "@/lib/api/mappers/registration-helpers";
 import { userDisplayName } from "@/lib/api/mappers/user";
@@ -18,9 +21,10 @@ import { useCurrentUser } from "@/hooks/api/useAuthSession";
 export function TicketCard() {
   const ref = useRef<HTMLCanvasElement>(null);
   const [url, setUrl] = useState("");
+  const [showPayment, setShowPayment] = useState(false);
   const { session } = useAuth();
   const { data: user } = useCurrentUser();
-  const { registrations, isLoading } = useMyRegistrations();
+  const { registrations, isLoading, refetch } = useMyRegistrations();
   const { symposium } = useSymposium();
 
   const reg = useMemo(() => primaryRegistration(registrations), [registrations]);
@@ -62,13 +66,44 @@ export function TicketCard() {
   }
 
   if (!isRegistrationPaid(reg)) {
+    const deadline = formatRegistrationExpiry(reg.expiresAt);
+    const amount = registrationDisplayAmount(reg);
+    const isAwaitingPayment = reg.status === "pending_payment";
+
     return (
-      <div className="rounded-3xl border border-amber-200 bg-amber-50 p-8 text-center">
-        <p className="font-serif font-bold text-lg">Registration pending</p>
-        <p className="text-sm text-muted-foreground mt-2">
-          Your pass status is <strong>{registrationStatusLabel(reg.status)}</strong>. Your e-ticket QR will appear here
-          once payment is confirmed and your pass is active.
+      <div className="rounded-3xl border border-amber-200 bg-amber-50 p-8 max-w-2xl">
+        <p className="font-serif font-bold text-lg text-center">
+          {isAwaitingPayment ? "Registration complete — payment pending" : "Registration pending"}
         </p>
+        <p className="text-sm text-muted-foreground mt-2 text-center">
+          Your pass status is <strong>{registrationStatusLabel(reg.status)}</strong>.
+          {isAwaitingPayment
+            ? ` Pay ${amount} to activate your e-ticket.${deadline ? ` Complete payment by ${deadline}.` : ""}`
+            : " Your e-ticket QR will appear here once payment is confirmed and your pass is active."}
+        </p>
+
+        {isAwaitingPayment && (
+          <div className="mt-6">
+            {!showPayment ? (
+              <div className="flex justify-center">
+                <Button className="gradient-blue text-accent-foreground" onClick={() => setShowPayment(true)}>
+                  Complete payment
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-border bg-card p-5 mt-4">
+                <RegistrationPaymentForm
+                  registrationId={reg.id}
+                  defaultPhone={user?.phone ?? ""}
+                  onPaid={() => {
+                    void refetch();
+                    setShowPayment(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
