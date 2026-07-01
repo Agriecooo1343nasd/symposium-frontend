@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Eye, Trash2, Star } from "lucide-react";
+import { Eye, Trash2, Star, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/hooks/use-store";
 import { patchStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useState } from "react";
+import { useAdminSurveys, useSurveyResults } from "@/hooks/api/useEngage";
 
 
 function Stars({ n }: { n: number }) {
@@ -39,6 +41,8 @@ export default function Page() {
           Post-event feedback from attendees (FR-8.3) · {store.surveyResponses.length} responses · avg {avg}/5
         </p>
       </div>
+
+      <BackendSurveysPanel />
 
       <div className="rounded-md border overflow-x-auto bg-card">
         <table className="w-full text-sm min-w-[640px]">
@@ -82,5 +86,66 @@ export default function Page() {
         )}
       </div>
     </div>
+  );
+}
+
+function BackendSurveysPanel() {
+  const { surveys, isLoading } = useAdminSurveys();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const { data: results, isLoading: loadingResults } = useSurveyResults(openId);
+
+  return (
+    <section className="rounded-2xl bg-card border border-border p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <BarChart3 className="h-4 w-4 text-accent" />
+        <h2 className="font-serif font-bold">Live surveys</h2>
+      </div>
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading surveys…</p>
+      ) : surveys.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No surveys configured in the backend yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {surveys.map((s) => (
+            <div key={s.id} className="rounded-xl border border-border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-medium text-sm">{s.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {Array.isArray(s.questions) ? s.questions.length : 0} questions ·{" "}
+                    {s.isActive ? "Active" : "Closed"}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setOpenId(openId === s.id ? null : s.id)}
+                >
+                  {openId === s.id ? "Hide results" : "View results"}
+                </Button>
+              </div>
+              {openId === s.id && (
+                <div className="mt-3 border-t border-border pt-3 text-sm">
+                  {loadingResults ? (
+                    <p className="text-muted-foreground">Loading results…</p>
+                  ) : results ? (
+                    <div className="space-y-1">
+                      <div className="text-muted-foreground">
+                        {results.responseCount} response{results.responseCount === 1 ? "" : "s"}
+                      </div>
+                      <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-secondary/50 p-3 text-xs">
+                        {JSON.stringify(results.aggregates, null, 2)}
+                      </pre>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">No results available.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

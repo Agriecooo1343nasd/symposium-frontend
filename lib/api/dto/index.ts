@@ -546,25 +546,122 @@ export type SponsorDto = {
   updatedAt: string;
 };
 
-export type ExhibitorProfileDto = {
+export type ExhibitorPackageDto = {
   id: string;
   symposiumId: string;
   name: string;
+  slug: string;
   description?: string | null;
-  logoUrl?: string | null;
-  websiteUrl?: string | null;
+  staffPassQuota: number;
+  boothSize?: string | null;
+  priceUsd: number;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ExhibitorMaterialDto = {
+  id: string;
+  exhibitorId: string;
+  fileUrl: string;
+  fileName: string;
+  fileType?: string | null;
+  createdAt: string;
+};
+
+export type ExhibitorProfileDto = {
+  id: string;
+  symposiumId: string;
+  sponsorId?: string | null;
+  packageId?: string | null;
+  contactUserId: string;
+  companyName?: string | null;
   boothNumber?: string | null;
-  tier?: string | null;
+  staffPassQuota: number;
+  package?: ExhibitorPackageDto | null;
+  sponsorName?: string | null;
+  materials: ExhibitorMaterialDto[];
+  staffPassesUsed: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UpdateExhibitorProfileDto = {
+  companyName?: string;
+  boothNumber?: string | null;
+};
+
+export type CreateExhibitorMaterialDto = {
+  fileUrl: string;
+  fileName: string;
+  fileType?: string;
+};
+
+export type ExhibitorStaffPassDto = {
+  id: string;
+  exhibitorId: string;
+  email: string;
+  holderName: string;
+  registrationId?: string | null;
   status: string;
+  createdAt: string;
+};
+
+export type CreateExhibitorStaffPassDto = {
+  email: string;
+  holderName: string;
+};
+
+export type ScanExhibitorLeadDto = {
+  registrationId?: string;
+  qrPayload?: string;
+  consentGiven: boolean;
 };
 
 export type ExhibitorLeadDto = {
   id: string;
   exhibitorId: string;
+  registrationId: string;
   scannedAt: string;
+  consentGiven: boolean;
   attendeeName?: string | null;
   attendeeEmail?: string | null;
-  notes?: string | null;
+};
+
+export type SpeakerDashboardSessionDto = {
+  id: string;
+  title: string;
+  startTime: string;
+  endTime: string;
+};
+
+export type SpeakerDashboardDto = {
+  speakerId: string;
+  symposiumId: string;
+  name: string;
+  sessionsCount: number;
+  submissionsCount: number;
+  materialsCount: number;
+  upcomingSessions: SpeakerDashboardSessionDto[];
+};
+
+export type SpeakerMaterialDto = {
+  id: string;
+  sessionId: string;
+  speakerId: string;
+  fileUrl: string;
+  equipmentRequirements?: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateSpeakerMaterialDto = {
+  fileUrl: string;
+};
+
+export type UpdateSpeakerMaterialEquipmentDto = {
+  equipmentRequirements: Record<string, unknown>;
 };
 
 export type FinanceTransactionDto = {
@@ -768,3 +865,309 @@ export type CertificateDto = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type AnalyticsPeriod = "day" | "week" | "month";
+
+export type AnalyticsDashboardDto = {
+  symposiumId: string;
+  registrationsCount: number;
+  revenueSum: number;
+  submissionsCount: number;
+  speakersCount: number;
+};
+
+export type TrendPointDto = { period: string; count: number };
+
+export type TicketDistributionItemDto = {
+  categoryId: string;
+  categoryName: string;
+  count: number;
+};
+
+export type RevenuePeriodItemDto = {
+  period: string;
+  revenue: number;
+  transactionCount: number;
+};
+
+export type AttendanceHeatmapCellDto = {
+  dayOfWeek: number;
+  hourOfDay: number;
+  checkInCount: number;
+};
+
+export type SurveyDto = {
+  id: string;
+  symposiumId: string;
+  title: string;
+  questions: Record<string, unknown>[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateSurveyDto = {
+  symposiumId: string;
+  title: string;
+  questions: Record<string, unknown>[];
+  isActive?: boolean;
+};
+
+export type UpdateSurveyDto = Partial<Omit<CreateSurveyDto, "symposiumId">>;
+
+export type SubmitSurveyResponseDto = { answers: Record<string, unknown> };
+
+export type SurveyResponseRecordDto = {
+  id: string;
+  surveyId: string;
+  userId: string;
+  answers: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SurveyResultsDto = {
+  surveyId: string;
+  responseCount: number;
+  aggregates: Record<string, unknown>;
+};
+
+export type SessionQuestionDto = {
+  id: string;
+  sessionId: string;
+  userId: string;
+  content: string;
+  isApproved: boolean;
+  isDisplayed: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateSessionQuestionDto = { content: string };
+export type ModerateSessionQuestionDto = { isApproved?: boolean; isDisplayed?: boolean };
+
+export type SessionPollDto = {
+  id: string;
+  sessionId: string;
+  question: string;
+  options: string[];
+  isActive: boolean;
+  results?: number[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreatePollDto = { question: string; options: string[]; isActive?: boolean };
+export type VotePollDto = { optionIndex: number };
+
+export type SessionRatingDto = {
+  id: string;
+  sessionId: string;
+  userId: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateSessionRatingDto = { rating: number; comment?: string };
+
+export type SessionMessageDto = {
+  id: string;
+  sessionId: string;
+  userId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateSessionMessageDto = { content: string };
+
+export type ConnectionRequestStatus = "pending" | "accepted" | "rejected";
+
+export type DirectoryUserDto = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  organization?: string | null;
+  country?: string | null;
+  title?: string | null;
+  bio?: string | null;
+  profileImageUrl?: string | null;
+  linkedInUrl?: string | null;
+  interests?: string[] | null;
+};
+
+export type NetworkingDirectoryParams = {
+  page?: number;
+  limit?: number;
+  country?: string;
+  organization?: string;
+  interest?: string;
+};
+
+export type ConnectionRequestDto = {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  status: ConnectionRequestStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateConnectionRequestDto = { toUserId: string };
+export type UpdateConnectionStatusDto = { status: "accepted" | "rejected" };
+
+export type ConnectionMessageDto = {
+  id: string;
+  connectionId: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateConnectionMessageDto = { content: string };
+
+export type ResourceAccessLevel = "public" | "registered" | "speaker" | "staff";
+
+export type ResourceDto = {
+  id: string;
+  symposiumId: string;
+  sessionId?: string | null;
+  title: string;
+  fileUrl: string;
+  accessLevel: ResourceAccessLevel;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateResourceDto = {
+  symposiumId: string;
+  sessionId?: string;
+  title: string;
+  fileUrl: string;
+  accessLevel?: ResourceAccessLevel;
+};
+
+export type SymposiumSettingsDto = {
+  symposiumId: string;
+  registration: {
+    enableRegistration?: boolean;
+    enableWaitlist?: boolean;
+    allowTicketTransfer?: boolean;
+    allowRefundRequests?: boolean;
+  };
+  payments: {
+    enableMomo?: boolean;
+    enableBankTransfer?: boolean;
+    enableOnSitePayment?: boolean;
+    enableOnSiteCash?: boolean;
+  };
+  notifications: {
+    emailOnRegistration?: boolean;
+    emailOnPayment?: boolean;
+    emailOnCheckIn?: boolean;
+  };
+  desk: {
+    enableOnSiteRegistration?: boolean;
+    enableBadgePrinting?: boolean;
+  };
+};
+
+export type UpdateSymposiumSettingsDto = Partial<Omit<SymposiumSettingsDto, "symposiumId">>;
+
+export type WaitlistEntryDto = {
+  id: string;
+  registrationId: string;
+  symposiumId: string;
+  ticketCategoryId: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RegistrationReceiptDto = {
+  registrationId: string;
+  symposiumId: string;
+  status: RegistrationStatus;
+  ticketCategoryName?: string | null;
+  amountUsd?: number | null;
+  amountRwf?: number | null;
+  currency?: string | null;
+  ticketPdfUrl?: string | null;
+  payment?: {
+    transactionId?: string | null;
+    amount?: number | null;
+    currency?: string | null;
+    method?: string | null;
+    status?: string | null;
+    paidAt?: string | null;
+    externalTransId?: string | null;
+  } | null;
+  createdAt: string;
+};
+
+export type CommitteeMemberDto = {
+  id: string;
+  symposiumId: string;
+  name: string;
+  role: string;
+  organization?: string | null;
+  photoUrl?: string | null;
+  sortOrder?: number;
+};
+
+export type UpsertCommitteeMemberDto = {
+  symposiumId: string;
+  name: string;
+  role: string;
+  organization?: string;
+  photoUrl?: string;
+  sortOrder?: number;
+};
+
+export type ContactMessageInboxDto = {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  createdAt: string;
+};
+
+export type UpsertFaqDto = {
+  symposiumId: string;
+  question: string;
+  answer: string;
+  sortOrder?: number;
+};
+
+export type UpsertCmsPageDto = {
+  symposiumId: string;
+  key: string;
+  title: string;
+  content: Record<string, unknown>;
+};
+
+export type AdminBroadcastDto = {
+  symposiumId: string;
+  title: string;
+  body: string;
+  segment?: string;
+  channels?: string[];
+};
+
+export type AdminDeadlineOverrideDto = { deadlineOverride: boolean };
+
+export type AssignReviewersDto = { reviewerIds: string[] };
+
+export type CreateReviewDto = {
+  scores?: Record<string, number>;
+  comments?: string;
+  recommendation?: string;
+};
+
+export type SetFacePhotoDto = { facePhotoUrl: string };
+export type FaceVerificationDto = { status: "approved" | "rejected" };
+export type DeskCashPaymentDto = { registrationId: string; notes?: string };

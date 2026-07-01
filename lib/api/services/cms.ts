@@ -2,14 +2,19 @@ import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type {
   CmsPageDto,
+  CommitteeMemberDto,
+  ContactMessageInboxDto,
   CreateContactMessageDto,
   FaqDto,
   MediaAccreditationDto,
   MediaAccreditationStatsDto,
   MediaAccreditationStatus,
   UpdateMediaAccreditationDto,
+  UpsertCmsPageDto,
+  UpsertCommitteeMemberDto,
+  UpsertFaqDto,
 } from "../dto";
-import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
+import { type PaginationParams, fetchPaginatedList, toPaginationQuery, toQueryParams, unwrapPaginated } from "../helpers";
 
 export const cmsService = {
   getPage(key: string, symposiumId?: string) {
@@ -36,15 +41,59 @@ export const cmsService = {
   listPagesAdmin(symposiumId: string) {
     return apiClient.get<ApiResponse<CmsPageDto[]>>("/cms/admin/pages", { params: { symposiumId } }).then(unwrapApi);
   },
-  upsertPage(dto: Record<string, unknown>) {
+  upsertPage(dto: UpsertCmsPageDto) {
     return apiClient.post<ApiResponse<CmsPageDto>>("/cms/admin/pages", dto).then(unwrapApi);
   },
-  listMediaAccreditations(params?: PaginationParams & { status?: MediaAccreditationStatus }) {
+  deletePage(id: string) {
+    return apiClient.delete(`/cms/admin/pages/${id}`);
+  },
+  createFaq(dto: UpsertFaqDto) {
+    return apiClient.post<ApiResponse<FaqDto>>("/cms/admin/faqs", dto).then(unwrapApi);
+  },
+  updateFaq(id: string, dto: UpsertFaqDto) {
+    return apiClient.patch<ApiResponse<FaqDto>>(`/cms/admin/faqs/${id}`, dto).then(unwrapApi);
+  },
+  deleteFaq(id: string) {
+    return apiClient.delete(`/cms/admin/faqs/${id}`);
+  },
+  listCommittee(symposiumId: string) {
     return apiClient
-      .get<ApiResponse<MediaAccreditationDto[]>>("/cms/admin/media-accreditations", {
+      .get<ApiResponse<CommitteeMemberDto[]>>("/cms/admin/committee-members", { params: { symposiumId } })
+      .then(unwrapApi);
+  },
+  createCommittee(dto: UpsertCommitteeMemberDto) {
+    return apiClient
+      .post<ApiResponse<CommitteeMemberDto>>("/cms/admin/committee-members", dto)
+      .then(unwrapApi);
+  },
+  updateCommittee(id: string, dto: UpsertCommitteeMemberDto) {
+    return apiClient
+      .patch<ApiResponse<CommitteeMemberDto>>(`/cms/admin/committee-members/${id}`, dto)
+      .then(unwrapApi);
+  },
+  deleteCommittee(id: string) {
+    return apiClient.delete(`/cms/admin/committee-members/${id}`);
+  },
+  listContactMessages(params?: PaginationParams) {
+    return apiClient
+      .get<ApiResponse<ContactMessageInboxDto[]>>("/cms/admin/contact-messages", {
         params: toQueryParams(params),
       })
       .then(unwrapPaginated);
+  },
+  listMediaAccreditations(params?: PaginationParams & { status?: MediaAccreditationStatus }) {
+    const { status, ...pagination } = params ?? {};
+    const match = status ? (item: MediaAccreditationDto) => item.status === status : undefined;
+
+    return fetchPaginatedList(
+      (pg) =>
+        apiClient
+          .get<ApiResponse<MediaAccreditationDto[]>>("/cms/admin/media-accreditations", {
+            params: toPaginationQuery(pg),
+          })
+          .then(unwrapPaginated),
+      { pagination, match },
+    );
   },
   getMediaAccreditationStats() {
     return apiClient

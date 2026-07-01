@@ -1,7 +1,7 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type { SponsorDto } from "../dto";
-import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
+import { type PaginationParams, fetchPaginatedList, toPaginationQuery, unwrapPaginated } from "../helpers";
 
 export const sponsorsService = {
   listBySymposium(symposiumId: string) {
@@ -10,9 +10,16 @@ export const sponsorsService = {
       .then(unwrapApi);
   },
   listAdmin(params?: PaginationParams & { symposiumId?: string }) {
-    return apiClient
-      .get<ApiResponse<SponsorDto[]>>("/sponsors/admin/list", { params: toQueryParams(params) })
-      .then(unwrapPaginated);
+    const { symposiumId, ...pagination } = params ?? {};
+    const match = symposiumId ? (item: SponsorDto) => item.symposiumId === symposiumId : undefined;
+
+    return fetchPaginatedList(
+      (pg) =>
+        apiClient
+          .get<ApiResponse<SponsorDto[]>>("/sponsors/admin/list", { params: toPaginationQuery(pg) })
+          .then(unwrapPaginated),
+      { pagination, match },
+    );
   },
   getAdmin(id: string) {
     return apiClient.get<ApiResponse<SponsorDto>>(`/sponsors/admin/${id}`).then(unwrapApi);

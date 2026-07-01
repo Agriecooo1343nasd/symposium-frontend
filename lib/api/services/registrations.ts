@@ -5,11 +5,14 @@ import type {
   CreateGroupRegistrationDto,
   CreateRegistrationDto,
   DeskWalkInDto,
+  FaceVerificationDto,
   RegistrationDto,
+  RegistrationReceiptDto,
   RegistrationStatus,
+  SetFacePhotoDto,
   UpdateRegistrationCategoryDto,
 } from "../dto";
-import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
+import { type PaginationParams, fetchPaginatedList, toPaginationQuery, unwrapPaginated } from "../helpers";
 
 export const registrationsService = {
   create(dto: CreateRegistrationDto) {
@@ -30,12 +33,38 @@ export const registrationsService = {
     return apiClient.get<ApiResponse<RegistrationDto[]>>("/registrations/me").then(unwrapApi);
   },
   getReceipt(id: string) {
-    return apiClient.get<ApiResponse<Record<string, unknown>>>(`/registrations/me/${id}/receipt`).then(unwrapApi);
+    return apiClient.get<ApiResponse<RegistrationReceiptDto>>(`/registrations/me/${id}/receipt`).then(unwrapApi);
+  },
+  setFacePhoto(id: string, dto: SetFacePhotoDto) {
+    return apiClient.post<ApiResponse<RegistrationDto>>(`/registrations/${id}/face-photo`, dto).then(unwrapApi);
+  },
+  updateFaceVerification(id: string, dto: FaceVerificationDto) {
+    return apiClient
+      .patch<ApiResponse<RegistrationDto>>(`/registrations/${id}/face-verification`, dto)
+      .then(unwrapApi);
+  },
+  reprintBadge(id: string) {
+    return apiClient
+      .post<ApiResponse<{ message?: string }>>(`/registrations/${id}/badge/reprint`)
+      .then(unwrapApi);
   },
   listAdmin(params?: PaginationParams & { symposiumId?: string; ticketCategoryId?: string; status?: RegistrationStatus }) {
-    return apiClient
-      .get<ApiResponse<RegistrationDto[]>>("/registrations", { params: toQueryParams(params) })
-      .then(unwrapPaginated);
+    const { symposiumId, ticketCategoryId, status, ...pagination } = params ?? {};
+    const match =
+      symposiumId || ticketCategoryId || status
+        ? (item: RegistrationDto) =>
+            (!symposiumId || item.symposiumId === symposiumId) &&
+            (!ticketCategoryId || item.ticketCategoryId === ticketCategoryId) &&
+            (!status || item.status === status)
+        : undefined;
+
+    return fetchPaginatedList(
+      (pg) =>
+        apiClient
+          .get<ApiResponse<RegistrationDto[]>>("/registrations", { params: toPaginationQuery(pg) })
+          .then(unwrapPaginated),
+      { pagination, match },
+    );
   },
   getById(id: string) {
     return apiClient.get<ApiResponse<RegistrationDto>>(`/registrations/${id}`).then(unwrapApi);

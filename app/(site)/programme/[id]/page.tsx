@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SubThemeBadge } from "@/components/SubThemeBadge";
 import { SessionMaterialsPanel } from "@/components/session/SessionMaterialsPanel";
 import { SessionRatingPanel } from "@/components/session/SessionRatingPanel";
+import { SessionEngagementPanel } from "@/components/session/SessionEngagementPanel";
 import { canViewSessionProgramme } from "@/lib/access";
 import { usePublicSession, usePublicSessions } from "@/hooks/api/usePublicData";
 import { toast } from "sonner";
@@ -123,6 +124,9 @@ export default function SessionDetail() {
 
           <div className="mt-10">
             <SessionMaterialsPanel sessionId={session.id} sessionTitle={session.title} />
+          </div>
+          <div className="mt-10">
+            <SessionEngagementPanel sessionId={session.id} />
           </div>
           <div className="mt-6">
             <SessionRatingPanel session={session} />

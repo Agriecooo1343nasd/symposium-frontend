@@ -57,7 +57,11 @@ export const queryKeys = {
   exhibitors: {
     me: ["exhibitors", "me"] as const,
     materials: ["exhibitors", "me", "materials"] as const,
+    staffPasses: ["exhibitors", "me", "staff-passes"] as const,
     admin: (params?: Record<string, unknown>) => ["exhibitors", "admin", params] as const,
+  },
+  speakerMaterials: {
+    bySession: (sessionId: string) => ["speaker-materials", sessionId] as const,
   },
   users: {
     me: ["users", "me"] as const,
@@ -102,5 +106,44 @@ export const queryKeys = {
   roles: {
     all: ["roles"] as const,
     permissions: ["permissions"] as const,
+  },
+  analytics: {
+    dashboard: (symposiumId: string) => ["analytics", "dashboard", symposiumId] as const,
+    registrationsTrend: (symposiumId: string, period?: string) =>
+      ["analytics", "registrations-trend", symposiumId, period] as const,
+    ticketDistribution: (symposiumId: string) => ["analytics", "ticket-distribution", symposiumId] as const,
+    revenueByPeriod: (symposiumId: string, period?: string) =>
+      ["analytics", "revenue-by-period", symposiumId, period] as const,
+    attendanceHeatmap: (symposiumId: string) => ["analytics", "attendance-heatmap", symposiumId] as const,
+  },
+  surveys: {
+    active: (symposiumId?: string) => ["surveys", "active", symposiumId] as const,
+    admin: (symposiumId?: string) => ["surveys", "admin", symposiumId] as const,
+    detail: (id: string) => ["surveys", "detail", id] as const,
+    results: (id: string) => ["surveys", "results", id] as const,
+  },
+  networking: {
+    directory: (params?: Record<string, unknown>) => ["networking", "directory", params] as const,
+    messages: (connectionId: string) => ["networking", "messages", connectionId] as const,
+  },
+  engagement: {
+    questions: (sessionId: string) => ["engagement", "questions", sessionId] as const,
+    polls: (sessionId: string) => ["engagement", "polls", sessionId] as const,
+    messages: (sessionId: string) => ["engagement", "messages", sessionId] as const,
+  },
+  resources: {
+    public: (symposiumId: string) => ["resources", "public", symposiumId] as const,
+    library: (symposiumId: string) => ["resources", "library", symposiumId] as const,
+  },
+  waitlist: {
+    admin: (params?: Record<string, unknown>) => ["waitlist", "admin", params] as const,
+  },
+  symposiumSettings: {
+    detail: (id: string) => ["symposium-settings", id] as const,
+  },
+  cmsAdmin: {
+    pages: (symposiumId: string) => ["cms", "admin", "pages", symposiumId] as const,
+    committee: (symposiumId: string) => ["cms", "admin", "committee", symposiumId] as const,
+    contactMessages: (params?: Record<string, unknown>) => ["cms", "admin", "contact-messages", params] as const,
   },
 } as const;

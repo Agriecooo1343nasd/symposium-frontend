@@ -9,6 +9,9 @@ import { useStore } from "@/hooks/use-store";
 import { patchStore, appendAudit, type PlatformSettings, type FeatureFlags } from "@/lib/store";
 import { getSession } from "@/lib/auth";
 import { toast } from "sonner";
+import { useSymposiumSettings, useUpdateSymposiumSettings } from "@/hooks/api/useEngage";
+import { apiErrorMessage } from "@/lib/api/client";
+import type { UpdateSymposiumSettingsDto } from "@/lib/api/dto";
 
 
 const PHASE_GROUPS: { phase: string; keys: (keyof FeatureFlags)[]; labels: Record<string, string> }[] = [
@@ -134,6 +137,127 @@ export default function Page() {
 
         <Button type="submit" className="gradient-blue text-accent-foreground">Save all changes</Button>
       </form>
+
+      <BackendSettingsSection />
+    </div>
+  );
+}
+
+const BACKEND_GROUPS: {
+  group: keyof UpdateSymposiumSettingsDto;
+  title: string;
+  fields: { key: string; label: string }[];
+}[] = [
+  {
+    group: "registration",
+    title: "Registration",
+    fields: [
+      { key: "enableRegistration", label: "Registration open" },
+      { key: "enableWaitlist", label: "Waitlist enabled" },
+      { key: "allowTicketTransfer", label: "Allow ticket transfer" },
+      { key: "allowRefundRequests", label: "Allow refund requests" },
+    ],
+  },
+  {
+    group: "payments",
+    title: "Payments",
+    fields: [
+      { key: "enableMomo", label: "Mobile money" },
+      { key: "enableBankTransfer", label: "Bank transfer" },
+      { key: "enableOnSitePayment", label: "On-site payment" },
+      { key: "enableOnSiteCash", label: "On-site cash" },
+    ],
+  },
+  {
+    group: "notifications",
+    title: "Notifications",
+    fields: [
+      { key: "emailOnRegistration", label: "Email on registration" },
+      { key: "emailOnPayment", label: "Email on payment" },
+      { key: "emailOnCheckIn", label: "Email on check-in" },
+    ],
+  },
+  {
+    group: "desk",
+    title: "Registration desk",
+    fields: [
+      { key: "enableOnSiteRegistration", label: "On-site registration" },
+      { key: "enableBadgePrinting", label: "Badge printing" },
+    ],
+  },
+];
+
+function BackendSettingsSection() {
+  const { settings, isLoading, isError } = useSymposiumSettings();
+  const update = useUpdateSymposiumSettings();
+  const [draft, setDraft] = useState<UpdateSymposiumSettingsDto | null>(null);
+
+  const current = (draft ?? settings) as Record<string, Record<string, boolean>> | null;
+
+  const toggle = (group: string, key: string, value: boolean) => {
+    const base = (draft ?? settings ?? {}) as Record<string, Record<string, boolean>>;
+    setDraft({
+      ...base,
+      [group]: { ...(base[group] ?? {}), [key]: value },
+    } as UpdateSymposiumSettingsDto);
+  };
+
+  const save = async () => {
+    if (!draft) return;
+    try {
+      await update.mutateAsync(draft);
+      setDraft(null);
+      toast.success("Platform settings saved to backend");
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="font-serif text-2xl font-bold">Backend platform settings</h2>
+        <p className="text-muted-foreground text-sm">
+          Live toggles persisted to the symposium configuration API.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="rounded-2xl bg-card border border-border p-6 text-sm text-muted-foreground">
+          Loading settings…
+        </div>
+      ) : isError || !current ? (
+        <div className="rounded-2xl bg-card border border-dashed border-border p-6 text-sm text-muted-foreground">
+          Backend settings unavailable for this symposium.
+        </div>
+      ) : (
+        <>
+          {BACKEND_GROUPS.map((g) => (
+            <section key={g.group} className="rounded-2xl bg-card border border-border p-6 space-y-3">
+              <h3 className="font-serif font-bold text-sm">{g.title}</h3>
+              {g.fields.map((f) => (
+                <div
+                  key={f.key}
+                  className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0"
+                >
+                  <span className="text-sm font-medium">{f.label}</span>
+                  <Switch
+                    checked={Boolean(current[g.group]?.[f.key])}
+                    onCheckedChange={(v) => toggle(g.group, f.key, v)}
+                  />
+                </div>
+              ))}
+            </section>
+          ))}
+          <Button
+            onClick={save}
+            disabled={!draft || update.isPending}
+            className="gradient-blue text-accent-foreground"
+          >
+            {update.isPending ? "Saving…" : "Save backend settings"}
+          </Button>
+        </>
+      )}
     </div>
   );
 }

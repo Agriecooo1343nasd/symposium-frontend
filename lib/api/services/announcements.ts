@@ -1,21 +1,37 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type { AnnouncementDto, CreateAnnouncementDto, UpdateAnnouncementDto } from "../dto";
-import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
+import { type PaginationParams, fetchPaginatedList, toPaginationQuery, unwrapPaginated } from "../helpers";
 
 export const announcementsService = {
   listPublished(params?: PaginationParams & { symposiumId?: string }) {
-    return apiClient
-      .get<ApiResponse<AnnouncementDto[]>>("/announcements", { params: toQueryParams(params) })
-      .then(unwrapPaginated);
+    const { symposiumId, ...pagination } = params ?? {};
+    const match = symposiumId ? (item: AnnouncementDto) => item.symposiumId === symposiumId : undefined;
+
+    return fetchPaginatedList(
+      (pg) =>
+        apiClient
+          .get<ApiResponse<AnnouncementDto[]>>("/announcements", { params: toPaginationQuery(pg) })
+          .then(unwrapPaginated),
+      { pagination, match },
+    );
   },
   getBySlug(slug: string) {
     return apiClient.get<ApiResponse<AnnouncementDto>>(`/announcements/${slug}`).then(unwrapApi);
   },
   listAdmin(params?: PaginationParams & { symposiumId?: string }) {
-    return apiClient
-      .get<ApiResponse<AnnouncementDto[]>>("/announcements/admin/list", { params: toQueryParams(params) })
-      .then(unwrapPaginated);
+    const { symposiumId, ...pagination } = params ?? {};
+    const match = symposiumId ? (item: AnnouncementDto) => item.symposiumId === symposiumId : undefined;
+
+    return fetchPaginatedList(
+      (pg) =>
+        apiClient
+          .get<ApiResponse<AnnouncementDto[]>>("/announcements/admin/list", {
+            params: toPaginationQuery(pg),
+          })
+          .then(unwrapPaginated),
+      { pagination, match },
+    );
   },
   getAdmin(id: string) {
     return apiClient.get<ApiResponse<AnnouncementDto>>(`/announcements/admin/${id}`).then(unwrapApi);

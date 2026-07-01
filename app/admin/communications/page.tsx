@@ -17,6 +17,9 @@ import { patchStore } from "@/lib/store";
 import { toast } from "sonner";
 import type { Role } from "@/lib/mock-data";
 import { useAdminCommandAction, useAdminTabNavigation } from "@/hooks/use-admin-command-action";
+import { useAdminBroadcast } from "@/hooks/api/useEngage";
+import { useSymposiumId } from "@/hooks/api/useSymposium";
+import { apiErrorMessage } from "@/lib/api/client";
 
 const SEGMENTS = ["All Attendees", "By Category", "By Country", "Pending Payment", "Checked In", "Speakers", "Exhibitors", "Custom"];
 const COMM_TABS = ["email", "invites", "auto", "announce"] as const;
@@ -26,10 +29,37 @@ export default function Page() {
   const [annOpen, setAnnOpen] = useState(false);
   const store = useStore();
   const { activeTab, onTabChange } = useAdminTabNavigation([...COMM_TABS], "email");
+  const broadcast = useAdminBroadcast();
+  const symposiumId = useSymposiumId();
+  const [segment, setSegment] = useState(SEGMENTS[0]);
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
 
   useAdminCommandAction({
     "new-announcement": () => setAnnOpen(true),
   });
+
+  const sendBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!symposiumId) return toast.error("No symposium selected");
+    try {
+      const result = await broadcast.mutateAsync({
+        symposiumId,
+        title: subject.trim(),
+        body: body.trim(),
+        segment,
+        channels: ["in_app", "email"],
+      });
+      const queued = (result as { queued?: number })?.queued;
+      toast.success(
+        queued !== undefined ? `Broadcast queued for ${queued} recipients` : "Broadcast queued",
+      );
+      setSubject("");
+      setBody("");
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -47,12 +77,12 @@ export default function Page() {
         </TabsList>
 
         <TabsContent value="email" className="mt-6 grid lg:grid-cols-[1fr_1fr] gap-6">
-          <form onSubmit={(e) => { e.preventDefault(); toast.success("Email campaign sent"); }} className="rounded-2xl bg-card border border-border p-6 space-y-4">
-            <h2 className="font-serif font-bold">Compose email</h2>
-            <div><Label>Recipient segment</Label><Select defaultValue={SEGMENTS[0]}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent>{SEGMENTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
-            <div><Label>Subject</Label><Input required className="mt-1" /></div>
-            <div><Label>Body</Label><Textarea rows={8} required className="mt-1" /></div>
-            <div className="flex gap-2"><Button type="button" variant="outline" size="sm">Preview</Button><Button type="submit" className="gradient-blue text-accent-foreground" size="sm"><Send className="h-3.5 w-3.5 mr-1" /> Send</Button></div>
+          <form onSubmit={sendBroadcast} className="rounded-2xl bg-card border border-border p-6 space-y-4">
+            <h2 className="font-serif font-bold">Compose broadcast</h2>
+            <div><Label>Recipient segment</Label><Select value={segment} onValueChange={setSegment}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent>{SEGMENTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
+            <div><Label>Subject</Label><Input required className="mt-1" value={subject} onChange={(e) => setSubject(e.target.value)} /></div>
+            <div><Label>Body</Label><Textarea rows={8} required className="mt-1" value={body} onChange={(e) => setBody(e.target.value)} /></div>
+            <div className="flex gap-2"><Button type="submit" disabled={broadcast.isPending || !subject.trim() || !body.trim()} className="gradient-blue text-accent-foreground" size="sm"><Send className="h-3.5 w-3.5 mr-1" /> {broadcast.isPending ? "Sending…" : "Send broadcast"}</Button></div>
           </form>
           <div className="rounded-2xl bg-card border border-border p-6">
             <h2 className="font-serif font-bold mb-4">Sent campaigns</h2>
