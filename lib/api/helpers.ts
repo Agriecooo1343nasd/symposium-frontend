@@ -67,7 +67,7 @@ export async function fetchPaginatedList<T>(
   const match = options?.match;
   const pageSize = MAX_API_LIMIT;
 
-  if (!match && desired <= pageSize && startPage === 1) {
+  if (!match && desired <= pageSize) {
     return request({
       page: startPage,
       limit: clampLimit(desired),
