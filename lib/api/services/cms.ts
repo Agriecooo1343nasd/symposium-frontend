@@ -14,7 +14,7 @@ import type {
   UpsertCommitteeMemberDto,
   UpsertFaqDto,
 } from "../dto";
-import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
+import { type PaginationParams, fetchPaginatedList, toPaginationQuery, toQueryParams, unwrapPaginated } from "../helpers";
 
 export const cmsService = {
   getPage(key: string, symposiumId?: string) {
@@ -82,11 +82,18 @@ export const cmsService = {
       .then(unwrapPaginated);
   },
   listMediaAccreditations(params?: PaginationParams & { status?: MediaAccreditationStatus }) {
-    return apiClient
-      .get<ApiResponse<MediaAccreditationDto[]>>("/cms/admin/media-accreditations", {
-        params: toQueryParams(params),
-      })
-      .then(unwrapPaginated);
+    const { status, ...pagination } = params ?? {};
+    const match = status ? (item: MediaAccreditationDto) => item.status === status : undefined;
+
+    return fetchPaginatedList(
+      (pg) =>
+        apiClient
+          .get<ApiResponse<MediaAccreditationDto[]>>("/cms/admin/media-accreditations", {
+            params: toPaginationQuery(pg),
+          })
+          .then(unwrapPaginated),
+      { pagination, match },
+    );
   },
   getMediaAccreditationStats() {
     return apiClient

@@ -7,16 +7,20 @@ import type {
   SubmissionDecisionDto,
   SubmissionDto,
 } from "../dto";
-import { toQueryParams, unwrapPaginated } from "../helpers";
+import { toQueryParams, fetchPaginatedList, unwrapPaginated } from "../helpers";
 
 export const submissionsService = {
   listMine() {
     return apiClient.get<ApiResponse<SubmissionDto[]>>("/submissions/me").then(unwrapApi);
   },
   listAdmin(params?: AdminListSubmissionsParams) {
-    return apiClient
-      .get<ApiResponse<SubmissionDto[]>>("/submissions", { params: toQueryParams(params) })
-      .then(unwrapPaginated);
+    return fetchPaginatedList(
+      (pg) =>
+        apiClient
+          .get<ApiResponse<SubmissionDto[]>>("/submissions", { params: toQueryParams({ ...params, ...pg }) })
+          .then(unwrapPaginated),
+      { pagination: params },
+    );
   },
   create(dto: CreateSubmissionDto) {
     return apiClient.post<ApiResponse<SubmissionDto>>("/submissions", dto).then(unwrapApi);

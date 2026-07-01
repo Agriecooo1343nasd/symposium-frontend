@@ -12,7 +12,7 @@ import type {
   SetFacePhotoDto,
   UpdateRegistrationCategoryDto,
 } from "../dto";
-import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
+import { type PaginationParams, fetchPaginatedList, toPaginationQuery, unwrapPaginated } from "../helpers";
 
 export const registrationsService = {
   create(dto: CreateRegistrationDto) {
@@ -49,9 +49,22 @@ export const registrationsService = {
       .then(unwrapApi);
   },
   listAdmin(params?: PaginationParams & { symposiumId?: string; ticketCategoryId?: string; status?: RegistrationStatus }) {
-    return apiClient
-      .get<ApiResponse<RegistrationDto[]>>("/registrations", { params: toQueryParams(params) })
-      .then(unwrapPaginated);
+    const { symposiumId, ticketCategoryId, status, ...pagination } = params ?? {};
+    const match =
+      symposiumId || ticketCategoryId || status
+        ? (item: RegistrationDto) =>
+            (!symposiumId || item.symposiumId === symposiumId) &&
+            (!ticketCategoryId || item.ticketCategoryId === ticketCategoryId) &&
+            (!status || item.status === status)
+        : undefined;
+
+    return fetchPaginatedList(
+      (pg) =>
+        apiClient
+          .get<ApiResponse<RegistrationDto[]>>("/registrations", { params: toPaginationQuery(pg) })
+          .then(unwrapPaginated),
+      { pagination, match },
+    );
   },
   getById(id: string) {
     return apiClient.get<ApiResponse<RegistrationDto>>(`/registrations/${id}`).then(unwrapApi);

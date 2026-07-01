@@ -1,15 +1,21 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type { CreateSpeakerDto, SpeakerDashboardDto, SpeakerDto, UpdateSpeakerDto } from "../dto";
-import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
+import { type PaginationParams, fetchPaginatedList, toPaginationQuery, unwrapPaginated } from "../helpers";
 
 export const speakersService = {
   list(symposiumId: string, params?: PaginationParams) {
-    return apiClient
-      .get<ApiResponse<SpeakerDto[]>>("/speakers", {
-        params: toQueryParams({ symposiumId, ...params }),
-      })
-      .then(unwrapPaginated);
+    const match = (item: SpeakerDto) => item.symposiumId === symposiumId;
+
+    return fetchPaginatedList(
+      (pg) =>
+        apiClient
+          .get<ApiResponse<SpeakerDto[]>>("/speakers", {
+            params: toPaginationQuery(pg),
+          })
+          .then(unwrapPaginated),
+      { pagination: params, match },
+    );
   },
   getById(id: string) {
     return apiClient.get<ApiResponse<SpeakerDto>>(`/speakers/${id}`).then(unwrapApi);

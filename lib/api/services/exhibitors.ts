@@ -14,7 +14,7 @@ import type {
   UpdateExhibitorDto,
   UpdateExhibitorProfileDto,
 } from "../dto";
-import { type PaginationParams, toQueryParams, unwrapPaginated } from "../helpers";
+import { type PaginationParams, fetchPaginatedList, toPaginationQuery, unwrapPaginated } from "../helpers";
 
 export const exhibitorsService = {
   getMyProfile() {
@@ -55,9 +55,18 @@ export const exhibitorsService = {
       .then(unwrapApi);
   },
   listAdmin(params?: PaginationParams & { symposiumId?: string }) {
-    return apiClient
-      .get<ApiResponse<ExhibitorAdminDto[]>>("/exhibitors/admin/list", { params: toQueryParams(params) })
-      .then(unwrapPaginated);
+    const { symposiumId, ...pagination } = params ?? {};
+    const match = symposiumId ? (item: ExhibitorAdminDto) => item.symposiumId === symposiumId : undefined;
+
+    return fetchPaginatedList(
+      (pg) =>
+        apiClient
+          .get<ApiResponse<ExhibitorAdminDto[]>>("/exhibitors/admin/list", {
+            params: toPaginationQuery(pg),
+          })
+          .then(unwrapPaginated),
+      { pagination, match },
+    );
   },
   getAdmin(id: string) {
     return apiClient.get<ApiResponse<ExhibitorAdminDto>>(`/exhibitors/admin/${id}`).then(unwrapApi);
