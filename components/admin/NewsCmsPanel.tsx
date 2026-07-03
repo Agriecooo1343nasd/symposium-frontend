@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminAnnouncements, useCreateAnnouncement, useDeleteAnnouncement, usePublishAnnouncement, useUpdateAnnouncement } from "@/hooks/api/useAdmin";
+import { useUploadFile } from "@/hooks/api/useFiles";
 import { useSymposiumId } from "@/hooks/api/useSymposium";
 import type { AnnouncementDto } from "@/lib/api/dto";
 import Link from "next/link";
@@ -51,8 +52,10 @@ function ArticlesEditor() {
   const update = useUpdateAnnouncement();
   const publish = usePublishAnnouncement();
   const remove = useDeleteAnnouncement();
+  const uploadFile = useUploadFile();
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const startNewArticle = () => {
     setDraft(emptyDraft());
@@ -176,8 +179,28 @@ function ArticlesEditor() {
           </div>
 
           <div>
-            <Label className="flex items-center gap-1"><ImageIcon className="h-3.5 w-3.5" /> Hero image URL</Label>
+            <Label className="flex items-center gap-1"><ImageIcon className="h-3.5 w-3.5" /> Hero image</Label>
             <Input value={draft.image} onChange={(e) => setDraft({ ...draft, image: e.target.value })} className="mt-1" placeholder="https://…" />
+            <Input
+              type="file"
+              accept="image/*"
+              className="mt-2"
+              disabled={uploadingImage}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  setUploadingImage(true);
+                  const res = await uploadFile.mutateAsync({ file, type: "announcement_image" });
+                  setDraft((d) => ({ ...d, image: res.url }));
+                  toast.success("Image uploaded");
+                } catch {
+                  toast.error("Upload failed — paste an image URL instead");
+                } finally {
+                  setUploadingImage(false);
+                }
+              }}
+            />
             {draft.image && (
               <img src={draft.image} alt="Preview" className="mt-3 w-full max-h-48 object-cover rounded-xl border" />
             )}

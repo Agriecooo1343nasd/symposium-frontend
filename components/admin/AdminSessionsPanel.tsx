@@ -10,7 +10,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAdminSessions, useCreateSession, useDeleteSession, useUpdateSession } from "@/hooks/api/useAdmin";
 import { useSymposiumId } from "@/hooks/api/useSymposium";
 import type { SessionDto } from "@/lib/api/dto";
+import {
+  API_SESSION_TYPES,
+  DEFAULT_SESSION_TYPE,
+  sessionTypeLabel,
+  type ApiSessionType,
+} from "@/lib/api/session-types";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Form = {
   id?: string;
@@ -21,6 +34,7 @@ type Form = {
   startTime: string;
   endTime: string;
   isPublished: boolean;
+  sessionType: ApiSessionType;
 };
 
 const empty = (): Form => ({
@@ -31,7 +45,13 @@ const empty = (): Form => ({
   startTime: "",
   endTime: "",
   isPublished: true,
+  sessionType: DEFAULT_SESSION_TYPE,
 });
+
+function normalizeSessionType(value?: string | null): ApiSessionType {
+  const v = (value ?? "").toLowerCase();
+  return (API_SESSION_TYPES as readonly string[]).includes(v) ? (v as ApiSessionType) : DEFAULT_SESSION_TYPE;
+}
 
 function fromSession(s: SessionDto): Form {
   return {
@@ -43,6 +63,7 @@ function fromSession(s: SessionDto): Form {
     startTime: s.startTime?.slice(0, 16) ?? "",
     endTime: s.endTime?.slice(0, 16) ?? "",
     isPublished: s.isPublished,
+    sessionType: normalizeSessionType(s.sessionType),
   };
 }
 
@@ -67,7 +88,7 @@ export function AdminSessionsPanel() {
       startTime: form.startTime ? new Date(form.startTime).toISOString() : undefined,
       endTime: form.endTime ? new Date(form.endTime).toISOString() : undefined,
       isPublished: form.isPublished,
-      sessionType: "presentation",
+      sessionType: form.sessionType,
     };
     const onDone = {
       onSuccess: () => { toast.success("Session saved"); setOpen(false); },
@@ -141,13 +162,31 @@ export function AdminSessionsPanel() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
+                <Label>Session type</Label>
+                <Select
+                  value={form.sessionType}
+                  onValueChange={(v) => setForm({ ...form, sessionType: v as ApiSessionType })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {API_SESSION_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {sessionTypeLabel(t)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>Day index</Label>
                 <Input type="number" min={1} value={form.dayIndex} onChange={(e) => setForm({ ...form, dayIndex: Number(e.target.value) || 1 })} className="mt-1" />
               </div>
-              <div>
-                <Label>Room</Label>
-                <Input value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} className="mt-1" />
-              </div>
+            </div>
+            <div>
+              <Label>Room</Label>
+              <Input value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} className="mt-1" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

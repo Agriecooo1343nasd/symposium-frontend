@@ -58,6 +58,7 @@ export const queryKeys = {
     me: ["exhibitors", "me"] as const,
     materials: ["exhibitors", "me", "materials"] as const,
     staffPasses: ["exhibitors", "me", "staff-passes"] as const,
+    public: (symposiumId: string) => ["exhibitors", "public", symposiumId] as const,
     admin: (params?: Record<string, unknown>) => ["exhibitors", "admin", params] as const,
   },
   speakerMaterials: {

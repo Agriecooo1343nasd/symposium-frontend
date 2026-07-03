@@ -6,6 +6,7 @@ import { queryKeys } from "@/lib/api/query-keys";
 import {
   announcementsService,
   cmsService,
+  exhibitorsService,
   sessionsService,
   speakersService,
   sponsorsService,
@@ -81,6 +82,28 @@ export function usePublicSponsors() {
     enabled: Boolean(symposiumId),
     staleTime: LONG_STALE,
   });
+}
+
+/** Approved exhibitor booths — requires auth (admin/exhibitor manager). Public visitors see empty until backend adds a public list endpoint. */
+export function usePublicExhibitors() {
+  const { symposiumId } = useSymposium();
+  const query = useQuery({
+    queryKey: queryKeys.exhibitors.public(symposiumId ?? "none"),
+    queryFn: async () => {
+      try {
+        const res = await exhibitorsService.listAdmin({ symposiumId: symposiumId!, limit: 100 });
+        return res.items.filter((e) => e.companyName?.trim() || e.boothNumber?.trim());
+      } catch {
+        return [];
+      }
+    },
+    enabled: Boolean(symposiumId),
+    staleTime: LONG_STALE,
+  });
+  return {
+    ...query,
+    exhibitors: query.data ?? [],
+  };
 }
 
 export function usePublicTicketCategories() {
