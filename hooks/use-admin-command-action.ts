@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+const COMMAND_PARAMS = ["action", "role"] as const;
+
+function stripCommandParams(params: URLSearchParams) {
+  for (const key of COMMAND_PARAMS) params.delete(key);
+}
+
 /** Run a page action from ?action=… then strip it from the URL. */
 export function useAdminCommandAction(handlers: Record<string, () => void>) {
   const searchParams = useSearchParams();
@@ -10,23 +16,28 @@ export function useAdminCommandAction(handlers: Record<string, () => void>) {
   const pathname = usePathname();
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
+  const consumedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const action = searchParams.get("action");
-    if (!action) return;
+    if (!action) {
+      consumedRef.current = null;
+      return;
+    }
+
+    const key = `${pathname}:${action}`;
+    if (consumedRef.current === key) return;
+
     const fn = handlersRef.current[action];
     if (!fn) return;
 
-    const timer = window.setTimeout(() => {
-      fn();
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete("action");
-      params.delete("role");
-      const q = params.toString();
-      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
-    }, 50);
+    consumedRef.current = key;
+    fn();
 
-    return () => window.clearTimeout(timer);
+    const params = new URLSearchParams(searchParams.toString());
+    stripCommandParams(params);
+    const q = params.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
   }, [searchParams, pathname, router]);
 }
 
@@ -53,6 +64,7 @@ export function useAdminTabNavigation(validTabs: string[], defaultTab: string) {
   const onTabChange = useCallback(
     (tab: string) => {
       const params = new URLSearchParams(searchParams.toString());
+      stripCommandParams(params);
       if (tab === defaultTab) params.delete("tab");
       else params.set("tab", tab);
       const q = params.toString();
