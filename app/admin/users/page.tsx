@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus, Shield } from "lucide-react";
+import { UserPlus, Shield, Mail, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,13 @@ import { userDisplayName } from "@/lib/api/mappers/user";
 import type { UserDto } from "@/lib/api/dto";
 import { toast } from "sonner";
 import { useAdminCommandAction, useAdminTabNavigation } from "@/hooks/use-admin-command-action";
+
+function formatAuditTime(value: unknown): string {
+  if (!value) return "—";
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
 
 export default function Page() {
   const { activeTab, onTabChange } = useAdminTabNavigation(["users", "invites", "roles", "audit"], "users");
@@ -68,6 +75,9 @@ export default function Page() {
     );
   };
 
+  const roleList = roles.data ?? [];
+  const auditItems = audit.data?.items ?? [];
+
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between flex-wrap gap-3">
@@ -83,7 +93,7 @@ export default function Page() {
       <Tabs value={activeTab} onValueChange={onTabChange}>
         <TabsList>
           <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="invites">Invitations (mock)</TabsTrigger>
+          <TabsTrigger value="invites">Invitations</TabsTrigger>
           <TabsTrigger value="roles">Roles</TabsTrigger>
           <TabsTrigger value="audit">Audit log</TabsTrigger>
         </TabsList>
@@ -121,47 +131,102 @@ export default function Page() {
                 ))}
               </tbody>
             </table>
+            {!isLoading && users.length === 0 && (
+              <p className="p-6 text-sm text-muted-foreground text-center">No users found.</p>
+            )}
           </div>
         </TabsContent>
 
         <TabsContent value="invites" className="mt-6">
-          <p className="text-sm text-muted-foreground">Email invite workflow has no API — use Create user with temporary password.</p>
-        </TabsContent>
-
-        <TabsContent value="roles" className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {(roles.data ?? []).map((r) => (
-            <div key={r.id} className="rounded-2xl bg-card border p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="h-4 w-4 text-blue" />
-                <div className="font-serif font-bold">{r.name}</div>
+          <div className="rounded-2xl border bg-card p-6 max-w-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-xl bg-blue/10 text-blue flex items-center justify-center shrink-0">
+                <Mail className="h-5 w-5" />
               </div>
-              <p className="text-xs text-muted-foreground">{r.description ?? "Seeded role"}</p>
+              <div>
+                <h2 className="font-serif font-bold text-lg">User onboarding</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  There is no separate email-invite API yet. Create an account with a temporary password and share
+                  credentials securely with the new team member. They can sign in and change their password from their
+                  profile.
+                </p>
+              </div>
             </div>
-          ))}
+            <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+              <li>Use a strong temporary password (at least 8 characters).</li>
+              <li>Assign the correct role when creating finance, desk, speaker, or exhibitor accounts.</li>
+              <li>Inactive accounts can be toggled off from the Users tab.</li>
+            </ul>
+            <Button className="gradient-blue text-accent-foreground" onClick={() => setInviteOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-1" /> Create user account
+            </Button>
+          </div>
         </TabsContent>
 
-        <TabsContent value="audit" className="mt-6">
+        <TabsContent value="roles" className="mt-6 space-y-4">
+          {roles.isLoading && <p className="text-sm text-muted-foreground">Loading roles…</p>}
+          {roles.isError && <p className="text-sm text-destructive">Could not load roles.</p>}
+          <p className="text-sm text-muted-foreground">
+            {roleList.length} roles from the API. Role assignment on create uses <code className="text-xs">POST /users/admin</code>.
+            Assign or revoke after creation requires backend support for <code className="text-xs">POST /users/:id/roles</code>.
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {roleList.map((r) => (
+              <div key={r.id} className="rounded-2xl bg-card border p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="h-4 w-4 text-blue" />
+                  <div className="font-serif font-bold">{r.name}</div>
+                </div>
+                <p className="text-xs text-muted-foreground">{r.description ?? "Seeded platform role"}</p>
+                <p className="text-[10px] text-muted-foreground mt-3 font-mono truncate" title={r.id}>
+                  {r.id}
+                </p>
+              </div>
+            ))}
+          </div>
+          {!roles.isLoading && roleList.length === 0 && (
+            <p className="text-sm text-muted-foreground border border-dashed rounded-2xl p-8 text-center">No roles returned.</p>
+          )}
+        </TabsContent>
+
+        <TabsContent value="audit" className="mt-6 space-y-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <ScrollText className="h-4 w-4" />
+            Recent admin actions from <code className="text-xs">GET /admin/audit-logs</code>
+          </div>
+          {audit.isLoading && <p className="text-sm text-muted-foreground">Loading audit log…</p>}
+          {audit.isError && <p className="text-sm text-destructive">Could not load audit log.</p>}
           <div className="rounded-md border overflow-x-auto bg-card">
-            <table className="w-full text-sm min-w-[560px]">
+            <table className="w-full text-sm min-w-[720px]">
               <thead className="bg-secondary/60 text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="text-left px-4 py-3">Action</th>
-                  <th className="text-left px-4 py-3">Actor</th>
+                  <th className="text-left px-4 py-3">Entity</th>
+                  <th className="text-left px-4 py-3">User</th>
                   <th className="text-left px-4 py-3">When</th>
                 </tr>
               </thead>
               <tbody>
-                {(audit.data?.items ?? []).map((log, i) => (
-                  <tr key={i} className="border-t">
-                    <td className="px-4 py-3 text-xs">{String((log as Record<string, unknown>).action ?? (log as Record<string, unknown>).message ?? "—")}</td>
-                    <td className="px-4 py-3 text-xs">{String((log as Record<string, unknown>).actorName ?? (log as Record<string, unknown>).userId ?? "—")}</td>
-                    <td className="px-4 py-3 text-xs">{String((log as Record<string, unknown>).createdAt ?? "—")}</td>
-                  </tr>
-                ))}
+                {auditItems.map((log) => {
+                  const row = log as Record<string, unknown>;
+                  return (
+                    <tr key={String(row.id ?? row.createdAt)} className="border-t">
+                      <td className="px-4 py-3 text-xs font-medium">{String(row.action ?? "—")}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {String(row.entityType ?? "—")}
+                        {row.entityId ? ` · ${String(row.entityId).slice(0, 8)}…` : ""}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-mono">
+                        {row.userId ? String(row.userId).slice(0, 8) + "…" : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-xs whitespace-nowrap">{formatAuditTime(row.createdAt)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-            {(audit.data?.items ?? []).length === 0 && !audit.isLoading && (
-              <p className="p-6 text-sm text-muted-foreground text-center">No audit entries.</p>
+            {auditItems.length === 0 && !audit.isLoading && (
+              <p className="p-6 text-sm text-muted-foreground text-center">No audit entries yet.</p>
             )}
           </div>
         </TabsContent>
@@ -182,7 +247,7 @@ export default function Page() {
               <Select value={inviteForm.roleId} onValueChange={(v) => setInviteForm({ ...inviteForm, roleId: v })}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Optional" /></SelectTrigger>
                 <SelectContent>
-                  {(roles.data ?? []).map((r) => (
+                  {roleList.map((r) => (
                     <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                   ))}
                 </SelectContent>

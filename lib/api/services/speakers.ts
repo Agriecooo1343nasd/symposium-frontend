@@ -2,7 +2,7 @@ import { isAxiosError } from "axios";
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type { CreateSpeakerDto, SessionSpeakerDto, SpeakerDashboardDto, SpeakerDto, UpdateSpeakerDto } from "../dto";
-import { type PaginationParams, type PaginatedResult, fetchPaginatedList, toQueryParams, unwrapPaginated } from "../helpers";
+import { type PaginationParams, type PaginatedResult, unwrapPaginated } from "../helpers";
 import { sessionsService } from "./sessions";
 
 function isSpeakersListError(err: unknown): boolean {
@@ -25,6 +25,30 @@ async function fetchSpeakerById(id: string): Promise<SpeakerDto | null> {
     return await apiClient.get<ApiResponse<SpeakerDto>>(`/speakers/${id}`).then(unwrapApi);
   } catch {
     return null;
+  }
+}
+
+function mergeSpeakers(primary: SpeakerDto[], extra: SpeakerDto[]): SpeakerDto[] {
+  const map = new Map<string, SpeakerDto>();
+  for (const s of [...primary, ...extra]) {
+    map.set(s.id, s);
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * GET /speakers rejects symposiumId when combined with page/limit (PaginationDto conflict).
+ * Request symposiumId alone — backend defaults page/limit internally.
+ */
+async function fetchSpeakersFromApi(symposiumId: string): Promise<SpeakerDto[] | null> {
+  try {
+    const res = await apiClient.get<ApiResponse<SpeakerDto[]>>("/speakers", {
+      params: { symposiumId },
+    });
+    return unwrapPaginated(res).items;
+  } catch (err) {
+    if (isSpeakersListError(err)) return null;
+    throw err;
   }
 }
 
@@ -53,34 +77,34 @@ async function listFromProgrammeSessions(
   return { items: sliced, meta: { total: items.length, page: 1, limit: sliced.length } };
 }
 
+async function listSpeakersMerged(symposiumId: string, params?: PaginationParams): Promise<PaginatedResult<SpeakerDto>> {
+  const limit = params?.limit ?? 100;
+  const fromApi = await fetchSpeakersFromApi(symposiumId);
+  const fromSessions = await listFromProgrammeSessions(symposiumId, { limit: 100 });
+
+  if (fromApi !== null) {
+    const merged = mergeSpeakers(fromApi, fromSessions.items).slice(0, limit);
+    return {
+      items: merged,
+      meta: { total: merged.length, page: 1, limit: merged.length },
+    };
+  }
+
+  return {
+    items: fromSessions.items.slice(0, limit),
+    meta: fromSessions.meta,
+  };
+}
+
 export const speakersService = {
-  /** Public speakers page — avoids broken GET /speakers list query validation on the API. */
   listPublic(symposiumId: string, params?: PaginationParams) {
-    return listFromProgrammeSessions(symposiumId, params);
+    return listSpeakersMerged(symposiumId, params);
   },
 
   list(symposiumId: string, params?: PaginationParams) {
-    let useProgrammeFallback = false;
-
-    return fetchPaginatedList(
-      async (pg) => {
-        if (!useProgrammeFallback) {
-          try {
-            return await apiClient
-              .get<ApiResponse<SpeakerDto[]>>("/speakers", {
-                params: toQueryParams({ symposiumId, ...pg }),
-              })
-              .then(unwrapPaginated);
-          } catch (err) {
-            if (!isSpeakersListError(err)) throw err;
-            useProgrammeFallback = true;
-          }
-        }
-        return listFromProgrammeSessions(symposiumId, { ...params, ...pg });
-      },
-      { pagination: params },
-    );
+    return listSpeakersMerged(symposiumId, params);
   },
+
   getById(id: string) {
     return apiClient.get<ApiResponse<SpeakerDto>>(`/speakers/${id}`).then(unwrapApi);
   },

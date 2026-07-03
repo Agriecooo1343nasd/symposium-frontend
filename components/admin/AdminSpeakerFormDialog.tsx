@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useCreateSpeaker, useUpdateSpeaker } from "@/hooks/api/useAdmin";
 import { useSymposiumId } from "@/hooks/api/useSymposium";
+import { useUploadFile } from "@/hooks/api/useFiles";
 import type { SpeakerDto } from "@/lib/api/dto";
 import { toast } from "sonner";
 
@@ -22,6 +23,8 @@ export function AdminSpeakerFormDialog({ open, onOpenChange, speaker }: Props) {
   const symposiumId = useSymposiumId();
   const create = useCreateSpeaker();
   const update = useUpdateSpeaker();
+  const uploadFile = useUploadFile();
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     name: "",
     title: "",
@@ -100,7 +103,27 @@ export function AdminSpeakerFormDialog({ open, onOpenChange, speaker }: Props) {
           </div>
           <div>
             <Label>Photo URL</Label>
-            <Input value={form.photoUrl} onChange={(e) => setForm({ ...form, photoUrl: e.target.value })} className="mt-1" />
+            <Input value={form.photoUrl} onChange={(e) => setForm({ ...form, photoUrl: e.target.value })} className="mt-1" placeholder="https://…" />
+            <Input
+              type="file"
+              accept="image/*"
+              className="mt-2"
+              disabled={uploading}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  setUploading(true);
+                  const res = await uploadFile.mutateAsync({ file, type: "avatar" });
+                  setForm((f) => ({ ...f, photoUrl: res.url }));
+                  toast.success("Photo uploaded");
+                } catch {
+                  toast.error("Upload failed — paste a URL instead");
+                } finally {
+                  setUploading(false);
+                }
+              }}
+            />
           </div>
           <div>
             <Label>Bio</Label>

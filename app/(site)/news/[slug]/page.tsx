@@ -4,6 +4,7 @@ import { ArrowLeft, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { announcementsService } from "@/lib/api/services";
 import { mapAnnouncementDto, type NewsView } from "@/lib/api/mappers/announcement";
+import { resolveSymposiumId } from "@/lib/api/symposium-server";
 import type { Metadata } from "next";
 
 type Props = {
@@ -15,6 +16,9 @@ export const revalidate = 300;
 async function loadPost(slug: string): Promise<NewsView | null> {
   try {
     const dto = await announcementsService.getBySlug(slug);
+    const symposiumId = await resolveSymposiumId();
+    if (symposiumId && dto.symposiumId && dto.symposiumId !== symposiumId) return null;
+    if (!dto.isPublished) return null;
     return mapAnnouncementDto(dto);
   } catch {
     return null;

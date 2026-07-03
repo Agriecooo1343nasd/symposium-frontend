@@ -1,26 +1,20 @@
 "use client";
+
+import { usePublicExhibitors, usePublicSponsors } from "@/hooks/api/usePublicData";
 import Link from "next/link";
 import { ArrowRight, Store, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EXHIBITORS } from "@/lib/mock-data";
-import { usePublicSponsors } from "@/hooks/api/usePublicData";
 
 export default function Exhibitors() {
-  const { data: sponsors } = usePublicSponsors();
+  const { data: sponsors, isLoading: sponsorsLoading } = usePublicSponsors();
+  const { exhibitors, isLoading: exhibitorsLoading } = usePublicExhibitors();
 
   const sponsorCards = (sponsors ?? []).map((s) => ({
     id: s.id,
     name: s.name,
     blurb: s.description ?? "",
     tier: s.tier ? s.tier.charAt(0).toUpperCase() + s.tier.slice(1) : "Silver",
-  }));
-
-  const exhibitorCards = EXHIBITORS.map((e) => ({
-    id: e.id,
-    name: e.name,
-    blurb: e.description,
-    booth: e.booth,
-    category: e.category,
+    logoUrl: s.logoUrl,
   }));
 
   const tierColor = (t: string) =>
@@ -58,7 +52,9 @@ export default function Exhibitors() {
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
         <h2 className="font-serif text-3xl font-bold mb-2">Sponsors</h2>
         <p className="text-muted-foreground mb-8">Financial and material supporters with platform-wide visibility.</p>
-        {sponsorCards.length === 0 ? (
+        {sponsorsLoading ? (
+          <p className="text-muted-foreground text-sm mb-16">Loading sponsors…</p>
+        ) : sponsorCards.length === 0 ? (
           <p className="text-muted-foreground text-sm mb-16 border border-dashed rounded-2xl p-8 text-center">
             Sponsor profiles will appear here once the secretariat approves applications.
           </p>
@@ -69,9 +65,13 @@ export default function Exhibitors() {
               <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full w-fit mb-2 ${tierColor(s.tier)}`}>
                 {s.tier}
               </span>
-              <div className="h-14 w-14 rounded-xl gradient-navy text-white flex items-center justify-center font-serif font-bold text-lg mb-3">
-                {s.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-              </div>
+              {s.logoUrl ? (
+                <img src={s.logoUrl} alt={s.name} className="h-14 w-auto max-w-full object-contain mb-3" />
+              ) : (
+                <div className="h-14 w-14 rounded-xl gradient-navy text-white flex items-center justify-center font-serif font-bold text-lg mb-3">
+                  {s.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                </div>
+              )}
               <h3 className="font-serif font-bold text-lg">{s.name}</h3>
               <p className="text-sm text-muted-foreground mt-1 flex-1">{s.blurb}</p>
             </div>
@@ -83,20 +83,27 @@ export default function Exhibitors() {
           <Store className="h-7 w-7" /> Exhibitors
         </h2>
         <p className="text-muted-foreground mb-8">Organizations showcasing products and innovations on the exhibition floor.</p>
+        {exhibitorsLoading ? (
+          <p className="text-muted-foreground text-sm">Loading exhibitors…</p>
+        ) : exhibitors.length === 0 ? (
+          <p className="text-muted-foreground text-sm border border-dashed rounded-2xl p-8 text-center">
+            Exhibitor booths will appear here once organizations are approved. Sponsors are listed above.
+          </p>
+        ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-          {exhibitorCards.map((e) => (
+          {exhibitors.map((e) => (
             <div key={e.id} className="rounded-2xl bg-card border border-border p-6 hover-lift flex flex-col">
               <div className="h-14 w-14 rounded-xl gradient-navy text-white flex items-center justify-center font-serif font-bold text-lg mb-3">
-                {e.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                {(e.companyName ?? "Exhibitor").split(" ").map((w) => w[0]).slice(0, 2).join("")}
               </div>
-              <h3 className="font-serif font-bold text-lg">{e.name}</h3>
-              <p className="text-xs text-muted-foreground capitalize">
-                {e.category} · Booth {e.booth}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1 mb-3 flex-1">{e.blurb}</p>
+              <h3 className="font-serif font-bold text-lg">{e.companyName ?? "Exhibitor"}</h3>
+              {e.boothNumber && (
+                <p className="text-xs text-muted-foreground capitalize">Booth {e.boothNumber}</p>
+              )}
             </div>
           ))}
         </div>
+        )}
       </section>
 
       {/* FR-1.5 — Become a Sponsor CTA */}
