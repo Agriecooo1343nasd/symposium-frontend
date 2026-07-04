@@ -21,17 +21,18 @@ const NAV: readonly PortalNavItem[] = [
 
 export default function SpeakerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { session, ready, roles, permissions } = useAuth();
+  const { session, ready, roles, permissions, authStatus } = useAuth();
 
   useEffect(() => {
     if (!ready) return;
+    if (authStatus === "idle" || authStatus === "loading") return;
     if (!session || !roles || roles.length === 0 || !canAccessPortal("/speaker", roles, permissions)) {
       signOut();
       router.replace("/login");
     }
-  }, [ready, session, roles, permissions, router]);
+  }, [ready, authStatus, session, roles, permissions, router]);
 
-  if (!ready || !session || !roles || roles.length === 0 || !canAccessPortal("/speaker", roles, permissions)) {
+  if (!ready || authStatus === "idle" || authStatus === "loading" || !session || !roles || roles.length === 0 || !canAccessPortal("/speaker", roles, permissions)) {
     return null;
   }
 

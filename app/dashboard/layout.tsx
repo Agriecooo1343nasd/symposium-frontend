@@ -42,7 +42,7 @@ const BASE_NAV: readonly PortalNavItem[] = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { session, ready, roles, permissions } = useAuth();
+  const { session, ready, roles, permissions, authStatus } = useAuth();
   useStore();
   const nav = useMemo(() => {
     if (!session) return BASE_NAV;
@@ -53,13 +53,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!ready) return;
+    if (authStatus === "idle" || authStatus === "loading") return;
     if (!session || !roles || roles.length === 0 || !canAccessPortal("/dashboard", roles, permissions)) {
       signOut();
       router.replace("/login");
     }
-  }, [ready, session, roles, permissions, router]);
+  }, [ready, authStatus, session, roles, permissions, router]);
 
-  if (!ready || !session || !roles || roles.length === 0 || !canAccessPortal("/dashboard", roles, permissions)) {
+  if (!ready || authStatus === "idle" || authStatus === "loading" || !session || !roles || roles.length === 0 || !canAccessPortal("/dashboard", roles, permissions)) {
     return null;
   }
 
