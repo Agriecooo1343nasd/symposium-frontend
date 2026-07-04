@@ -1073,6 +1073,12 @@ export type SymposiumSettingsDto = {
     enableOnSiteRegistration?: boolean;
     enableBadgePrinting?: boolean;
   };
+  sponsorship?: {
+    enableApplications?: boolean;
+    tierPricing?: Array<{ tier: string; amountUsd: number; amountRwf: number }>;
+    bankTransferInstructions?: string;
+    defaultInvoiceCurrency?: "USD" | "RWF";
+  };
 };
 
 export type UpdateSymposiumSettingsDto = Partial<Omit<SymposiumSettingsDto, "symposiumId">>;

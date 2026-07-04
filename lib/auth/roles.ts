@@ -37,19 +37,11 @@ export const PERMISSIONS = {
 const PORTAL_PREFIXES = ["/dashboard", "/admin", "/desk", "/moderator", "/exhibitor", "/speaker"] as const;
 
 const PORTAL_ROLE_ACCESS: Record<string, string[]> = {
-  "/dashboard": ["attendee", "speaker", "exhibitor_contact", "exhibitor"],
-  "/admin": [
-    "super_admin",
-    "finance_officer",
-    "programme_committee",
-    "program_admin",
-    "content_manager",
-    "exhibitor_manager",
-    "reviewer",
-  ],
-  "/desk": ["registration_desk", "media_press", "media"],
-  "/moderator": ["programme_committee", "program_admin", "content_manager"],
-  "/exhibitor": ["exhibitor_contact", "exhibitor", "exhibitor_manager"],
+  "/dashboard": ["attendee", "speaker", "exhibitor"],
+  "/admin": ["admin"],
+  "/desk": ["registration_desk"],
+  "/moderator": ["moderator"],
+  "/exhibitor": ["exhibitor"],
   "/speaker": ["speaker"],
 };
 
@@ -67,18 +59,11 @@ export function hasAnyRole(roles: string[], required: string[]): boolean {
 
 export function getDefaultPortalPath(roles: string[], permissions: string[]): string {
   if (roles.some(isAdminRole)) return "/admin";
-  if (roles.includes("registration_desk") || roles.includes("media_press") || roles.includes("media")) {
-    return "/desk";
-  }
+  if (roles.includes("registration_desk")) return "/desk";
+  if (roles.includes("moderator")) return "/moderator";
   if (roles.includes("speaker")) return "/speaker";
-  if (roles.includes("exhibitor_contact") || roles.includes("exhibitor")) return "/exhibitor";
-  if (
-    roles.includes("programme_committee") ||
-    roles.includes("program_admin") ||
-    hasPermission(permissions, PERMISSIONS.ENGAGEMENT_MANAGE)
-  ) {
-    return "/moderator";
-  }
+  if (roles.includes("exhibitor")) return "/exhibitor";
+  if (hasPermission(permissions, PERMISSIONS.ENGAGEMENT_MANAGE)) return "/moderator";
   return "/dashboard";
 }
 

@@ -129,3 +129,167 @@ export function useLinkedSponsor(sponsorId: string | null | undefined) {
   const sponsor = query.data?.find((s) => s.id === sponsorId) ?? null;
   return { ...query, sponsor };
 }
+
+// New hooks for sponsorship applications (FR-5.1)
+export function useSponsorshipTierPricing(symposiumId: string | undefined) {
+  const query = useQuery({
+    queryKey: ["sponsorship-tier-pricing", symposiumId],
+    queryFn: () => sponsorsService.getSponsorshipTierPricing(symposiumId!),
+    enabled: Boolean(symposiumId),
+    staleTime: 10 * 60_000,
+  });
+  return { ...query, pricing: query.data ?? [] };
+}
+
+export function useCreateSponsorshipApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: {
+      symposiumId?: string;
+      organizationName: string;
+      contactName: string;
+      contactEmail: string;
+      contactPhone: string;
+      desiredTier: "platinum" | "gold" | "silver";
+      message?: string;
+      wantsExhibitorBooth: boolean;
+    }) => sponsorsService.createSponsorshipApplication(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-applications"] });
+    },
+  });
+}
+
+export function useMySponsorProfile() {
+  const query = useQuery({
+    queryKey: ["sponsors-me"],
+    queryFn: () => sponsorsService.getMySponsorProfile(),
+    enabled: enabled(),
+    staleTime: 5 * 60_000,
+  });
+  return { ...query, sponsor: query.data ?? null };
+}
+
+export function useUpdateMySponsorProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: { logoUrl?: string; websiteUrl?: string; description?: string }) =>
+      sponsorsService.updateMySponsorProfile(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsors-me"] });
+    },
+  });
+}
+
+export function useMySponsorInvoice() {
+  const query = useQuery({
+    queryKey: ["sponsors-me-invoice"],
+    queryFn: () => sponsorsService.getMySponsorInvoice(),
+    enabled: enabled(),
+    staleTime: 5 * 60_000,
+  });
+  return { ...query, invoice: query.data ?? null };
+}
+
+// New hook for exhibitor leads
+export function useMyExhibitorLeads() {
+  const query = useQuery({
+    queryKey: ["exhibitors-me-leads"],
+    queryFn: () => exhibitorsService.listMyLeads(),
+    enabled: enabled(),
+    staleTime: 30_000,
+  });
+  return { ...query, leads: query.data ?? [] };
+}
+
+// Admin sponsorship application management hooks
+export function useListSponsorshipApplications(symposiumId?: string, status?: string) {
+  const query = useQuery({
+    queryKey: ["sponsorship-applications-admin", symposiumId, status],
+    queryFn: () => sponsorsService.listSponsorshipApplications({ symposiumId, status }),
+    enabled: enabled(),
+    staleTime: 30_000,
+  });
+  const applications = query.data?.items ?? [];
+  return { ...query, applications, data: applications };
+}
+
+export function useSponsorshipApplicationStats(symposiumId?: string) {
+  const query = useQuery({
+    queryKey: ["sponsorship-applications-stats", symposiumId],
+    queryFn: () => sponsorsService.getSponsorshipApplicationStats(symposiumId),
+    enabled: enabled(),
+    staleTime: 60_000,
+  });
+  return { ...query, stats: query.data ?? null };
+}
+
+export function useSponsorshipApplication(id: string) {
+  const query = useQuery({
+    queryKey: ["sponsorship-application", id],
+    queryFn: () => sponsorsService.getSponsorshipApplication(id),
+    enabled: enabled() && Boolean(id),
+    staleTime: 30_000,
+  });
+  return { ...query, application: query.data ?? null };
+}
+
+export function useApproveSponsorshipApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { id: string; dto?: Record<string, unknown> }) =>
+      sponsorsService.approveSponsorshipApplication(params.id, params.dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-stats"] });
+    },
+  });
+}
+
+export function useRejectSponsorshipApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { id: string; adminNotes?: string }) =>
+      sponsorsService.rejectSponsorshipApplication(params.id, { adminNotes: params.adminNotes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-stats"] });
+    },
+  });
+}
+
+export function useSponsorshipApplicationInvoice(id: string) {
+  const query = useQuery({
+    queryKey: ["sponsorship-application-invoice", id],
+    queryFn: () => sponsorsService.getSponsorshipApplicationInvoice(id),
+    enabled: enabled() && Boolean(id),
+    staleTime: 30_000,
+  });
+  return { ...query, invoice: query.data ?? null };
+}
+
+export function useMarkSponsorshipInvoicePaid() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { id: string; notes?: string }) =>
+      sponsorsService.markSponsorshipInvoicePaid(params.id, { notes: params.notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-stats"] });
+    },
+  });
+}
+
+export function useAddExhibitorBoothToSponsor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { sponsorId: string; boothNumber: string; packageId?: string }) =>
+      sponsorsService.addExhibitorBoothToSponsor(params.sponsorId, {
+        boothNumber: params.boothNumber,
+        packageId: params.packageId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsors"] });
+    },
+  });
+}

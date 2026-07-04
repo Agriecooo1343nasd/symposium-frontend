@@ -1,6 +1,7 @@
 export const ADMIN_EXHIBITOR_TABS = [
   "exhibitors",
   "sponsors",
+  "sponsorship-applications",
   "applications",
   "tiers",
   "map",
@@ -16,6 +17,7 @@ export type ExhibitorPortalTab = AdminExhibitorTab | DeskExhibitorTab;
 export const TAB_LABELS: Record<string, string> = {
   exhibitors: "Exhibitors",
   sponsors: "Sponsorship records",
+  "sponsorship-applications": "Sponsorship applications (FR-5.1)",
   applications: "Applications",
   tiers: "Tier benefits",
   map: "Booth map",

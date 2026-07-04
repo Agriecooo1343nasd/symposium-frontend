@@ -9,6 +9,7 @@ import { useStore } from "@/hooks/use-store";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { getInvoicesForApplication } from "@/lib/sponsorship-invoices";
 import { SponsorshipRecordsList } from "@/components/admin/SponsorshipRecordsList";
+import { SponsorshipApplicationsAdmin } from "@/components/admin/SponsorshipApplicationsAdmin";
 import type { ApprovedOrganization, OrganizationApplication } from "@/lib/store";
 import { AdminExhibitorsApiPanel } from "@/components/admin/AdminExhibitorsApiPanel";
 import { BoothMapManager } from "@/components/admin/BoothMapManager";
@@ -236,6 +237,14 @@ export function ExhibitorsPortal({ basePath, activeTab, onTabChange, variant, ta
 
         <TabsContent value="sponsors" className="mt-6">
           <SponsorshipRecordsList actorName={actorLabel} readOnly={!isAdmin} basePath={basePath} />
+        </TabsContent>
+
+        <TabsContent value="sponsorship-applications" className="mt-6">
+          {isAdmin ? (
+            <SponsorshipApplicationsAdmin />
+          ) : (
+            <p className="text-sm text-muted-foreground">Sponsorship applications management is admin-only.</p>
+          )}
         </TabsContent>
 
         <TabsContent value="applications" className="mt-6">

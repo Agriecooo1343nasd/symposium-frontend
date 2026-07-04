@@ -185,6 +185,13 @@ const BACKEND_GROUPS: {
       { key: "enableBadgePrinting", label: "Badge printing" },
     ],
   },
+  {
+    group: "sponsorship",
+    title: "Sponsorship (FR-5.1)",
+    fields: [
+      { key: "enableApplications", label: "Public sponsorship applications" },
+    ],
+  },
 ];
 
 function BackendSettingsSection() {

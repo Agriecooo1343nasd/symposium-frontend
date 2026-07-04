@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useSymposium } from "@/hooks/api/useSymposium";
 import { useMyRegistrations } from "@/hooks/api/useRegistration";
 import { useCreateSubmission, useMySubmissions } from "@/hooks/api/useDashboard";
+import { useSponsorshipTierPricing, useCreateSponsorshipApplication } from "@/hooks/api/useExhibitor";
 import { isRegistrationPaid, primaryRegistration } from "@/lib/api/mappers/registration-helpers";
 import { filesService } from "@/lib/api/services";
 import { apiErrorMessage } from "@/lib/api/client";
@@ -51,6 +52,8 @@ export default function DashboardApplyPage() {
   const { registrations } = useMyRegistrations();
   const { data: mySubmissions = [] } = useMySubmissions();
   const createSubmission = useCreateSubmission();
+  const { pricing: tierPricing } = useSponsorshipTierPricing(symposiumId || undefined);
+  const createSponsorshipApplication = useCreateSponsorshipApplication();
   const [kind, setKind] = useState<"speaker" | "exhibitor">("speaker");
 
   const reg = primaryRegistration(registrations);
@@ -126,34 +129,56 @@ export default function DashboardApplyPage() {
     }
   };
 
-  const submitOrg = (e: React.FormEvent) => {
+  const submitOrg = async (e: React.FormEvent) => {
     e.preventDefault();
-    const quote = calculateOrgPackageFee(org.participation, org.sponsorshipTier, staffCount, store);
-    patchStore((s) => ({
-      ...s,
-      organizationApplications: [
-        {
-          id: uid("oa"),
-          ...org,
-          staffCount,
-          quotedFeeUsd: quote.feeUsd,
-          status: "pending",
-          paymentStatus: "unpaid",
-          submittedAt: new Date().toISOString().slice(0, 10),
-        },
-        ...s.organizationApplications,
-      ],
-    }));
-    toast.success("Organization application saved locally — exhibitor API pending");
-    router.push("/dashboard");
+    
+    if (org.participation === "sponsor" || org.participation === "both") {
+      // Use new sponsorship application API
+      try {
+        await createSponsorshipApplication.mutateAsync({
+          symposiumId: symposiumId || undefined,
+          organizationName: org.companyName,
+          contactName: org.contactName,
+          contactEmail: org.contactEmail,
+          contactPhone: org.contactPhone,
+          desiredTier: org.sponsorshipTier.toLowerCase() as "platinum" | "gold" | "silver",
+          message: org.description || undefined,
+          wantsExhibitorBooth: org.participation === "both",
+        });
+        toast.success("Sponsorship application submitted successfully");
+        router.push("/dashboard");
+      } catch (err) {
+        toast.error(apiErrorMessage(err));
+      }
+    } else {
+      // Exhibitor-only applications still use local storage until full exhibitor API is available
+      const quote = calculateOrgPackageFee(org.participation, org.sponsorshipTier, staffCount, store);
+      patchStore((s) => ({
+        ...s,
+        organizationApplications: [
+          {
+            id: uid("oa"),
+            ...org,
+            staffCount,
+            quotedFeeUsd: quote.feeUsd,
+            status: "pending",
+            paymentStatus: "unpaid",
+            submittedAt: new Date().toISOString().slice(0, 10),
+          },
+          ...s.organizationApplications,
+        ],
+      }));
+      toast.success("Exhibitor application saved locally — secretariat will review");
+      router.push("/dashboard");
+    }
   };
 
   return (
     <div>
       <h1 className="font-serif text-3xl font-bold mb-2">Apply to speak or exhibit</h1>
       <p className="text-muted-foreground mb-6">
-        Speaker applications are submitted to the programme committee. Exhibitor applications use local storage until the
-        exhibitor API is available.
+        Speaker applications are submitted to the programme committee. Sponsorship applications are submitted via API for 
+        immediate processing. Exhibitor-only applications use local storage until the full exhibitor API is available.
       </p>
 
       {!canApplySpeaker && kind === "speaker" && (
@@ -301,13 +326,27 @@ export default function DashboardApplyPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {store.sponsorshipTiers.map((t) => (
-                      <SelectItem key={t.tier} value={t.tier}>
-                        {t.tier}
-                      </SelectItem>
-                    ))}
+                    {tierPricing.length > 0 ? (
+                      tierPricing.map((t) => (
+                        <SelectItem key={t.tier} value={t.tier.charAt(0).toUpperCase() + t.tier.slice(1)}>
+                          {t.tier.charAt(0).toUpperCase() + t.tier.slice(1)} — ${t.amountUsd.toLocaleString()}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="Silver">Silver — Loading...</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
+                {tierPricing.length > 0 && (
+                  <div className="mt-2 rounded-lg bg-secondary/60 p-3 text-xs">
+                    {(() => {
+                      const selectedTier = tierPricing.find((t) => t.tier.toLowerCase() === org.sponsorshipTier.toLowerCase());
+                      return selectedTier ? (
+                        <div>USD: ${selectedTier.amountUsd.toLocaleString()} · RWF: {selectedTier.amountRwf.toLocaleString()}</div>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
               </div>
             )}
             <div className="grid sm:grid-cols-2 gap-4">

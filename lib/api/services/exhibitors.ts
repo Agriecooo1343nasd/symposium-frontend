@@ -82,10 +82,15 @@ export const exhibitorsService = {
   },
   listPackages(symposiumId: string) {
     return apiClient
-      .get<ApiResponse<ExhibitorPackageDto[]>>("/exhibitors/packages", { params: { symposiumId } })
+      .get<ApiResponse<ExhibitorPackageDto[]>>(`/symposiums/${symposiumId}/exhibitor-packages`)
       .then(unwrapApi);
   },
   getPackage(id: string) {
     return apiClient.get<ApiResponse<ExhibitorPackageDto>>(`/exhibitors/packages/${id}`).then(unwrapApi);
+  },
+  listMyLeads() {
+    return apiClient
+      .get<ApiResponse<ExhibitorLeadDto[]>>("/exhibitors/me/leads")
+      .then(unwrapApi);
   },
 };
