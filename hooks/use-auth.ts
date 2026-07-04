@@ -20,6 +20,7 @@ export function useAuth() {
     user: auth.user,
     roles: auth.user?.roles ?? [],
     permissions: auth.user?.permissions ?? [],
+    authStatus: auth.status,
     isAuthenticated: auth.status === "authenticated" || Boolean(session),
   };
 }
