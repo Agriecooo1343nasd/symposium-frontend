@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell";
 import { useAuth } from "@/hooks/use-auth";
-import { canAccessPortal } from "@/lib/permissions";
+import { canAccessPortal } from "@/lib/auth/roles";
+import { signOut } from "@/lib/auth";
 
 const NAV: readonly PortalNavItem[] = [
   { to: "/moderator", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -37,16 +38,17 @@ const NAV: readonly PortalNavItem[] = [
 
 export default function ModeratorLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { session, ready } = useAuth();
+  const { session, ready, roles, permissions } = useAuth();
 
   useEffect(() => {
     if (!ready) return;
-    if (!session || !canAccessPortal("/moderator", session.role)) {
+    if (!session || !roles || roles.length === 0 || !canAccessPortal("/moderator", roles, permissions)) {
+      signOut();
       router.replace("/login");
     }
-  }, [ready, session, router]);
+  }, [ready, session, roles, permissions, router]);
 
-  if (!ready || !session || !canAccessPortal("/moderator", session.role)) {
+  if (!ready || !session || !roles || roles.length === 0 || !canAccessPortal("/moderator", roles, permissions)) {
     return null;
   }
 
