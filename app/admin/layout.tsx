@@ -30,7 +30,8 @@ import {
 import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell";
 import { AdminCommandPaletteProvider } from "@/components/admin/AdminCommandPaletteProvider";
 import { useAuth } from "@/hooks/use-auth";
-import { canAccessPortal } from "@/lib/permissions";
+import { canAccessPortal } from "@/lib/auth/roles";
+import { signOut } from "@/lib/auth";
 
 const NAV: readonly PortalNavItem[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -59,16 +60,18 @@ const NAV: readonly PortalNavItem[] = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { session, ready } = useAuth();
+  const { session, ready, roles, permissions } = useAuth();
 
   useEffect(() => {
     if (!ready) return;
-    if (!session || !canAccessPortal("/admin", session.role)) {
+    // If backend-authenticated roles are missing or access denied, clear local session and redirect to login
+    if (!session || !roles || roles.length === 0 || !canAccessPortal("/admin", roles, permissions)) {
+      signOut();
       router.replace("/login");
     }
-  }, [ready, session, router]);
+  }, [ready, session, roles, permissions, router]);
 
-  if (!ready || !session || !canAccessPortal("/admin", session.role)) {
+  if (!ready || !session || !roles || roles.length === 0 || !canAccessPortal("/admin", roles, permissions)) {
     return null;
   }
 
