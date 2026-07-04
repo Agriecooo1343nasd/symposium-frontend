@@ -22,18 +22,37 @@ const NAV: readonly PortalNavItem[] = [
 export default function SpeakerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { session, ready, roles, permissions, authStatus } = useAuth();
+  const allowed = canAccessPortal("/speaker", roles, permissions);
 
   useEffect(() => {
     if (!ready) return;
     if (authStatus === "idle" || authStatus === "loading") return;
-    if (!session || !roles || roles.length === 0 || !canAccessPortal("/speaker", roles, permissions)) {
+    if (!session || !roles || roles.length === 0 || !allowed) {
       signOut();
       router.replace("/login");
     }
-  }, [ready, authStatus, session, roles, permissions, router]);
+  }, [ready, authStatus, session, roles, permissions, allowed, router]);
 
-  if (!ready || authStatus === "idle" || authStatus === "loading" || !session || !roles || roles.length === 0 || !canAccessPortal("/speaker", roles, permissions)) {
-    return null;
+  if (!ready || authStatus === "idle" || authStatus === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border border-gray-300 border-t-blue-600 mx-auto mb-4"></div>
+          <p className="text-sm text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session || !roles || roles.length === 0 || !allowed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-white">
+        <div className="max-w-2xl w-full border rounded-md p-6 shadow">
+          <h2 className="text-lg font-semibold">Access Denied</h2>
+          <p className="mt-2 text-sm">You do not have permission to access this portal.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
