@@ -1,61 +1,56 @@
 import type { Role } from "@/lib/mock-data";
 
+// Backend now uses 6 canonical roles only (per SRS FR-5.1 changes)
 export type BackendRole =
-  | "super_admin"
-  | "finance_officer"
-  | "programme_committee"
-  | "program_admin"
-  | "content_manager"
+  | "admin"
   | "registration_desk"
-  | "exhibitor_manager"
-  | "reviewer"
-  | "speaker"
+  | "moderator"
   | "attendee"
-  | "exhibitor"
-  | "exhibitor_contact"
-  | "media"
-  | "media_press";
+  | "speaker"
+  | "exhibitor";
 
-const ADMIN_ROLES: BackendRole[] = [
-  "super_admin",
-  "finance_officer",
-  "programme_committee",
-  "program_admin",
-  "content_manager",
-  "exhibitor_manager",
-  "reviewer",
-];
+const ADMIN_ROLES: BackendRole[] = ["admin"];
 
 export function isAdminRole(role: string): boolean {
   return ADMIN_ROLES.includes(role as BackendRole);
 }
 
+// Map legacy roles to canonical roles for backward compatibility
+const LEGACY_ROLE_MAPPING: Record<string, BackendRole> = {
+  super_admin: "admin",
+  finance_officer: "admin",
+  programme_committee: "admin",
+  program_admin: "admin",
+  content_manager: "admin",
+  exhibitor_manager: "admin",
+  reviewer: "moderator",
+  exhibitor_contact: "exhibitor",
+  media_press: "registration_desk",
+  media: "registration_desk",
+};
+
 export function resolveLegacyRole(roles: string[]): Role {
-  if (roles.some(isAdminRole)) return "admin";
-  if (roles.includes("registration_desk")) return "registration_desk";
-  if (roles.includes("media_press") || roles.includes("media")) return "registration_desk";
-  if (roles.includes("speaker")) return "speaker";
-  if (roles.includes("exhibitor_contact") || roles.includes("exhibitor")) return "exhibitor";
-  if (roles.includes("programme_committee") || roles.includes("program_admin")) return "moderator";
+  if (roles.length === 0) return "attendee";
+  
+  // Map any legacy roles to canonical roles
+  const canonicalRoles = roles.map(role => LEGACY_ROLE_MAPPING[role] || role as BackendRole);
+  
+  if (canonicalRoles.includes("admin")) return "admin";
+  if (canonicalRoles.includes("registration_desk")) return "registration_desk";
+  if (canonicalRoles.includes("moderator")) return "moderator";
+  if (canonicalRoles.includes("speaker")) return "speaker";
+  if (canonicalRoles.includes("exhibitor")) return "exhibitor";
   return "attendee";
 }
 
 export function roleLabelFromBackend(role: string): string {
   const labels: Record<string, string> = {
-    super_admin: "Super Admin",
-    finance_officer: "Finance Officer",
-    programme_committee: "Programme Committee",
-    program_admin: "Program Admin",
-    content_manager: "Content Manager",
+    admin: "Admin",
     registration_desk: "Registration Desk",
-    exhibitor_manager: "Exhibitor Manager",
-    reviewer: "Reviewer",
+    moderator: "Moderator",
     speaker: "Speaker",
     attendee: "Attendee",
     exhibitor: "Exhibitor",
-    exhibitor_contact: "Exhibitor Contact",
-    media_press: "Media / Press",
-    media: "Media",
   };
   return labels[role] ?? role.replace(/_/g, " ");
 }

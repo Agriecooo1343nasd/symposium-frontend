@@ -1,23 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { ScanLine, Download, Search, QrCode, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatTile } from "@/components/layout/PortalShell";
 import {
   useExhibitorProfile,
   useScanExhibitorLead,
+  useMyExhibitorLeads,
 } from "@/hooks/api/useExhibitor";
 import {
   exportLeadsCsv,
-  loadExhibitorLeads,
-  saveExhibitorLead,
-  updateStoredLead,
   type StoredExhibitorLead,
 } from "@/lib/exhibitor/leads-storage";
 import { apiErrorMessage } from "@/lib/api/client";
@@ -25,24 +22,19 @@ import { toast } from "sonner";
 
 export default function Page() {
   const { profile } = useExhibitorProfile();
+  const { leads: apiLeads, isLoading: leadsLoading } = useMyExhibitorLeads();
   const scanLead = useScanExhibitorLead();
-  const [refresh, setRefresh] = useState(0);
   const [q, setQ] = useState("");
   const [scanInput, setScanInput] = useState("");
   const [consent, setConsent] = useState(true);
-  const [notes, setNotes] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const leads = useMemo(
-    () => (profile ? loadExhibitorLeads(profile.id) : []),
-    [profile?.id, refresh],
-  );
-
+  const leads = apiLeads;
   const selected = leads.find((l) => l.id === selectedId) ?? null;
 
   const rows = leads.filter((l) => {
     if (!q) return true;
-    const hay = [l.attendeeName, l.attendeeEmail, l.boothNotes, l.crmStatus].join(" ").toLowerCase();
+    const hay = [l.attendeeName, l.attendeeEmail].join(" ").toLowerCase();
     return hay.includes(q.toLowerCase());
   });
 
@@ -58,21 +50,13 @@ export default function Page() {
         consentGiven: true,
         ...(isUuid ? { registrationId: raw } : { qrPayload: raw }),
       });
-      const stored: StoredExhibitorLead = {
-        ...result,
-        boothNotes: notes.trim() || undefined,
-        crmStatus: "New",
-      };
-      saveExhibitorLead(profile.id, stored);
-      setRefresh((n) => n + 1);
       setSelectedId(result.id);
       setScanInput("");
-      setNotes("");
       toast.success(`Lead captured — ${result.attendeeName ?? result.attendeeEmail ?? "attendee"}`);
     } catch (err) {
       toast.error(apiErrorMessage(err));
     }
-  }, [profile, scanInput, consent, notes, scanLead]);
+  }, [profile, scanInput, consent, scanLead]);
 
   const exportCsv = () => {
     const csv = exportLeadsCsv(rows.length ? rows : leads);
@@ -99,13 +83,13 @@ export default function Page() {
           <h1 className="font-serif text-3xl sm:text-4xl font-bold">Scan attendee badges</h1>
           <p className="text-white/85 text-sm mt-2 max-w-xl">
             Paste the signed QR payload from an attendee e-ticket or their registration UUID. Scans are saved via the
-            API; your CRM list is stored on this device until a list endpoint exists.
+            API and synchronized across devices.
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatTile label="Leads on this device" value={leads.length} accent />
+        <StatTile label="Total leads" value={leads.length} accent />
         <StatTile label="Booth" value={profile.boothNumber ?? "—"} />
         <StatTile label="Package" value={profile.package?.name ?? "Exhibitor"} />
       </div>
@@ -129,10 +113,7 @@ export default function Page() {
                 className="mt-1 font-mono text-xs"
               />
             </div>
-            <div>
-              <Label>Booth notes (optional)</Label>
-              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1" />
-            </div>
+
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
               Attendee gave consent to share contact details
@@ -175,7 +156,6 @@ export default function Page() {
                 <thead className="bg-secondary/60 text-xs uppercase text-muted-foreground">
                   <tr>
                     <th className="text-left px-4 py-3">Contact</th>
-                    <th className="text-left px-4 py-3">Status</th>
                     <th className="text-left px-4 py-3">Captured</th>
                   </tr>
                 </thead>
@@ -190,7 +170,6 @@ export default function Page() {
                         <div className="font-medium">{l.attendeeName ?? "—"}</div>
                         <div className="text-xs text-muted-foreground">{l.attendeeEmail}</div>
                       </td>
-                      <td className="px-4 py-3 text-xs">{l.crmStatus ?? "New"}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {new Date(l.scannedAt).toLocaleString()}
                       </td>
@@ -207,33 +186,13 @@ export default function Page() {
               <div className="rounded-2xl border bg-card p-5 space-y-3">
                 <h3 className="font-serif font-bold">{selected.attendeeName ?? "Lead"}</h3>
                 <p className="text-sm text-muted-foreground">{selected.attendeeEmail}</p>
-                <div>
-                  <Label>CRM status</Label>
-                  <Input
-                    className="mt-1"
-                    value={selected.crmStatus ?? "New"}
-                    onChange={(e) => {
-                      updateStoredLead(profile.id, selected.id, { crmStatus: e.target.value });
-                      setRefresh((n) => n + 1);
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label>Booth notes</Label>
-                  <Textarea
-                    rows={3}
-                    className="mt-1"
-                    value={selected.boothNotes ?? ""}
-                    onChange={(e) => {
-                      updateStoredLead(profile.id, selected.id, { boothNotes: e.target.value });
-                      setRefresh((n) => n + 1);
-                    }}
-                  />
+                <div className="text-xs text-muted-foreground">
+                  Captured: {new Date(selected.scannedAt).toLocaleString()}
                 </div>
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground hidden lg:block">
-                Select a lead to edit notes and status.
+                Select a lead to view details.
               </div>
             )}
           </div>

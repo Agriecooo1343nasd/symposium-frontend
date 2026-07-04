@@ -167,8 +167,8 @@ export default function Page() {
           {roles.isLoading && <p className="text-sm text-muted-foreground">Loading roles…</p>}
           {roles.isError && <p className="text-sm text-destructive">Could not load roles.</p>}
           <p className="text-sm text-muted-foreground">
-            {roleList.length} roles from the API. Role assignment on create uses <code className="text-xs">POST /users/admin</code>.
-            Assign or revoke after creation requires backend support for <code className="text-xs">POST /users/:id/roles</code>.
+            {roleList.length} roles from the API. Role assignment on create.
+            Assign or revoke after creation requires backend support.
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {roleList.map((r) => (
@@ -192,7 +192,7 @@ export default function Page() {
         <TabsContent value="audit" className="mt-6 space-y-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <ScrollText className="h-4 w-4" />
-            Recent admin actions from <code className="text-xs">GET /admin/audit-logs</code>
+            Recent admin actions 
           </div>
           {audit.isLoading && <p className="text-sm text-muted-foreground">Loading audit log…</p>}
           {audit.isError && <p className="text-sm text-destructive">Could not load audit log.</p>}

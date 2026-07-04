@@ -12,6 +12,16 @@ import { resolveLegacyRole } from "@/lib/api/mappers/role";
 import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "sonner";
 
+// Demo credentials (6 canonical roles from backend)
+const DEMO_CREDENTIALS = [
+    { role: "Admin", email: "admin@nas2026.rw", password: "Admin123!" },
+    { role: "Registration Desk", email: "desk@nas2026.rw", password: "TestPass123!" },
+    { role: "Moderator", email: "moderator@nas2026.rw", password: "TestPass123!" },
+    { role: "Attendee", email: "attendee@nas2026.rw", password: "TestPass123!" },
+    { role: "Speaker", email: "speaker@nas2026.rw", password: "TestPass123!" },
+    { role: "Exhibitor", email: "exhibitor@nas2026.rw", password: "TestPass123!" },
+];
+
 function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -19,6 +29,11 @@ function LoginForm() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+
+    const autofillDemo = (demoEmail: string, demoPassword: string) => {
+        setEmail(demoEmail);
+        setPassword(demoPassword);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -133,6 +148,25 @@ function LoginForm() {
                             Get your pass
                         </Link>
                     </p>
+
+                    {/* Demo credentials for development/testing */}
+                    <div className="mt-10 pt-8 border-t">
+                        <p className="text-xs text-muted-foreground mb-3 font-semibold">Demo accounts (testing):</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            {DEMO_CREDENTIALS.map((cred) => (
+                                <button
+                                    key={cred.email}
+                                    type="button"
+                                    onClick={() => autofillDemo(cred.email, cred.password)}
+                                    className="px-3 py-2 rounded-lg border border-muted-foreground/20 hover:bg-muted text-xs transition-colors text-left"
+                                    title={`${cred.role}: ${cred.email}`}
+                                >
+                                    <div className="font-semibold text-foreground">{cred.role}</div>
+                                    <div className="text-muted-foreground truncate">{cred.email}</div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

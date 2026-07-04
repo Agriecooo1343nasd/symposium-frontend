@@ -3,13 +3,19 @@
 import Link from "next/link";
 import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useExhibitorProfile, useLinkedSponsor } from "@/hooks/api/useExhibitor";
+import { useExhibitorProfile, useLinkedSponsor, useMySponsorProfile, useMySponsorInvoice } from "@/hooks/api/useExhibitor";
 import { exhibitorDisplayName } from "@/lib/exhibitor/participation";
 
 export default function Page() {
   const { profile, participation, isLoading } = useExhibitorProfile();
-  const { sponsor, isLoading: sponsorLoading } = useLinkedSponsor(profile?.sponsorId);
+  const { sponsor: linkedSponsor, isLoading: linkedSponsorLoading } = useLinkedSponsor(profile?.sponsorId);
+  const { sponsor: mySponsor, isLoading: mySponsorLoading } = useMySponsorProfile();
+  const { invoice, isLoading: invoiceLoading } = useMySponsorInvoice();
   const isSponsor = participation === "sponsor" || participation === "both";
+  
+  // Use the sponsor profile from the new API if available, otherwise fall back to linked sponsor
+  const sponsor = mySponsor || linkedSponsor;
+  const sponsorLoading = mySponsorLoading || linkedSponsorLoading;
 
   if (isLoading) {
     return (
