@@ -7,10 +7,7 @@ import { getAccessToken } from "@/lib/api/client";
 import type {
   CreateExhibitorMaterialDto,
   CreateExhibitorStaffPassDto,
-  ExhibitorPackageDto,
   ScanExhibitorLeadDto,
-  SponsorshipApplicationDto,
-  SponsorshipInvoiceDto,
   UpdateExhibitorProfileDto,
 } from "@/lib/api/dto";
 import { deriveExhibitorParticipation } from "@/lib/exhibitor/participation";
@@ -137,48 +134,6 @@ export function useLinkedSponsor(sponsorId: string | null | undefined) {
   return { ...query, sponsor };
 }
 
-export function usePublicExhibitorPackages(symposiumId: string | undefined) {
-  const query = useQuery({
-    queryKey: ["exhibitor-packages-public", symposiumId],
-    queryFn: () => exhibitorsService.listPackages(symposiumId!),
-    enabled: Boolean(symposiumId),
-    staleTime: 10 * 60_000,
-  });
-  return { ...query, packages: (query.data ?? []).filter((p) => p.isActive) };
-}
-
-export type SponsorshipFinanceRow = {
-  application: SponsorshipApplicationDto;
-  invoice: SponsorshipInvoiceDto | null;
-};
-
-export function useSponsorshipFinanceRecords(symposiumId?: string) {
-  const query = useQuery({
-    queryKey: ["sponsorship-finance-records", symposiumId],
-    queryFn: async (): Promise<SponsorshipFinanceRow[]> => {
-      const res = await sponsorsService.listSponsorshipApplications({
-        symposiumId,
-        limit: 100,
-      });
-      const candidates = res.items.filter((app) =>
-        ["approved", "invoiced"].includes(app.status),
-      );
-      const rows = await Promise.all(
-        candidates.map(async (application) => {
-          const invoice = await sponsorsService
-            .getSponsorshipApplicationInvoice(application.id)
-            .catch(() => null);
-          return { application, invoice };
-        }),
-      );
-      return rows.filter((row) => row.invoice);
-    },
-    enabled: enabled() && Boolean(symposiumId),
-    staleTime: 30_000,
-  });
-  return { ...query, records: query.data ?? [] };
-}
-
 // New hooks for sponsorship applications (FR-5.1)
 export function useSponsorshipTierPricing(symposiumId: string | undefined) {
   const query = useQuery({
@@ -291,7 +246,6 @@ export function useApproveSponsorshipApplication() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-admin"] });
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["sponsorship-finance-records"] });
     },
   });
 }
@@ -304,7 +258,6 @@ export function useRejectSponsorshipApplication() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-admin"] });
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["sponsorship-finance-records"] });
     },
   });
 }
@@ -327,9 +280,52 @@ export function useMarkSponsorshipInvoicePaid() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-admin"] });
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["sponsorship-finance-records"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-invoice-rows"] });
     },
   });
+}
+
+export function usePublicExhibitorPackages(symposiumId: string | undefined) {
+  const query = useQuery({
+    queryKey: ["exhibitor-packages-public", symposiumId],
+    queryFn: () => exhibitorsService.listPackages(symposiumId!),
+    enabled: Boolean(symposiumId),
+    staleTime: 10 * 60_000,
+  });
+  return { ...query, packages: query.data ?? [] };
+}
+
+export type SponsorshipInvoiceRow = {
+  application: import("@/lib/api/dto").SponsorshipApplicationDto;
+  invoice: import("@/lib/api/dto").SponsorshipInvoiceDto;
+};
+
+export function useAdminSponsorshipInvoiceRows(symposiumId?: string) {
+  const resolvedSymposiumId = useSymposiumId();
+  const id = symposiumId ?? resolvedSymposiumId ?? undefined;
+  const query = useQuery({
+    queryKey: ["sponsorship-invoice-rows", id],
+    queryFn: async (): Promise<SponsorshipInvoiceRow[]> => {
+      const [approved, invoiced] = await Promise.all([
+        sponsorsService.listSponsorshipApplications({ symposiumId: id, status: "approved", limit: 100 }),
+        sponsorsService.listSponsorshipApplications({ symposiumId: id, status: "invoiced", limit: 100 }),
+      ]);
+      const byId = new Map<string, import("@/lib/api/dto").SponsorshipApplicationDto>();
+      for (const app of [...approved.items, ...invoiced.items]) {
+        byId.set(app.id, app);
+      }
+      const rows = await Promise.all(
+        [...byId.values()].map(async (application) => {
+          const invoice = await sponsorsService.getSponsorshipApplicationInvoice(application.id);
+          return invoice ? { application, invoice } : null;
+        }),
+      );
+      return rows.filter((row): row is SponsorshipInvoiceRow => row !== null);
+    },
+    enabled: enabled(),
+    staleTime: 30_000,
+  });
+  return { ...query, rows: query.data ?? [] };
 }
 
 export function useAddExhibitorBoothToSponsor() {

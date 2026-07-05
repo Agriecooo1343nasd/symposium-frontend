@@ -32,9 +32,11 @@ export function isSponsorParticipation(p: string) {
   return p === "sponsor" || p === "both";
 }
 
-export const tierColor = (t: string) =>
-  t === "Platinum"
+export const tierColor = (t: string) => {
+  const tier = t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+  return tier === "Platinum"
     ? "bg-slate-200 text-slate-900"
-    : t === "Gold"
+    : tier === "Gold"
       ? "bg-amber-100 text-amber-900"
       : "bg-zinc-200 text-zinc-900";
+};

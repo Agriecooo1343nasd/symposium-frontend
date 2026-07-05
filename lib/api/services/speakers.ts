@@ -1,13 +1,19 @@
-import { isAxiosError } from "axios";
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
-import type { CreateSpeakerDto, SessionSpeakerDto, SpeakerDashboardDto, SpeakerDto, UpdateSpeakerDto } from "../dto";
-import { type PaginationParams, type PaginatedResult, toPaginationQuery, unwrapPaginated } from "../helpers";
+import type {
+  CreateSpeakerDto,
+  SessionSpeakerDto,
+  SpeakerDashboardDto,
+  SpeakerDto,
+  SponsorshipApplicationDto,
+  SponsorshipApplicationStatsDto,
+  SponsorshipInvoiceDto,
+  SponsorshipTierPricingDto,
+  SponsorDto,
+  UpdateSpeakerDto,
+} from "../dto";
+import { type PaginationParams, type PaginatedResult } from "../helpers";
 import { sessionsService } from "./sessions";
-
-function isSpeakersListError(err: unknown): boolean {
-  return isAxiosError(err) && (err.response?.status === 400 || err.response?.status === 422);
-}
 
 function toSpeakerFromSession(symposiumId: string, sp: SessionSpeakerDto): SpeakerDto {
   return {
@@ -20,6 +26,14 @@ function toSpeakerFromSession(symposiumId: string, sp: SessionSpeakerDto): Speak
   };
 }
 
+async function fetchSpeakerById(id: string): Promise<SpeakerDto | null> {
+  try {
+    return await apiClient.get<ApiResponse<SpeakerDto>>(`/speakers/${id}`).then(unwrapApi);
+  } catch {
+    return null;
+  }
+}
+
 function mergeSpeakers(primary: SpeakerDto[], extra: SpeakerDto[]): SpeakerDto[] {
   const map = new Map<string, SpeakerDto>();
   for (const s of [...primary, ...extra]) {
@@ -28,22 +42,11 @@ function mergeSpeakers(primary: SpeakerDto[], extra: SpeakerDto[]): SpeakerDto[]
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** GET /speakers — symposiumId + pagination via SpeakersListQueryDto (backend). */
-async function fetchSpeakersFromApi(
-  symposiumId: string,
-  params?: PaginationParams,
-): Promise<SpeakerDto[] | null> {
-  try {
-    const res = await apiClient.get<ApiResponse<SpeakerDto[]>>("/speakers", {
-      params: { symposiumId, ...toPaginationQuery({ page: 1, limit: params?.limit ?? 100, ...params }) },
-    });
-    return unwrapPaginated(res).items;
-  } catch (err) {
-    if (isSpeakersListError(err)) return null;
-    throw err;
-  }
-}
-
+/**
+ * GET /speakers?symposiumId=… is broken on the hosted API: PaginationDto validation
+ * rejects symposiumId ("property symposiumId should not exist"). Until backend fixes
+ * SpeakersListQueryDto, build the directory from programme sessions + GET /speakers/:id.
+ */
 async function listFromProgrammeSessions(
   symposiumId: string,
   params?: PaginationParams,
@@ -57,29 +60,20 @@ async function listFromProgrammeSessions(
     }
   }
 
-  const items = [...sessionSpeakers.values()].map((sp) => toSpeakerFromSession(symposiumId, sp));
+  const items = await Promise.all(
+    [...sessionSpeakers.values()].map(async (sp) => {
+      const full = await fetchSpeakerById(sp.id);
+      return full ?? toSpeakerFromSession(symposiumId, sp);
+    }),
+  );
+
   items.sort((a, b) => a.name.localeCompare(b.name));
   const sliced = items.slice(0, limit);
   return { items: sliced, meta: { total: items.length, page: 1, limit: sliced.length } };
 }
 
 async function listSpeakersMerged(symposiumId: string, params?: PaginationParams): Promise<PaginatedResult<SpeakerDto>> {
-  const limit = params?.limit ?? 100;
-  const fromApi = await fetchSpeakersFromApi(symposiumId, params);
-  const fromSessions = await listFromProgrammeSessions(symposiumId, { limit: 100 });
-
-  if (fromApi !== null) {
-    const merged = mergeSpeakers(fromApi, fromSessions.items).slice(0, limit);
-    return {
-      items: merged,
-      meta: { total: merged.length, page: 1, limit: merged.length },
-    };
-  }
-
-  return {
-    items: fromSessions.items.slice(0, limit),
-    meta: fromSessions.meta,
-  };
+  return listFromProgrammeSessions(symposiumId, params);
 }
 
 export const speakersService = {

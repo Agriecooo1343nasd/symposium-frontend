@@ -15,38 +15,33 @@ import { useStore } from "@/hooks/use-store";
 import { patchStore } from "@/lib/store";
 import { getFinanceSummary } from "@/lib/finance-records";
 import { useFinanceSummary, useFinanceTransactions, useConfirmManualPayment } from "@/hooks/api/useAdmin";
-import { useSponsorshipFinanceRecords, useMarkSponsorshipInvoicePaid } from "@/hooks/api/useExhibitor";
-import { useSymposiumId } from "@/hooks/api/useSymposium";
-import { getSession } from "@/lib/auth";
-import Link from "next/link";
+import { useAdminSponsorshipInvoiceRows } from "@/hooks/api/useExhibitor";
+import { SponsorshipFinancePanel } from "@/components/admin/SponsorshipFinancePanel";
 import { useAdminTabNavigation } from "@/hooks/use-admin-command-action";
-import { apiErrorMessage } from "@/lib/api/client";
-import { Loader2 } from "lucide-react";
 
 
 const COLORS = ["hsl(var(--blue))", "hsl(var(--green))", "hsl(var(--gold))", "hsl(var(--navy))"];
 
 export default function Page() {
   const store = useStore();
-  const session = getSession();
-  const symposiumId = useSymposiumId();
   const financeTabs = ["overview", "transactions", "sponsorship", "bank", "reports", "settings"];
   const { activeTab, onTabChange } = useAdminTabNavigation(financeTabs, "overview");
   const financeSummary = useFinanceSummary();
   const { transactions: apiTransactions } = useFinanceTransactions({ limit: 100 });
   const confirmPayment = useConfirmManualPayment();
-  const { records: sponsorshipRecords, isLoading: sponsorshipLoading } = useSponsorshipFinanceRecords(symposiumId || undefined);
-  const markSponsorshipPaid = useMarkSponsorshipInvoicePaid();
+  const { rows: sponsorshipRows } = useAdminSponsorshipInvoiceRows();
   const finance = getFinanceSummary();
   const grp = store.platformSettings.groupRegistration;
   const [tier59, setTier59] = useState(String(grp.tier5to9Percent));
   const [tier10, setTier10] = useState(String(grp.tier10PlusPercent));
   const [minGroup, setMinGroup] = useState(String(grp.minSize));
 
-  const { gross, refundedValue, pending, pendingValue, methodData, sponsorshipGross, registrationGross, items } = finance;
+  const { gross, refundedValue, pending, pendingValue, methodData, registrationGross, items } = finance;
+  const sponsorshipGross = sponsorshipRows
+    .filter((r) => r.invoice.status === "paid" && r.invoice.currency === "USD")
+    .reduce((sum, r) => sum + r.invoice.amount, 0);
   const apiRevenue = financeSummary.data?.totalRevenue ?? 0;
   const apiPending = financeSummary.data?.pendingTransactions ?? 0;
-  const sponsorshipApiTotal = sponsorshipRecords.reduce((sum, r) => sum + (r.invoice?.amount ?? 0), 0);
   const revenueOverTime = DAILY_REGS.map((d) => ({ day: d.day.split(" ")[1], usd: d.regs * 95 }));
   const catRevenue = [
     { name: "Delegates", usd: registrationGross },
@@ -63,7 +58,7 @@ export default function Page() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile label="Total revenue (API)" value={`$${apiRevenue.toLocaleString()}`} hint={`${financeSummary.data?.completedTransactions ?? 0} completed`} accent />
         <StatTile label="Net (mock ledger)" value={`$${(gross - refundedValue).toLocaleString()}`} />
-        <StatTile label="Sponsorship (API)" value={`${sponsorshipRecords.length} invoices`} hint={`Total ${sponsorshipApiTotal.toLocaleString()} mixed currency`} />
+        <StatTile label="Sponsorship (API)" value={`$${sponsorshipGross.toLocaleString()}`} hint={`${sponsorshipRows.length} invoices`} />
         <StatTile label="Pending (API)" value={String(apiPending)} hint="Open transactions" />
       </div>
 
@@ -160,70 +155,7 @@ export default function Page() {
         </TabsContent>
 
         <TabsContent value="sponsorship" className="mt-6">
-          <p className="text-sm text-muted-foreground mb-4">
-            Proforma invoices from approved sponsorship applications (SRS FR-5.1). Approve applications under{" "}
-            <Link href="/admin/exhibitors?tab=sponsorship-applications" className="text-accent underline">
-              Exhibitors → Sponsorship applications
-            </Link>
-            .
-          </p>
-          {sponsorshipLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-12">
-              <Loader2 className="h-5 w-5 animate-spin" /> Loading sponsorship invoices…
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-border bg-card overflow-x-auto">
-              <table className="w-full text-sm min-w-[640px]">
-                <thead className="bg-secondary/60 text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="text-left px-4 py-3">Reference</th>
-                    <th className="text-left px-4 py-3">Organization</th>
-                    <th className="text-right px-4 py-3">Amount</th>
-                    <th className="text-left px-4 py-3">Status</th>
-                    <th className="text-right px-4 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sponsorshipRecords.map(({ application, invoice }) => {
-                    if (!invoice) return null;
-                    return (
-                      <tr key={invoice.id} className="border-t">
-                        <td className="px-4 py-3 font-mono">{invoice.invoiceNumber}</td>
-                        <td className="px-4 py-3">{application.organizationName}</td>
-                        <td className="px-4 py-3 text-right font-mono">
-                          {invoice.currency} {invoice.amount.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-xs uppercase font-bold">{invoice.status}</td>
-                        <td className="px-4 py-3 text-right space-x-2">
-                          {invoice.status !== "paid" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={markSponsorshipPaid.isPending}
-                              onClick={() =>
-                                markSponsorshipPaid.mutate(
-                                  { id: invoice.id, notes: `Confirmed by ${session?.name ?? "Admin"}` },
-                                  {
-                                    onSuccess: () => toast.success("Sponsorship payment recorded"),
-                                    onError: (err) => toast.error(apiErrorMessage(err)),
-                                  },
-                                )
-                              }
-                            >
-                              <Check className="h-3.5 w-3.5 mr-1" /> Mark paid
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {sponsorshipRecords.length === 0 && (
-                <p className="p-8 text-center text-sm text-muted-foreground">No sponsorship invoices issued yet.</p>
-              )}
-            </div>
-          )}
+          <SponsorshipFinancePanel showSponsorCards={false} />
         </TabsContent>
 
         <TabsContent value="bank" className="space-y-3 mt-6">

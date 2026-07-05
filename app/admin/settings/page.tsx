@@ -13,7 +13,7 @@ import { getSession } from "@/lib/auth";
 import { toast } from "sonner";
 import { useSymposiumSettings, useUpdateSymposiumSettings } from "@/hooks/api/useEngage";
 import { apiErrorMessage } from "@/lib/api/client";
-import type { SymposiumSettingsDto, UpdateSymposiumSettingsDto } from "@/lib/api/dto";
+import type { UpdateSymposiumSettingsDto } from "@/lib/api/dto";
 
 
 const PHASE_GROUPS: { phase: string; keys: (keyof FeatureFlags)[]; labels: Record<string, string> }[] = [
@@ -201,38 +201,49 @@ function BackendSettingsSection() {
   const update = useUpdateSymposiumSettings();
   const [draft, setDraft] = useState<UpdateSymposiumSettingsDto | null>(null);
 
-  const merged = (draft ?? settings) as SymposiumSettingsDto | null;
-  const current = merged as Record<string, Record<string, boolean>> | null;
+  const merged = draft ?? settings;
 
-  const toggle = (group: string, key: string, value: boolean) => {
-    const base = (draft ?? settings ?? {}) as SymposiumSettingsDto;
+  const toggle = (group: keyof UpdateSymposiumSettingsDto, key: string, value: boolean) => {
+    const base = (draft ?? settings ?? {}) as UpdateSymposiumSettingsDto;
     setDraft({
       ...base,
-      [group]: { ...(base[group as keyof SymposiumSettingsDto] as object), [key]: value },
-    } as UpdateSymposiumSettingsDto);
-  };
-
-  const updateSponsorship = (patch: Partial<NonNullable<SymposiumSettingsDto["sponsorship"]>>) => {
-    const base = (draft ?? settings ?? {}) as SymposiumSettingsDto;
-    setDraft({
-      ...base,
-      sponsorship: { ...(base.sponsorship ?? {}), ...patch },
-    } as UpdateSymposiumSettingsDto);
+      [group]: { ...(base[group] as Record<string, boolean> | undefined), [key]: value },
+    });
   };
 
   const updateTierPricing = (
-    tier: string,
+    tier: "platinum" | "gold" | "silver",
     field: "amountUsd" | "amountRwf",
     value: number,
   ) => {
-    const base = (draft ?? settings ?? {}) as SymposiumSettingsDto;
-    const tiers = [...(base.sponsorship?.tierPricing ?? [])];
-    const idx = tiers.findIndex((t) => t.tier === tier);
-    const row = idx >= 0 ? { ...tiers[idx] } : { tier, amountUsd: 0, amountRwf: 0 };
-    row[field] = value;
-    if (idx >= 0) tiers[idx] = row;
-    else tiers.push(row);
-    updateSponsorship({ tierPricing: tiers });
+    const base = (draft ?? settings ?? {}) as UpdateSymposiumSettingsDto;
+    const existing = base.sponsorship?.tierPricing ?? settings?.sponsorship?.tierPricing ?? [];
+    const tiers: Array<{ tier: string; amountUsd: number; amountRwf: number }> = [
+      { tier: "platinum", amountUsd: 25000, amountRwf: 30000000 },
+      { tier: "gold", amountUsd: 10000, amountRwf: 12000000 },
+      { tier: "silver", amountUsd: 5000, amountRwf: 6000000 },
+    ].map((defaultTier) => {
+      const row = existing.find((e) => e.tier === defaultTier.tier) ?? defaultTier;
+      return row.tier === tier ? { ...row, [field]: value } : row;
+    });
+    setDraft({
+      ...base,
+      sponsorship: {
+        ...base.sponsorship,
+        tierPricing: tiers,
+      },
+    });
+  };
+
+  const updateSponsorshipField = (key: "bankTransferInstructions" | "defaultInvoiceCurrency", value: string) => {
+    const base = (draft ?? settings ?? {}) as UpdateSymposiumSettingsDto;
+    setDraft({
+      ...base,
+      sponsorship: {
+        ...base.sponsorship,
+        [key]: value,
+      },
+    });
   };
 
   const save = async () => {
@@ -246,12 +257,7 @@ function BackendSettingsSection() {
     }
   };
 
-  const defaultTiers = [
-    { tier: "platinum", amountUsd: 25000, amountRwf: 30000000 },
-    { tier: "gold", amountUsd: 10000, amountRwf: 12000000 },
-    { tier: "silver", amountUsd: 5000, amountRwf: 6000000 },
-  ];
-  const tierPricing = merged?.sponsorship?.tierPricing ?? defaultTiers;
+  const tierPricing = merged?.sponsorship?.tierPricing ?? settings?.sponsorship?.tierPricing ?? [];
 
   return (
     <div className="space-y-4">
@@ -266,7 +272,7 @@ function BackendSettingsSection() {
         <div className="rounded-2xl bg-card border border-border p-6 text-sm text-muted-foreground">
           Loading settings…
         </div>
-      ) : isError || !current ? (
+      ) : isError || !merged ? (
         <div className="rounded-2xl bg-card border border-dashed border-border p-6 text-sm text-muted-foreground">
           Backend settings unavailable for this symposium.
         </div>
@@ -282,7 +288,7 @@ function BackendSettingsSection() {
                 >
                   <span className="text-sm font-medium">{f.label}</span>
                   <Switch
-                    checked={Boolean(current?.[g.group]?.[f.key])}
+                    checked={Boolean((merged[g.group] as Record<string, boolean> | undefined)?.[f.key])}
                     onCheckedChange={(v) => toggle(g.group, f.key, v)}
                   />
                 </div>
@@ -293,42 +299,43 @@ function BackendSettingsSection() {
           <section className="rounded-2xl bg-card border border-border p-6 space-y-4">
             <h3 className="font-serif font-bold text-sm">Sponsorship tier pricing</h3>
             <p className="text-xs text-muted-foreground">
-              Used by the public apply form and proforma invoices (platinum, gold, silver).
+              Amounts shown on the public apply form via GET /symposiums/:id/sponsorship-tier-pricing.
             </p>
-            {tierPricing.map((row) => (
-              <div key={row.tier} className="grid sm:grid-cols-3 gap-3 items-end border-b border-border pb-4 last:border-0">
-                <div>
-                  <Label className="capitalize">{row.tier}</Label>
+            {(["platinum", "gold", "silver"] as const).map((tier) => {
+              const row = tierPricing.find((t) => t.tier === tier);
+              return (
+                <div key={tier} className="grid sm:grid-cols-3 gap-3 items-end border-b border-border pb-4 last:border-0">
+                  <div className="font-medium capitalize text-sm">{tier}</div>
+                  <div>
+                    <Label className="text-xs">USD</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      className="mt-1"
+                      value={row?.amountUsd ?? 0}
+                      onChange={(e) => updateTierPricing(tier, "amountUsd", Number(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">RWF</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      className="mt-1"
+                      value={row?.amountRwf ?? 0}
+                      onChange={(e) => updateTierPricing(tier, "amountRwf", Number(e.target.value) || 0)}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label>USD</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    className="mt-1"
-                    value={row.amountUsd}
-                    onChange={(e) => updateTierPricing(row.tier, "amountUsd", Number(e.target.value) || 0)}
-                  />
-                </div>
-                <div>
-                  <Label>RWF</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    className="mt-1"
-                    value={row.amountRwf}
-                    onChange={(e) => updateTierPricing(row.tier, "amountRwf", Number(e.target.value) || 0)}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
             <div>
               <Label>Default invoice currency</Label>
               <Select
-                value={merged?.sponsorship?.defaultInvoiceCurrency ?? "USD"}
-                onValueChange={(v) => updateSponsorship({ defaultInvoiceCurrency: v as "USD" | "RWF" })}
+                value={merged.sponsorship?.defaultInvoiceCurrency ?? "USD"}
+                onValueChange={(v) => updateSponsorshipField("defaultInvoiceCurrency", v)}
               >
-                <SelectTrigger className="mt-1 max-w-xs">
+                <SelectTrigger className="mt-1 max-w-[160px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -341,10 +348,9 @@ function BackendSettingsSection() {
               <Label>Bank transfer instructions</Label>
               <Textarea
                 rows={4}
-                className="mt-1 font-mono text-xs"
-                value={merged?.sponsorship?.bankTransferInstructions ?? ""}
-                onChange={(e) => updateSponsorship({ bankTransferInstructions: e.target.value })}
-                placeholder="Account name, bank, reference format…"
+                className="mt-1"
+                value={merged.sponsorship?.bankTransferInstructions ?? ""}
+                onChange={(e) => updateSponsorshipField("bankTransferInstructions", e.target.value)}
               />
             </div>
           </section>
