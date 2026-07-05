@@ -285,7 +285,10 @@ export type SponsorshipTierConfig = {
   staffPasses: number;
   brochureSlots: number;
   leadCapture: boolean;
+  speakingSlot: boolean;
   homepageFeature: boolean;
+  newsletterMention: boolean;
+  boothListing: boolean;
   /** Admin-set booth package fee (USD) */
   baseFeeUsd: number;
   /** Per extra staff beyond includedStaff */
@@ -1425,9 +1428,45 @@ function seedSponsorshipDeliverables(): SponsorshipDeliverable[] {
 
 function seedSponsorshipTiers(): SponsorshipTierConfig[] {
   return [
-    { tier: "Platinum", benefits: ["10 staff passes", "5 brochure slots", "Lead capture", "Speaking slot", "Homepage feature"], staffPasses: 10, brochureSlots: 5, leadCapture: true, homepageFeature: true, baseFeeUsd: 15000, extraStaffFeeUsd: 350 },
-    { tier: "Gold", benefits: ["4 staff passes", "3 brochure slots", "Lead capture", "Newsletter mention"], staffPasses: 4, brochureSlots: 3, leadCapture: true, homepageFeature: false, baseFeeUsd: 8000, extraStaffFeeUsd: 400 },
-    { tier: "Silver", benefits: ["2 staff passes", "1 brochure slot", "Booth listing"], staffPasses: 2, brochureSlots: 1, leadCapture: false, homepageFeature: false, baseFeeUsd: 3500, extraStaffFeeUsd: 450 },
+    {
+      tier: "Platinum",
+      benefits: ["10 staff passes", "5 brochure slots", "Lead capture", "Speaking slot", "Homepage feature"],
+      staffPasses: 10,
+      brochureSlots: 5,
+      leadCapture: true,
+      speakingSlot: true,
+      homepageFeature: true,
+      newsletterMention: false,
+      boothListing: false,
+      baseFeeUsd: 15000,
+      extraStaffFeeUsd: 350,
+    },
+    {
+      tier: "Gold",
+      benefits: ["4 staff passes", "3 brochure slots", "Lead capture", "Newsletter mention"],
+      staffPasses: 4,
+      brochureSlots: 3,
+      leadCapture: true,
+      speakingSlot: false,
+      homepageFeature: false,
+      newsletterMention: true,
+      boothListing: false,
+      baseFeeUsd: 8000,
+      extraStaffFeeUsd: 400,
+    },
+    {
+      tier: "Silver",
+      benefits: ["2 staff passes", "1 brochure slot", "Booth listing"],
+      staffPasses: 2,
+      brochureSlots: 1,
+      leadCapture: false,
+      speakingSlot: false,
+      homepageFeature: false,
+      newsletterMention: false,
+      boothListing: true,
+      baseFeeUsd: 3500,
+      extraStaffFeeUsd: 450,
+    },
   ];
 }
 

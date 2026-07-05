@@ -30,13 +30,14 @@ const tierStyle = (t: string) =>
       ? "bg-amber-100 text-amber-900 border border-amber-200"
       : "bg-zinc-100 text-zinc-800";
 
-const MATRIX_ROWS: { benefit: string; key: keyof import("@/lib/store").SponsorshipTierConfig | "speaking" | "newsletter" }[] = [
-  { benefit: "Logo on website (homepage & exhibitors page)", key: "homepageFeature" },
-  { benefit: "Brochure uploads", key: "brochureSlots" },
+const MATRIX_ROWS: { benefit: string; key: keyof import("@/lib/store").SponsorshipTierConfig }[] = [
   { benefit: "Staff passes included", key: "staffPasses" },
+  { benefit: "Brochure uploads", key: "brochureSlots" },
   { benefit: "Lead capture (QR scan)", key: "leadCapture" },
-  { benefit: "Feature in newsletter / email to attendees", key: "newsletter" },
-  { benefit: "Speaking opportunity", key: "speaking" },
+  { benefit: "Speaking slot", key: "speakingSlot" },
+  { benefit: "Homepage feature", key: "homepageFeature" },
+  { benefit: "Newsletter mention", key: "newsletterMention" },
+  { benefit: "Booth listing", key: "boothListing" },
 ];
 
 function invoiceStatusLabel(status: string) {
@@ -214,12 +215,17 @@ export function SponsorshipRecordPanel({ org, mode, actorName = "Admin", onEdit,
             <tbody>
               {MATRIX_ROWS.map((row) => {
                 let value = "—";
-                if (row.key === "brochureSlots" && tier) value = `${tier.brochureSlots} files`;
-                if (row.key === "staffPasses" && tier) value = `${tier.staffPasses} passes`;
-                if (row.key === "leadCapture" && tier) value = tier.leadCapture ? "Yes" : "No";
-                if (row.key === "homepageFeature" && tier) value = tier.homepageFeature ? "Yes (carousel)" : "Exhibitors page";
-                if (row.key === "newsletter" && tier) value = tier.benefits.some((b) => b.toLowerCase().includes("newsletter")) ? "Yes" : "No";
-                if (row.key === "speaking") value = org.speakingSlot ?? "Per committee assignment";
+                if (!tier) {
+                  return (
+                    <tr key={row.benefit} className="border-b border-border/60">
+                      <td className="py-3 pr-4 text-muted-foreground">{row.benefit}</td>
+                      <td className="py-3 font-medium">{value}</td>
+                    </tr>
+                  );
+                }
+                if (row.key === "brochureSlots") value = `${tier.brochureSlots} file${tier.brochureSlots === 1 ? "" : "s"}`;
+                else if (row.key === "staffPasses") value = `${tier.staffPasses} pass${tier.staffPasses === 1 ? "" : "es"}`;
+                else if (typeof tier[row.key] === "boolean") value = tier[row.key] ? "Included" : "Not included";
                 return (
                   <tr key={row.benefit} className="border-b border-border/60">
                     <td className="py-3 pr-4 text-muted-foreground">{row.benefit}</td>

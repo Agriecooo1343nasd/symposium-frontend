@@ -2,11 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { Download, LayoutGrid, List, Loader2, Plus } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { StatTile } from "@/components/layout/PortalShell";
 import { MediaAccreditationReviewList } from "@/components/media/MediaAccreditationReviewList";
+import { MediaAccreditationStatsSection } from "@/components/media/MediaAccreditationStatsSection";
 import {
   useMediaAccreditationStats,
   useMediaAccreditations,
@@ -17,13 +16,11 @@ import { AddMediaPersonDialog } from "@/components/media/AddMediaPersonDialog";
 import { toast } from "sonner";
 
 const TABS = ["pending", "approved", "rejected", "revoked", "all"] as const;
-const CHART_COLORS = ["#d97706", "#16a34a", "#dc2626", "#64748b"];
 
 export default function AdminMediaPage() {
   const { activeTab, onTabChange } = useAdminTabNavigation([...TABS], "pending");
   const { accreditations, isLoading, isError, error, refetch, isFetching } = useMediaAccreditations({ limit: 200 });
   const statsQuery = useMediaAccreditationStats();
-  const stats = statsQuery.data;
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [addOpen, setAddOpen] = useState(false);
 
@@ -34,23 +31,15 @@ export default function AdminMediaPage() {
   const rejected = accreditations.filter((a) => a.status === "rejected");
   const revoked = accreditations.filter((a) => a.status === "revoked");
 
-  const tabItems: Record<(typeof TABS)[number], typeof accreditations> = {
-    pending,
-    approved,
-    rejected,
-    revoked,
-    all: accreditations,
-  };
-
-  const chartData = useMemo(
-    () =>
-      [
-        { name: "Pending", value: stats?.pending ?? pending.length },
-        { name: "Approved", value: stats?.verified ?? approved.length },
-        { name: "Rejected", value: stats?.rejected ?? rejected.length },
-        { name: "Revoked", value: revoked.length },
-      ].filter((d) => d.value > 0),
-    [stats, pending.length, approved.length, rejected.length, revoked.length],
+  const tabItems: Record<(typeof TABS)[number], typeof accreditations> = useMemo(
+    () => ({
+      pending,
+      approved,
+      rejected,
+      revoked,
+      all: accreditations,
+    }),
+    [pending, approved, rejected, revoked, accreditations],
   );
 
   const exportCsv = () => {
@@ -82,31 +71,8 @@ export default function AdminMediaPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatTile label="Pending review" value={stats?.pending ?? pending.length} accent />
-        <StatTile label="Approved" value={stats?.verified ?? approved.length} />
-        <StatTile label="Rejected" value={stats?.rejected ?? rejected.length} />
-        <StatTile label="Revoked" value={revoked.length} />
-        <StatTile label="Total" value={stats?.total ?? accreditations.length} />
-      </div>
-
-      {!isLoading && !isError && chartData.length > 0 && (
-        <div className="rounded-2xl border bg-card p-6">
-          <h2 className="font-serif font-bold mb-4">Status breakdown</h2>
-          <div className="h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                  {chartData.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {!isLoading && !isError && (
+        <MediaAccreditationStatsSection accreditations={accreditations} stats={statsQuery.data} storageKey="nas_admin_media_stats" />
       )}
 
       {isLoading && (

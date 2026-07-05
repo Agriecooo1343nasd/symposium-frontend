@@ -120,7 +120,7 @@ export const ADMIN_COMMANDS: AdminCommand[] = [
   tab("refunds-cancellations", "Cancellation requests", "/admin/refunds", "cancellations", ["cancel", "refund", "pending"]),
   tab("refunds-waitlist", "Waitlist", "/admin/refunds", "waitlist", ["wait", "capacity", "notify"]),
   tab("media-pending", "Pending media apps", "/admin/media", "pending", ["press", "accreditation", "review"]),
-  tab("programme-timeline1", "Run of show Day 1", "/admin/programme", "timeline1", ["moderation", "live", "day 1"]),
+  tab("programme-run-of-show", "Run of show", "/admin/programme", "run-of-show", ["moderation", "live", "timeline", "day"]),
   tab("programme-rooms", "Venue rooms", "/admin/programme", "rooms", ["room", "hall", "capacity"]),
   tab("users-invites", "User invitations", "/admin/users", "invites", ["invite", "pending", "staff"]),
   tab("communications-announce", "In-app announcements", "/admin/communications", "announce", ["banner", "in-app", "alert"]),
