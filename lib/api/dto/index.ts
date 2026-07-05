@@ -546,6 +546,55 @@ export type SponsorDto = {
   updatedAt: string;
 };
 
+export type SponsorshipApplicationDto = {
+  id: string;
+  symposiumId: string;
+  organizationName: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: string | null;
+  desiredTier: string;
+  message?: string | null;
+  wantsExhibitorBooth: boolean;
+  status: "pending" | "approved" | "rejected" | "invoiced" | string;
+  adminNotes?: string | null;
+  sponsorId?: string | null;
+  contactUserId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SponsorshipApplicationStatsDto = {
+  pending: number;
+  approved: number;
+  rejected: number;
+  invoiced: number;
+  total: number;
+};
+
+export type SponsorshipInvoiceDto = {
+  id: string;
+  sponsorshipApplicationId: string;
+  sponsorId: string;
+  symposiumId: string;
+  invoiceNumber: string;
+  tier: string;
+  amount: number;
+  currency: string;
+  status: string;
+  paymentInstructions?: string | null;
+  paidAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SponsorshipTierPricingDto = {
+  tier: string;
+  amountUsd: number;
+  amountRwf: number;
+  defaultCurrency?: string;
+};
+
 export type ExhibitorPackageDto = {
   id: string;
   symposiumId: string;

@@ -34,8 +34,8 @@ export default function Page() {
       <div className="space-y-6 max-w-2xl">
         <h1 className="font-serif text-3xl font-bold">Become a sponsor</h1>
         <p className="text-muted-foreground">
-          Sponsorship is linked to your exhibitor record by the secretariat. There is no self-service sponsor purchase
-          API yet — contact the team or submit an exhibitor application with sponsorship interest.
+          Submit a sponsorship application from your attendee dashboard. The secretariat reviews applications and issues a
+          proforma invoice on approval.
         </p>
         <div className="rounded-2xl border bg-card p-6 space-y-3">
           <p className="text-sm">
@@ -43,7 +43,7 @@ export default function Page() {
             {profile.boothNumber ? ` · Booth ${profile.boothNumber}` : ""}
           </p>
           <Button asChild className="gradient-blue text-accent-foreground">
-            <Link href="/dashboard/apply">Apply / upgrade via dashboard</Link>
+            <Link href="/dashboard/apply">Apply for sponsorship</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/contact">Contact secretariat</Link>
@@ -110,12 +110,31 @@ export default function Page() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground mb-1">Invoices & deliverables</p>
-        <p>
-          Sponsorship invoices, payment status, and deliverable checklists are not available via API yet. The secretariat
-          manages these offline — see ai/reports.txt (S7).
-        </p>
+      <div className="rounded-2xl border border-dashed p-6 text-sm">
+        <p className="font-medium text-foreground mb-2">Proforma invoice</p>
+        {invoiceLoading ? (
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        ) : invoice ? (
+          <div className="space-y-2 text-muted-foreground">
+            <p>
+              <span className="text-foreground font-medium">{invoice.invoiceNumber}</span>
+              {" · "}
+              {invoice.currency} {invoice.amount.toLocaleString()}
+              {" · "}
+              <span className="capitalize">{invoice.status}</span>
+            </p>
+            {invoice.paymentInstructions && (
+              <p className="text-xs leading-relaxed whitespace-pre-wrap">{invoice.paymentInstructions}</p>
+            )}
+            {invoice.paidAt && (
+              <p className="text-xs text-green">Paid {new Date(invoice.paidAt).toLocaleDateString()}</p>
+            )}
+          </div>
+        ) : (
+          <p className="text-muted-foreground">
+            No invoice on file yet. The secretariat issues a proforma invoice after your sponsorship application is approved.
+          </p>
+        )}
       </div>
     </div>
   );

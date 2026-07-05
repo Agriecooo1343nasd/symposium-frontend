@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useStore } from "@/hooks/use-store";
 import { patchStore, appendAudit, type PlatformSettings, type FeatureFlags } from "@/lib/store";
 import { getSession } from "@/lib/auth";
@@ -199,14 +201,49 @@ function BackendSettingsSection() {
   const update = useUpdateSymposiumSettings();
   const [draft, setDraft] = useState<UpdateSymposiumSettingsDto | null>(null);
 
-  const current = (draft ?? settings) as Record<string, Record<string, boolean>> | null;
+  const merged = draft ?? settings;
 
-  const toggle = (group: string, key: string, value: boolean) => {
-    const base = (draft ?? settings ?? {}) as Record<string, Record<string, boolean>>;
+  const toggle = (group: keyof UpdateSymposiumSettingsDto, key: string, value: boolean) => {
+    const base = (draft ?? settings ?? {}) as UpdateSymposiumSettingsDto;
     setDraft({
       ...base,
-      [group]: { ...(base[group] ?? {}), [key]: value },
-    } as UpdateSymposiumSettingsDto);
+      [group]: { ...(base[group] as Record<string, boolean> | undefined), [key]: value },
+    });
+  };
+
+  const updateTierPricing = (
+    tier: "platinum" | "gold" | "silver",
+    field: "amountUsd" | "amountRwf",
+    value: number,
+  ) => {
+    const base = (draft ?? settings ?? {}) as UpdateSymposiumSettingsDto;
+    const existing = base.sponsorship?.tierPricing ?? settings?.sponsorship?.tierPricing ?? [];
+    const tiers: Array<{ tier: string; amountUsd: number; amountRwf: number }> = [
+      { tier: "platinum", amountUsd: 25000, amountRwf: 30000000 },
+      { tier: "gold", amountUsd: 10000, amountRwf: 12000000 },
+      { tier: "silver", amountUsd: 5000, amountRwf: 6000000 },
+    ].map((defaultTier) => {
+      const row = existing.find((e) => e.tier === defaultTier.tier) ?? defaultTier;
+      return row.tier === tier ? { ...row, [field]: value } : row;
+    });
+    setDraft({
+      ...base,
+      sponsorship: {
+        ...base.sponsorship,
+        tierPricing: tiers,
+      },
+    });
+  };
+
+  const updateSponsorshipField = (key: "bankTransferInstructions" | "defaultInvoiceCurrency", value: string) => {
+    const base = (draft ?? settings ?? {}) as UpdateSymposiumSettingsDto;
+    setDraft({
+      ...base,
+      sponsorship: {
+        ...base.sponsorship,
+        [key]: value,
+      },
+    });
   };
 
   const save = async () => {
@@ -219,6 +256,8 @@ function BackendSettingsSection() {
       toast.error(apiErrorMessage(err));
     }
   };
+
+  const tierPricing = merged?.sponsorship?.tierPricing ?? settings?.sponsorship?.tierPricing ?? [];
 
   return (
     <div className="space-y-4">
@@ -233,7 +272,7 @@ function BackendSettingsSection() {
         <div className="rounded-2xl bg-card border border-border p-6 text-sm text-muted-foreground">
           Loading settings…
         </div>
-      ) : isError || !current ? (
+      ) : isError || !merged ? (
         <div className="rounded-2xl bg-card border border-dashed border-border p-6 text-sm text-muted-foreground">
           Backend settings unavailable for this symposium.
         </div>
@@ -249,13 +288,73 @@ function BackendSettingsSection() {
                 >
                   <span className="text-sm font-medium">{f.label}</span>
                   <Switch
-                    checked={Boolean(current[g.group]?.[f.key])}
+                    checked={Boolean((merged[g.group] as Record<string, boolean> | undefined)?.[f.key])}
                     onCheckedChange={(v) => toggle(g.group, f.key, v)}
                   />
                 </div>
               ))}
             </section>
           ))}
+
+          <section className="rounded-2xl bg-card border border-border p-6 space-y-4">
+            <h3 className="font-serif font-bold text-sm">Sponsorship tier pricing</h3>
+            <p className="text-xs text-muted-foreground">
+              Amounts shown on the public apply form via GET /symposiums/:id/sponsorship-tier-pricing.
+            </p>
+            {(["platinum", "gold", "silver"] as const).map((tier) => {
+              const row = tierPricing.find((t) => t.tier === tier);
+              return (
+                <div key={tier} className="grid sm:grid-cols-3 gap-3 items-end border-b border-border pb-4 last:border-0">
+                  <div className="font-medium capitalize text-sm">{tier}</div>
+                  <div>
+                    <Label className="text-xs">USD</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      className="mt-1"
+                      value={row?.amountUsd ?? 0}
+                      onChange={(e) => updateTierPricing(tier, "amountUsd", Number(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">RWF</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      className="mt-1"
+                      value={row?.amountRwf ?? 0}
+                      onChange={(e) => updateTierPricing(tier, "amountRwf", Number(e.target.value) || 0)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            <div>
+              <Label>Default invoice currency</Label>
+              <Select
+                value={merged.sponsorship?.defaultInvoiceCurrency ?? "USD"}
+                onValueChange={(v) => updateSponsorshipField("defaultInvoiceCurrency", v)}
+              >
+                <SelectTrigger className="mt-1 max-w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="RWF">RWF</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Bank transfer instructions</Label>
+              <Textarea
+                rows={4}
+                className="mt-1"
+                value={merged.sponsorship?.bankTransferInstructions ?? ""}
+                onChange={(e) => updateSponsorshipField("bankTransferInstructions", e.target.value)}
+              />
+            </div>
+          </section>
+
           <Button
             onClick={save}
             disabled={!draft || update.isPending}

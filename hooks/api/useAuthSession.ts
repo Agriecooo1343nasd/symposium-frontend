@@ -18,17 +18,11 @@ import {
   setTokens,
 } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
-import { mapUserDto } from "@/lib/api/mappers/user";
-import { permissionsFromAccessToken, rolesFromAccessToken } from "@/lib/auth/roles";
+import { buildAuthUser, fetchAuthenticatedUser, rolesForUser } from "@/lib/auth/bootstrap";
 import { buildSessionFromUser } from "@/lib/auth/session";
 import { signOut as clearSessionBridge, writeSession } from "@/lib/auth";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useAppDispatch } from "@/store/hooks";
 import { logout, setAuthLoading, setCredentials, setUser } from "@/store/slices/authSlice";
-
-function rolesFor(user: UserDto, accessToken: string | null): string[] {
-  if (user.roles?.length) return user.roles;
-  return accessToken ? rolesFromAccessToken(accessToken) : [];
-}
 
 export function useCurrentUser() {
   return useQuery({
@@ -46,38 +40,47 @@ export function useCurrentUser() {
  */
 export function useAuthHydration() {
   const dispatch = useAppDispatch();
-  const status = useAppSelector((s) => s.auth.status);
 
   useEffect(() => {
-    if (status !== "idle") return;
     if (typeof window === "undefined") return;
-    const token = getAccessToken();
-    if (!token) {
-      dispatch(setUser(null));
-      return;
-    }
 
     let cancelled = false;
-    dispatch(setAuthLoading());
-    usersService
-      .getMe()
-      .then((user) => {
+
+    async function hydrate() {
+      const token = getAccessToken();
+      if (!token) {
+        dispatch(setUser(null));
+        return;
+      }
+
+      dispatch(setAuthLoading());
+
+      try {
+        const result = await fetchAuthenticatedUser();
         if (cancelled) return;
-        const roles = rolesFor(user, token);
-        const permissions = permissionsFromAccessToken(token);
-        dispatch(setCredentials({ user: mapUserDto(user, permissions), accessToken: token }));
-        writeSession(buildSessionFromUser(user, roles));
-      })
-      .catch(() => {
+
+        dispatch(
+          setCredentials({
+            user: result.user,
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken ?? undefined,
+          }),
+        );
+        writeSession(buildSessionFromUser(result.dto, result.user.roles));
+      } catch {
         if (cancelled) return;
         clearTokens();
+        clearSessionBridge();
         dispatch(setUser(null));
-      });
+      }
+    }
+
+    void hydrate();
 
     return () => {
       cancelled = true;
     };
-  }, [status, dispatch]);
+  }, [dispatch]);
 }
 
 export function useLogin() {
@@ -89,14 +92,19 @@ export function useLogin() {
       const tokens = await authService.login(dto);
       setTokens(tokens.accessToken, tokens.refreshToken);
       const user = await usersService.getMe();
-      const roles = rolesFor(user, tokens.accessToken);
-      const permissions = permissionsFromAccessToken(tokens.accessToken);
-      return { user, roles, permissions, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
+      const authUser = buildAuthUser(user, tokens.accessToken);
+      return {
+        user,
+        authUser,
+        roles: authUser.roles,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      };
     },
-    onSuccess: ({ user, roles, permissions, accessToken, refreshToken }) => {
+    onSuccess: ({ user, authUser, roles, accessToken, refreshToken }) => {
       dispatch(
         setCredentials({
-          user: mapUserDto(user, permissions),
+          user: authUser,
           accessToken,
           refreshToken,
         }),
@@ -116,14 +124,19 @@ export function useRegisterAccount() {
       const tokens = await authService.register(dto);
       setTokens(tokens.accessToken, tokens.refreshToken);
       const user = await usersService.getMe();
-      const roles = rolesFor(user, tokens.accessToken);
-      const permissions = permissionsFromAccessToken(tokens.accessToken);
-      return { user, roles, permissions, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
+      const authUser = buildAuthUser(user, tokens.accessToken);
+      return {
+        user,
+        authUser,
+        roles: authUser.roles,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      };
     },
-    onSuccess: ({ user, roles, permissions, accessToken, refreshToken }) => {
+    onSuccess: ({ user, authUser, roles, accessToken, refreshToken }) => {
       dispatch(
         setCredentials({
-          user: mapUserDto(user, permissions),
+          user: authUser,
           accessToken,
           refreshToken,
         }),

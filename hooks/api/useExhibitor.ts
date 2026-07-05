@@ -107,8 +107,12 @@ export function useRemoveExhibitorStaffPass() {
 }
 
 export function useScanExhibitorLead() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (dto: ScanExhibitorLeadDto) => exhibitorsService.scanLead(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exhibitors-me-leads"] });
+    },
   });
 }
 
@@ -276,8 +280,52 @@ export function useMarkSponsorshipInvoicePaid() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-admin"] });
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-invoice-rows"] });
     },
   });
+}
+
+export function usePublicExhibitorPackages(symposiumId: string | undefined) {
+  const query = useQuery({
+    queryKey: ["exhibitor-packages-public", symposiumId],
+    queryFn: () => exhibitorsService.listPackages(symposiumId!),
+    enabled: Boolean(symposiumId),
+    staleTime: 10 * 60_000,
+  });
+  return { ...query, packages: query.data ?? [] };
+}
+
+export type SponsorshipInvoiceRow = {
+  application: import("@/lib/api/dto").SponsorshipApplicationDto;
+  invoice: import("@/lib/api/dto").SponsorshipInvoiceDto;
+};
+
+export function useAdminSponsorshipInvoiceRows(symposiumId?: string) {
+  const resolvedSymposiumId = useSymposiumId();
+  const id = symposiumId ?? resolvedSymposiumId ?? undefined;
+  const query = useQuery({
+    queryKey: ["sponsorship-invoice-rows", id],
+    queryFn: async (): Promise<SponsorshipInvoiceRow[]> => {
+      const [approved, invoiced] = await Promise.all([
+        sponsorsService.listSponsorshipApplications({ symposiumId: id, status: "approved", limit: 100 }),
+        sponsorsService.listSponsorshipApplications({ symposiumId: id, status: "invoiced", limit: 100 }),
+      ]);
+      const byId = new Map<string, import("@/lib/api/dto").SponsorshipApplicationDto>();
+      for (const app of [...approved.items, ...invoiced.items]) {
+        byId.set(app.id, app);
+      }
+      const rows = await Promise.all(
+        [...byId.values()].map(async (application) => {
+          const invoice = await sponsorsService.getSponsorshipApplicationInvoice(application.id);
+          return invoice ? { application, invoice } : null;
+        }),
+      );
+      return rows.filter((row): row is SponsorshipInvoiceRow => row !== null);
+    },
+    enabled: enabled(),
+    staleTime: 30_000,
+  });
+  return { ...query, rows: query.data ?? [] };
 }
 
 export function useAddExhibitorBoothToSponsor() {

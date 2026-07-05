@@ -1,5 +1,5 @@
 import type { Role } from "@/lib/mock-data";
-import { isAdminRole, resolveLegacyRole } from "@/lib/api/mappers/role";
+import { isAdminRole, normalizeBackendRoles, resolveLegacyRole } from "@/lib/api/mappers/role";
 
 export const PERMISSIONS = {
   USERS_READ: "users.read",
@@ -58,11 +58,12 @@ export function hasAnyRole(roles: string[], required: string[]): boolean {
 }
 
 export function getDefaultPortalPath(roles: string[], permissions: string[]): string {
-  if (roles.some(isAdminRole)) return "/admin";
-  if (roles.includes("registration_desk")) return "/desk";
-  if (roles.includes("moderator")) return "/moderator";
-  if (roles.includes("speaker")) return "/speaker";
-  if (roles.includes("exhibitor")) return "/exhibitor";
+  const normalized = normalizeBackendRoles(roles);
+  if (normalized.some(isAdminRole)) return "/admin";
+  if (normalized.includes("registration_desk")) return "/desk";
+  if (normalized.includes("moderator")) return "/moderator";
+  if (normalized.includes("speaker")) return "/speaker";
+  if (normalized.includes("exhibitor")) return "/exhibitor";
   if (hasPermission(permissions, PERMISSIONS.ENGAGEMENT_MANAGE)) return "/moderator";
   return "/dashboard";
 }
@@ -72,8 +73,9 @@ export function canAccessPortal(
   roles: string[],
   permissions: string[] = [],
 ): boolean {
-  if (!roles.length) return false;
-  if (roles.some(isAdminRole)) return true;
+  const normalized = normalizeBackendRoles(roles);
+  if (!normalized.length) return false;
+  if (normalized.some(isAdminRole)) return true;
 
   const prefix = PORTAL_PREFIXES.find((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (!prefix) return true;
@@ -82,10 +84,10 @@ export function canAccessPortal(
   if (!allowed) return true;
 
   if (prefix === "/moderator") {
-    return hasAnyRole(roles, allowed) || hasPermission(permissions, PERMISSIONS.ENGAGEMENT_MANAGE);
+    return hasAnyRole(normalized, allowed) || hasPermission(permissions, PERMISSIONS.ENGAGEMENT_MANAGE);
   }
 
-  return hasAnyRole(roles, allowed);
+  return hasAnyRole(normalized, allowed);
 }
 
 export function resolvePortalRole(roles: string[]): Role {

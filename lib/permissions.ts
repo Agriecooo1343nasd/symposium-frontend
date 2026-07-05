@@ -1,7 +1,7 @@
 import type { Role } from "./mock-data";
 
 const PORTAL_ROLES: Record<string, Role[]> = {
-  "/dashboard": ["attendee"],
+  "/dashboard": ["attendee", "speaker", "exhibitor", "admin"],
   "/admin": ["admin"],
   "/desk": ["registration_desk", "admin"],
   "/moderator": ["moderator", "admin"],

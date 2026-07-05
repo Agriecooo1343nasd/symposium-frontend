@@ -1,13 +1,19 @@
-import { isAxiosError } from "axios";
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
-import type { CreateSpeakerDto, SessionSpeakerDto, SpeakerDashboardDto, SpeakerDto, UpdateSpeakerDto } from "../dto";
-import { type PaginationParams, type PaginatedResult, unwrapPaginated } from "../helpers";
+import type {
+  CreateSpeakerDto,
+  SessionSpeakerDto,
+  SpeakerDashboardDto,
+  SpeakerDto,
+  SponsorshipApplicationDto,
+  SponsorshipApplicationStatsDto,
+  SponsorshipInvoiceDto,
+  SponsorshipTierPricingDto,
+  SponsorDto,
+  UpdateSpeakerDto,
+} from "../dto";
+import { type PaginationParams, type PaginatedResult } from "../helpers";
 import { sessionsService } from "./sessions";
-
-function isSpeakersListError(err: unknown): boolean {
-  return isAxiosError(err) && (err.response?.status === 400 || err.response?.status === 422);
-}
 
 function toSpeakerFromSession(symposiumId: string, sp: SessionSpeakerDto): SpeakerDto {
   return {
@@ -37,21 +43,10 @@ function mergeSpeakers(primary: SpeakerDto[], extra: SpeakerDto[]): SpeakerDto[]
 }
 
 /**
- * GET /speakers rejects symposiumId when combined with page/limit (PaginationDto conflict).
- * Request symposiumId alone — backend defaults page/limit internally.
+ * GET /speakers?symposiumId=… is broken on the hosted API: PaginationDto validation
+ * rejects symposiumId ("property symposiumId should not exist"). Until backend fixes
+ * SpeakersListQueryDto, build the directory from programme sessions + GET /speakers/:id.
  */
-async function fetchSpeakersFromApi(symposiumId: string): Promise<SpeakerDto[] | null> {
-  try {
-    const res = await apiClient.get<ApiResponse<SpeakerDto[]>>("/speakers", {
-      params: { symposiumId },
-    });
-    return unwrapPaginated(res).items;
-  } catch (err) {
-    if (isSpeakersListError(err)) return null;
-    throw err;
-  }
-}
-
 async function listFromProgrammeSessions(
   symposiumId: string,
   params?: PaginationParams,
@@ -78,22 +73,7 @@ async function listFromProgrammeSessions(
 }
 
 async function listSpeakersMerged(symposiumId: string, params?: PaginationParams): Promise<PaginatedResult<SpeakerDto>> {
-  const limit = params?.limit ?? 100;
-  const fromApi = await fetchSpeakersFromApi(symposiumId);
-  const fromSessions = await listFromProgrammeSessions(symposiumId, { limit: 100 });
-
-  if (fromApi !== null) {
-    const merged = mergeSpeakers(fromApi, fromSessions.items).slice(0, limit);
-    return {
-      items: merged,
-      meta: { total: merged.length, page: 1, limit: merged.length },
-    };
-  }
-
-  return {
-    items: fromSessions.items.slice(0, limit),
-    meta: fromSessions.meta,
-  };
+  return listFromProgrammeSessions(symposiumId, params);
 }
 
 export const speakersService = {

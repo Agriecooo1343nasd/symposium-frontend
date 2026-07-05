@@ -15,9 +15,8 @@ import { useStore } from "@/hooks/use-store";
 import { patchStore } from "@/lib/store";
 import { getFinanceSummary } from "@/lib/finance-records";
 import { useFinanceSummary, useFinanceTransactions, useConfirmManualPayment } from "@/hooks/api/useAdmin";
-import { markInvoicePaid } from "@/lib/sponsorship-invoices";
-import { getSession } from "@/lib/auth";
-import Link from "next/link";
+import { useAdminSponsorshipInvoiceRows } from "@/hooks/api/useExhibitor";
+import { SponsorshipFinancePanel } from "@/components/admin/SponsorshipFinancePanel";
 import { useAdminTabNavigation } from "@/hooks/use-admin-command-action";
 
 
@@ -25,20 +24,22 @@ const COLORS = ["hsl(var(--blue))", "hsl(var(--green))", "hsl(var(--gold))", "hs
 
 export default function Page() {
   const store = useStore();
-  const session = getSession();
   const financeTabs = ["overview", "transactions", "sponsorship", "bank", "reports", "settings"];
   const { activeTab, onTabChange } = useAdminTabNavigation(financeTabs, "overview");
   const financeSummary = useFinanceSummary();
   const { transactions: apiTransactions } = useFinanceTransactions({ limit: 100 });
   const confirmPayment = useConfirmManualPayment();
+  const { rows: sponsorshipRows } = useAdminSponsorshipInvoiceRows();
   const finance = getFinanceSummary();
   const grp = store.platformSettings.groupRegistration;
   const [tier59, setTier59] = useState(String(grp.tier5to9Percent));
   const [tier10, setTier10] = useState(String(grp.tier10PlusPercent));
   const [minGroup, setMinGroup] = useState(String(grp.minSize));
-  const [, setTick] = useState(0);
 
-  const { gross, refundedValue, pending, pendingValue, methodData, sponsorshipGross, registrationGross, items } = finance;
+  const { gross, refundedValue, pending, pendingValue, methodData, registrationGross, items } = finance;
+  const sponsorshipGross = sponsorshipRows
+    .filter((r) => r.invoice.status === "paid" && r.invoice.currency === "USD")
+    .reduce((sum, r) => sum + r.invoice.amount, 0);
   const apiRevenue = financeSummary.data?.totalRevenue ?? 0;
   const apiPending = financeSummary.data?.pendingTransactions ?? 0;
   const revenueOverTime = DAILY_REGS.map((d) => ({ day: d.day.split(" ")[1], usd: d.regs * 95 }));
@@ -57,7 +58,7 @@ export default function Page() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile label="Total revenue (API)" value={`$${apiRevenue.toLocaleString()}`} hint={`${financeSummary.data?.completedTransactions ?? 0} completed`} accent />
         <StatTile label="Net (mock ledger)" value={`$${(gross - refundedValue).toLocaleString()}`} />
-        <StatTile label="Sponsorship (mock)" value={`$${sponsorshipGross.toLocaleString()}`} hint="Local invoices" />
+        <StatTile label="Sponsorship (API)" value={`$${sponsorshipGross.toLocaleString()}`} hint={`${sponsorshipRows.length} invoices`} />
         <StatTile label="Pending (API)" value={String(apiPending)} hint="Open transactions" />
       </div>
 
@@ -154,52 +155,7 @@ export default function Page() {
         </TabsContent>
 
         <TabsContent value="sponsorship" className="mt-6">
-          <p className="text-sm text-muted-foreground mb-4">
-            Proforma invoices from approved sponsorship applications — same records shown on exhibitor sponsorship pages.
-          </p>
-          <div className="rounded-2xl border border-border bg-card overflow-x-auto">
-            <table className="w-full text-sm min-w-[640px]">
-              <thead className="bg-secondary/60 text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="text-left px-4 py-3">Reference</th>
-                  <th className="text-left px-4 py-3">Organization</th>
-                  <th className="text-right px-4 py-3">USD</th>
-                  <th className="text-left px-4 py-3">Status</th>
-                  <th className="text-right px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(store.sponsorshipInvoices ?? []).map((inv) => (
-                  <tr key={inv.id} className="border-t">
-                    <td className="px-4 py-3 font-mono">{inv.reference}</td>
-                    <td className="px-4 py-3">{inv.orgName}</td>
-                    <td className="px-4 py-3 text-right font-mono">${inv.amountUsd.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-xs uppercase font-bold">{inv.status}</td>
-                    <td className="px-4 py-3 text-right space-x-2">
-                      {inv.orgId && (
-                        <Button asChild size="sm" variant="ghost">
-                          <Link href={`/admin/exhibitors/sponsorship/${inv.orgId}`}>Record</Link>
-                        </Button>
-                      )}
-                      {inv.status !== "paid" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            markInvoicePaid(inv.id, session?.name ?? "Admin");
-                            toast.success("Sponsorship payment recorded");
-                            setTick((n) => n + 1);
-                          }}
-                        >
-                          <Check className="h-3.5 w-3.5 mr-1" /> Mark paid
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SponsorshipFinancePanel showSponsorCards={false} />
         </TabsContent>
 
         <TabsContent value="bank" className="space-y-3 mt-6">

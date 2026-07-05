@@ -15,7 +15,6 @@ import {
 } from "@/hooks/api/useExhibitor";
 import {
   exportLeadsCsv,
-  type StoredExhibitorLead,
 } from "@/lib/exhibitor/leads-storage";
 import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "sonner";
@@ -70,6 +69,14 @@ export default function Page() {
 
   if (!profile) {
     return <p className="text-sm text-muted-foreground">Exhibitor profile not found.</p>;
+  }
+
+  if (leadsLoading) {
+    return (
+      <div className="flex items-center gap-2 text-muted-foreground py-12">
+        <Loader2 className="h-5 w-5 animate-spin" /> Loading leads…
+      </div>
+    );
   }
 
   return (

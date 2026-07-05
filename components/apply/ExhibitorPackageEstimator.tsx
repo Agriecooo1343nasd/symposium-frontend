@@ -2,6 +2,7 @@ import { Users, DollarSign, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EVENT } from "@/lib/mock-data";
+import type { ExhibitorPackageDto, SponsorshipTierPricingDto } from "@/lib/api/dto";
 import { calculateOrgPackageFee, type AppStore, type ParticipationType, type SponsorshipTier } from "@/lib/store";
 
 type Props = {
@@ -10,12 +11,35 @@ type Props = {
   tier?: SponsorshipTier;
   staffCount: number;
   onStaffCountChange: (n: number) => void;
+  packages?: ExhibitorPackageDto[];
+  tierPricing?: SponsorshipTierPricingDto[];
+  selectedPackageId?: string;
 };
 
-/** FR-5.1 / FR-2.1 — org pays package; staff passes bundled (no individual payment) */
-export function ExhibitorPackageEstimator({ store, participation, tier, staffCount, onStaffCountChange }: Props) {
-  const quote = calculateOrgPackageFee(participation, tier, staffCount, store);
-  const rwf = Math.round(quote.feeUsd * EVENT.exchangeRate);
+export function ExhibitorPackageEstimator({
+  store,
+  participation,
+  tier,
+  staffCount,
+  onStaffCountChange,
+  packages = [],
+  tierPricing = [],
+  selectedPackageId,
+}: Props) {
+  const selectedPackage = packages.find((p) => p.id === selectedPackageId) ?? packages[0];
+  const tierPrice = tierPricing.find((t) => t.tier.toLowerCase() === tier?.toLowerCase());
+  const mockQuote = calculateOrgPackageFee(participation, tier, staffCount, store);
+
+  let feeUsd = mockQuote.feeUsd;
+  if (selectedPackage && (participation === "exhibitor" || participation === "both")) {
+    feeUsd = selectedPackage.priceUsd;
+  }
+  if (tierPrice && (participation === "sponsor" || participation === "both")) {
+    feeUsd = participation === "both" ? feeUsd + tierPrice.amountUsd : tierPrice.amountUsd;
+  }
+
+  const includedStaff = selectedPackage?.staffPassQuota ?? mockQuote.includedStaff;
+  const rwf = tierPrice?.amountRwf ?? Math.round(feeUsd * EVENT.exchangeRate);
 
   return (
     <div className="rounded-xl border border-accent/30 bg-gradient-to-br from-accent/5 to-secondary/40 p-5 space-y-4">
@@ -26,11 +50,18 @@ export function ExhibitorPackageEstimator({ store, participation, tier, staffCou
         <div>
           <h3 className="font-serif font-bold">Package estimate</h3>
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-            your organization pays one sponsorship/booth fee. <strong>Exhibitor staff passes are bundled</strong> — invited
-            colleagues check in with comp QR codes and do not pay individually.
+            Fees from the live exhibitor package catalog and sponsorship tier pricing when available.
+            Staff passes are bundled with booth packages.
           </p>
         </div>
       </div>
+
+      {selectedPackage && (
+        <p className="text-xs text-muted-foreground">
+          Selected package: <strong>{selectedPackage.name}</strong>
+          {selectedPackage.boothSize ? ` · ${selectedPackage.boothSize}` : ""}
+        </p>
+      )}
 
       <div>
         <Label className="flex items-center gap-1.5">
@@ -46,14 +77,14 @@ export function ExhibitorPackageEstimator({ store, participation, tier, staffCou
           placeholder="e.g. 4"
         />
         <p className="text-[11px] text-muted-foreground mt-1">
-          {quote.includedStaff} included · {quote.extraStaff > 0 ? `${quote.extraStaff} extra @ admin rate` : "within quota"}
+          {includedStaff} included in package quota
         </p>
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-4 pt-2 border-t border-border">
         <div>
           <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Estimated total</div>
-          <div className="font-serif text-3xl font-bold text-accent">${quote.feeUsd.toLocaleString()}</div>
+          <div className="font-serif text-3xl font-bold text-accent">${feeUsd.toLocaleString()}</div>
           <div className="text-sm text-muted-foreground">≈ RWF {rwf.toLocaleString()}</div>
         </div>
         <div className="text-xs text-muted-foreground max-w-xs flex gap-2">
