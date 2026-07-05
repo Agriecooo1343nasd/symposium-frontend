@@ -88,13 +88,7 @@ export function SponsorshipTierEditor() {
     setEditing(null);
   };
 
-  const resetTier = (tier: SponsorshipTier) => {
-    patchStore((s) => ({
-      ...s,
-      sponsorshipTiers: s.sponsorshipTiers.map((t) => (t.tier === tier ? { ...DEFAULT_TIERS[tier] } : t)),
-    }));
-    toast.info(`${tier} reset to defaults`);
-  };
+
 
   const previewBenefits = editing ? buildTierBenefitsList(editing) : [];
 
@@ -110,9 +104,6 @@ export function SponsorshipTierEditor() {
                 <div className="flex gap-1">
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(t)} title="Edit">
                     <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => resetTier(t.tier)} title="Reset to defaults">
-                    <RotateCcw className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
