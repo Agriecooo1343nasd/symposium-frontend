@@ -46,7 +46,19 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
 let refreshPromise: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
+export function isAccessTokenExpired(token: string, leewaySec = 60): boolean {
+  try {
+    const part = token.split(".")[1];
+    if (!part) return true;
+    const payload = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/"))) as { exp?: number };
+    if (!payload.exp) return false;
+    return Date.now() >= (payload.exp - leewaySec) * 1000;
+  } catch {
+    return true;
+  }
+}
+
+export async function refreshAccessToken(): Promise<string | null> {
   const refresh = getRefreshToken();
   if (!refresh) return null;
   try {

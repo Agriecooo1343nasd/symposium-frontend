@@ -29,11 +29,17 @@ const LEGACY_ROLE_MAPPING: Record<string, BackendRole> = {
   media: "registration_desk",
 };
 
+/** Map deprecated JWT role names to the 6 canonical backend roles. */
+export function normalizeBackendRoles(roles: string[]): string[] {
+  if (!roles.length) return [];
+  const normalized = roles.map((role) => LEGACY_ROLE_MAPPING[role] ?? role);
+  return [...new Set(normalized)];
+}
+
 export function resolveLegacyRole(roles: string[]): Role {
   if (roles.length === 0) return "attendee";
   
-  // Map any legacy roles to canonical roles
-  const canonicalRoles = roles.map(role => LEGACY_ROLE_MAPPING[role] || role as BackendRole);
+  const canonicalRoles = normalizeBackendRoles(roles) as BackendRole[];
   
   if (canonicalRoles.includes("admin")) return "admin";
   if (canonicalRoles.includes("registration_desk")) return "registration_desk";

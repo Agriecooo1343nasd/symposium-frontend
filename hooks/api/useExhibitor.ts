@@ -7,7 +7,10 @@ import { getAccessToken } from "@/lib/api/client";
 import type {
   CreateExhibitorMaterialDto,
   CreateExhibitorStaffPassDto,
+  ExhibitorPackageDto,
   ScanExhibitorLeadDto,
+  SponsorshipApplicationDto,
+  SponsorshipInvoiceDto,
   UpdateExhibitorProfileDto,
 } from "@/lib/api/dto";
 import { deriveExhibitorParticipation } from "@/lib/exhibitor/participation";
@@ -107,8 +110,12 @@ export function useRemoveExhibitorStaffPass() {
 }
 
 export function useScanExhibitorLead() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (dto: ScanExhibitorLeadDto) => exhibitorsService.scanLead(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exhibitors-me-leads"] });
+    },
   });
 }
 
@@ -128,6 +135,48 @@ export function useLinkedSponsor(sponsorId: string | null | undefined) {
   });
   const sponsor = query.data?.find((s) => s.id === sponsorId) ?? null;
   return { ...query, sponsor };
+}
+
+export function usePublicExhibitorPackages(symposiumId: string | undefined) {
+  const query = useQuery({
+    queryKey: ["exhibitor-packages-public", symposiumId],
+    queryFn: () => exhibitorsService.listPackages(symposiumId!),
+    enabled: Boolean(symposiumId),
+    staleTime: 10 * 60_000,
+  });
+  return { ...query, packages: (query.data ?? []).filter((p) => p.isActive) };
+}
+
+export type SponsorshipFinanceRow = {
+  application: SponsorshipApplicationDto;
+  invoice: SponsorshipInvoiceDto | null;
+};
+
+export function useSponsorshipFinanceRecords(symposiumId?: string) {
+  const query = useQuery({
+    queryKey: ["sponsorship-finance-records", symposiumId],
+    queryFn: async (): Promise<SponsorshipFinanceRow[]> => {
+      const res = await sponsorsService.listSponsorshipApplications({
+        symposiumId,
+        limit: 100,
+      });
+      const candidates = res.items.filter((app) =>
+        ["approved", "invoiced"].includes(app.status),
+      );
+      const rows = await Promise.all(
+        candidates.map(async (application) => {
+          const invoice = await sponsorsService
+            .getSponsorshipApplicationInvoice(application.id)
+            .catch(() => null);
+          return { application, invoice };
+        }),
+      );
+      return rows.filter((row) => row.invoice);
+    },
+    enabled: enabled() && Boolean(symposiumId),
+    staleTime: 30_000,
+  });
+  return { ...query, records: query.data ?? [] };
 }
 
 // New hooks for sponsorship applications (FR-5.1)
@@ -242,6 +291,7 @@ export function useApproveSponsorshipApplication() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-admin"] });
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-finance-records"] });
     },
   });
 }
@@ -254,6 +304,7 @@ export function useRejectSponsorshipApplication() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-admin"] });
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-finance-records"] });
     },
   });
 }
@@ -276,6 +327,7 @@ export function useMarkSponsorshipInvoicePaid() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-admin"] });
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-finance-records"] });
     },
   });
 }

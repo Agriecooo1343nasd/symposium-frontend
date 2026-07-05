@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useStore } from "@/hooks/use-store";
 import { patchStore, appendAudit, type PlatformSettings, type FeatureFlags } from "@/lib/store";
 import { getSession } from "@/lib/auth";
 import { toast } from "sonner";
 import { useSymposiumSettings, useUpdateSymposiumSettings } from "@/hooks/api/useEngage";
 import { apiErrorMessage } from "@/lib/api/client";
-import type { UpdateSymposiumSettingsDto } from "@/lib/api/dto";
+import type { SymposiumSettingsDto, UpdateSymposiumSettingsDto } from "@/lib/api/dto";
 
 
 const PHASE_GROUPS: { phase: string; keys: (keyof FeatureFlags)[]; labels: Record<string, string> }[] = [
@@ -199,14 +201,38 @@ function BackendSettingsSection() {
   const update = useUpdateSymposiumSettings();
   const [draft, setDraft] = useState<UpdateSymposiumSettingsDto | null>(null);
 
-  const current = (draft ?? settings) as Record<string, Record<string, boolean>> | null;
+  const merged = (draft ?? settings) as SymposiumSettingsDto | null;
+  const current = merged as Record<string, Record<string, boolean>> | null;
 
   const toggle = (group: string, key: string, value: boolean) => {
-    const base = (draft ?? settings ?? {}) as Record<string, Record<string, boolean>>;
+    const base = (draft ?? settings ?? {}) as SymposiumSettingsDto;
     setDraft({
       ...base,
-      [group]: { ...(base[group] ?? {}), [key]: value },
+      [group]: { ...(base[group as keyof SymposiumSettingsDto] as object), [key]: value },
     } as UpdateSymposiumSettingsDto);
+  };
+
+  const updateSponsorship = (patch: Partial<NonNullable<SymposiumSettingsDto["sponsorship"]>>) => {
+    const base = (draft ?? settings ?? {}) as SymposiumSettingsDto;
+    setDraft({
+      ...base,
+      sponsorship: { ...(base.sponsorship ?? {}), ...patch },
+    } as UpdateSymposiumSettingsDto);
+  };
+
+  const updateTierPricing = (
+    tier: string,
+    field: "amountUsd" | "amountRwf",
+    value: number,
+  ) => {
+    const base = (draft ?? settings ?? {}) as SymposiumSettingsDto;
+    const tiers = [...(base.sponsorship?.tierPricing ?? [])];
+    const idx = tiers.findIndex((t) => t.tier === tier);
+    const row = idx >= 0 ? { ...tiers[idx] } : { tier, amountUsd: 0, amountRwf: 0 };
+    row[field] = value;
+    if (idx >= 0) tiers[idx] = row;
+    else tiers.push(row);
+    updateSponsorship({ tierPricing: tiers });
   };
 
   const save = async () => {
@@ -219,6 +245,13 @@ function BackendSettingsSection() {
       toast.error(apiErrorMessage(err));
     }
   };
+
+  const defaultTiers = [
+    { tier: "platinum", amountUsd: 25000, amountRwf: 30000000 },
+    { tier: "gold", amountUsd: 10000, amountRwf: 12000000 },
+    { tier: "silver", amountUsd: 5000, amountRwf: 6000000 },
+  ];
+  const tierPricing = merged?.sponsorship?.tierPricing ?? defaultTiers;
 
   return (
     <div className="space-y-4">
@@ -249,13 +282,73 @@ function BackendSettingsSection() {
                 >
                   <span className="text-sm font-medium">{f.label}</span>
                   <Switch
-                    checked={Boolean(current[g.group]?.[f.key])}
+                    checked={Boolean(current?.[g.group]?.[f.key])}
                     onCheckedChange={(v) => toggle(g.group, f.key, v)}
                   />
                 </div>
               ))}
             </section>
           ))}
+
+          <section className="rounded-2xl bg-card border border-border p-6 space-y-4">
+            <h3 className="font-serif font-bold text-sm">Sponsorship tier pricing</h3>
+            <p className="text-xs text-muted-foreground">
+              Used by the public apply form and proforma invoices (platinum, gold, silver).
+            </p>
+            {tierPricing.map((row) => (
+              <div key={row.tier} className="grid sm:grid-cols-3 gap-3 items-end border-b border-border pb-4 last:border-0">
+                <div>
+                  <Label className="capitalize">{row.tier}</Label>
+                </div>
+                <div>
+                  <Label>USD</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    className="mt-1"
+                    value={row.amountUsd}
+                    onChange={(e) => updateTierPricing(row.tier, "amountUsd", Number(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <Label>RWF</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    className="mt-1"
+                    value={row.amountRwf}
+                    onChange={(e) => updateTierPricing(row.tier, "amountRwf", Number(e.target.value) || 0)}
+                  />
+                </div>
+              </div>
+            ))}
+            <div>
+              <Label>Default invoice currency</Label>
+              <Select
+                value={merged?.sponsorship?.defaultInvoiceCurrency ?? "USD"}
+                onValueChange={(v) => updateSponsorship({ defaultInvoiceCurrency: v as "USD" | "RWF" })}
+              >
+                <SelectTrigger className="mt-1 max-w-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="RWF">RWF</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Bank transfer instructions</Label>
+              <Textarea
+                rows={4}
+                className="mt-1 font-mono text-xs"
+                value={merged?.sponsorship?.bankTransferInstructions ?? ""}
+                onChange={(e) => updateSponsorship({ bankTransferInstructions: e.target.value })}
+                placeholder="Account name, bank, reference format…"
+              />
+            </div>
+          </section>
+
           <Button
             onClick={save}
             disabled={!draft || update.isPending}

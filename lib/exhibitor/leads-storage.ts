@@ -45,7 +45,7 @@ export function updateStoredLead(
   return next;
 }
 
-export function exportLeadsCsv(leads: StoredExhibitorLead[]): string {
+export function exportLeadsCsv(leads: Array<Pick<ExhibitorLeadDto, "attendeeName" | "attendeeEmail" | "scannedAt"> & { crmStatus?: string; boothNotes?: string }>): string {
   const header = "Name,Email,Scanned At,Status,Notes";
   const rows = leads.map((l) =>
     [

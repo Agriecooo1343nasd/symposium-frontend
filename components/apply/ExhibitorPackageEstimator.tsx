@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EVENT } from "@/lib/mock-data";
 import { calculateOrgPackageFee, type AppStore, type ParticipationType, type SponsorshipTier } from "@/lib/store";
+import type { ExhibitorPackageDto, SponsorshipTierPricingDto } from "@/lib/api/dto";
 
 type Props = {
   store: AppStore;
@@ -10,12 +11,34 @@ type Props = {
   tier?: SponsorshipTier;
   staffCount: number;
   onStaffCountChange: (n: number) => void;
+  apiPackage?: ExhibitorPackageDto | null;
+  tierPricing?: SponsorshipTierPricingDto[];
 };
 
 /** FR-5.1 / FR-2.1 — org pays package; staff passes bundled (no individual payment) */
-export function ExhibitorPackageEstimator({ store, participation, tier, staffCount, onStaffCountChange }: Props) {
+export function ExhibitorPackageEstimator({
+  store,
+  participation,
+  tier,
+  staffCount,
+  onStaffCountChange,
+  apiPackage,
+  tierPricing,
+}: Props) {
   const quote = calculateOrgPackageFee(participation, tier, staffCount, store);
-  const rwf = Math.round(quote.feeUsd * EVENT.exchangeRate);
+  const tierRow = tierPricing?.find((t) => t.tier.toLowerCase() === tier?.toLowerCase());
+  const packageUsd = apiPackage?.priceUsd;
+  const sponsorshipUsd = tierRow?.amountUsd;
+  const feeUsd =
+    participation === "exhibitor" && packageUsd != null
+      ? packageUsd
+      : participation === "sponsor" && sponsorshipUsd != null
+        ? sponsorshipUsd
+        : participation === "both" && packageUsd != null && sponsorshipUsd != null
+          ? packageUsd + sponsorshipUsd
+          : quote.feeUsd;
+  const rwf = tierRow?.amountRwf ?? Math.round(feeUsd * EVENT.exchangeRate);
+  const includedStaff = apiPackage?.staffPassQuota ?? quote.includedStaff;
 
   return (
     <div className="rounded-xl border border-accent/30 bg-gradient-to-br from-accent/5 to-secondary/40 p-5 space-y-4">
@@ -26,9 +49,15 @@ export function ExhibitorPackageEstimator({ store, participation, tier, staffCou
         <div>
           <h3 className="font-serif font-bold">Package estimate</h3>
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-            your organization pays one sponsorship/booth fee. <strong>Exhibitor staff passes are bundled</strong> — invited
+            Your organization pays one sponsorship/booth fee. <strong>Exhibitor staff passes are bundled</strong> — invited
             colleagues check in with comp QR codes and do not pay individually.
           </p>
+          {apiPackage && (
+            <p className="text-xs text-accent mt-2 font-medium">
+              Live catalog: {apiPackage.name}
+              {apiPackage.boothSize ? ` · ${apiPackage.boothSize}` : ""}
+            </p>
+          )}
         </div>
       </div>
 
@@ -46,14 +75,14 @@ export function ExhibitorPackageEstimator({ store, participation, tier, staffCou
           placeholder="e.g. 4"
         />
         <p className="text-[11px] text-muted-foreground mt-1">
-          {quote.includedStaff} included · {quote.extraStaff > 0 ? `${quote.extraStaff} extra @ admin rate` : "within quota"}
+          {includedStaff} included · {Math.max(0, staffCount - includedStaff) > 0 ? `${staffCount - includedStaff} extra @ admin rate` : "within quota"}
         </p>
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-4 pt-2 border-t border-border">
         <div>
           <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Estimated total</div>
-          <div className="font-serif text-3xl font-bold text-accent">${quote.feeUsd.toLocaleString()}</div>
+          <div className="font-serif text-3xl font-bold text-accent">${feeUsd.toLocaleString()}</div>
           <div className="text-sm text-muted-foreground">≈ RWF {rwf.toLocaleString()}</div>
         </div>
         <div className="text-xs text-muted-foreground max-w-xs flex gap-2">

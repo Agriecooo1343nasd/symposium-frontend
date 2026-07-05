@@ -2,7 +2,7 @@ import { isAxiosError } from "axios";
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type { CreateSpeakerDto, SessionSpeakerDto, SpeakerDashboardDto, SpeakerDto, UpdateSpeakerDto } from "../dto";
-import { type PaginationParams, type PaginatedResult, unwrapPaginated } from "../helpers";
+import { type PaginationParams, type PaginatedResult, toPaginationQuery, unwrapPaginated } from "../helpers";
 import { sessionsService } from "./sessions";
 
 function isSpeakersListError(err: unknown): boolean {
@@ -20,14 +20,6 @@ function toSpeakerFromSession(symposiumId: string, sp: SessionSpeakerDto): Speak
   };
 }
 
-async function fetchSpeakerById(id: string): Promise<SpeakerDto | null> {
-  try {
-    return await apiClient.get<ApiResponse<SpeakerDto>>(`/speakers/${id}`).then(unwrapApi);
-  } catch {
-    return null;
-  }
-}
-
 function mergeSpeakers(primary: SpeakerDto[], extra: SpeakerDto[]): SpeakerDto[] {
   const map = new Map<string, SpeakerDto>();
   for (const s of [...primary, ...extra]) {
@@ -36,14 +28,14 @@ function mergeSpeakers(primary: SpeakerDto[], extra: SpeakerDto[]): SpeakerDto[]
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/**
- * GET /speakers rejects symposiumId when combined with page/limit (PaginationDto conflict).
- * Request symposiumId alone — backend defaults page/limit internally.
- */
-async function fetchSpeakersFromApi(symposiumId: string): Promise<SpeakerDto[] | null> {
+/** GET /speakers — symposiumId + pagination via SpeakersListQueryDto (backend). */
+async function fetchSpeakersFromApi(
+  symposiumId: string,
+  params?: PaginationParams,
+): Promise<SpeakerDto[] | null> {
   try {
     const res = await apiClient.get<ApiResponse<SpeakerDto[]>>("/speakers", {
-      params: { symposiumId },
+      params: { symposiumId, ...toPaginationQuery({ page: 1, limit: params?.limit ?? 100, ...params }) },
     });
     return unwrapPaginated(res).items;
   } catch (err) {
@@ -65,13 +57,7 @@ async function listFromProgrammeSessions(
     }
   }
 
-  const items = await Promise.all(
-    [...sessionSpeakers.values()].map(async (sp) => {
-      const full = await fetchSpeakerById(sp.id);
-      return full ?? toSpeakerFromSession(symposiumId, sp);
-    }),
-  );
-
+  const items = [...sessionSpeakers.values()].map((sp) => toSpeakerFromSession(symposiumId, sp));
   items.sort((a, b) => a.name.localeCompare(b.name));
   const sliced = items.slice(0, limit);
   return { items: sliced, meta: { total: items.length, page: 1, limit: sliced.length } };
@@ -79,7 +65,7 @@ async function listFromProgrammeSessions(
 
 async function listSpeakersMerged(symposiumId: string, params?: PaginationParams): Promise<PaginatedResult<SpeakerDto>> {
   const limit = params?.limit ?? 100;
-  const fromApi = await fetchSpeakersFromApi(symposiumId);
+  const fromApi = await fetchSpeakersFromApi(symposiumId, params);
   const fromSessions = await listFromProgrammeSessions(symposiumId, { limit: 100 });
 
   if (fromApi !== null) {
