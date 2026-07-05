@@ -45,7 +45,6 @@ export default function OverviewPage() {
         <div className="relative flex flex-wrap gap-6 justify-between items-end">
           <div>
             <div className="text-xs uppercase tracking-widest text-gold mb-1">Welcome back</div>
-            <h1 className="font-serif text-3xl sm:text-4xl font-bold">{displayName.split(" ")[0]} 👋</h1>
             <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-green/20 text-white px-3 py-1 text-xs font-semibold">
               {category} · {statusLabel}
             </div>
