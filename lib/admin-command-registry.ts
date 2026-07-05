@@ -195,6 +195,9 @@ export const ADMIN_COMMANDS: AdminCommand[] = [
   add("invite-user", "Invite user", "/admin/users", "invite-user", [
     "add", "create", "invite", "staff", "admin", "moderator", "user", "role",
   ], "Send a portal invitation"),
+  add("add-media-person", "Add media person", "/admin/media", "add-media-person", [
+    "add", "create", "media", "press", "journalist", "accreditation", "manual",
+  ], "Manually onboard a journalist with portal invite"),
 
   // ── Quick links (queues / actions) ────────────────────────────────────────
   nav("pending-exhibitor-apps", "Pending exhibitor applications", "/admin/exhibitors/applications", [

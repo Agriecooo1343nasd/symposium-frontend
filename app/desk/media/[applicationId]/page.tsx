@@ -1,13 +1,11 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { DeskMediaApplicationDetail } from "@/components/desk/DeskMediaApplicationDetail";
+import { MediaAccreditationDetail } from "@/components/media/MediaAccreditationDetail";
 
 export default function DeskMediaDetailPage() {
   const params = useParams();
   const applicationId = typeof params.applicationId === "string" ? params.applicationId : "";
 
-  return (
-    <DeskMediaApplicationDetail applicationId={applicationId} backHref="/desk/media" />
-  );
+  return <MediaAccreditationDetail applicationId={applicationId} backHref="/desk/media" />;
 }

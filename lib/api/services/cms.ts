@@ -13,6 +13,8 @@ import type {
   UpsertCmsPageDto,
   UpsertCommitteeMemberDto,
   UpsertFaqDto,
+  CreateMediaAccreditationAdminDto,
+  CreateMediaAccreditationAdminResultDto,
 } from "../dto";
 import { type PaginationParams, fetchPaginatedList, toPaginationQuery, toQueryParams, unwrapPaginated } from "../helpers";
 
@@ -103,6 +105,11 @@ export const cmsService = {
   updateMediaAccreditation(id: string, dto: UpdateMediaAccreditationDto) {
     return apiClient
       .patch<ApiResponse<MediaAccreditationDto>>(`/cms/admin/media-accreditations/${id}`, dto)
+      .then(unwrapApi);
+  },
+  createMediaAccreditationAdmin(dto: CreateMediaAccreditationAdminDto) {
+    return apiClient
+      .post<ApiResponse<CreateMediaAccreditationAdminResultDto>>("/cms/admin/media-accreditations", dto)
       .then(unwrapApi);
   },
 };

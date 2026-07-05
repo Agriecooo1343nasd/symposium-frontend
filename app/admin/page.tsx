@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { StatTile } from "@/components/layout/PortalShell";
 import { DAILY_REGS, CHECKINS } from "@/lib/mock-data";
 import { useAdminRegistrations, useFinanceSummary, useAdminSubmissions } from "@/hooks/api/useAdmin";
+import { useMediaAccreditationStats } from "@/hooks/api/useMediaAccreditation";
 import { submissionReviewStatus } from "@/lib/api/mappers/desk";
 import { useStore } from "@/hooks/use-store";
 import { getEventConfig } from "@/lib/platform-settings";
@@ -25,6 +26,7 @@ export default function AdminOverview() {
   const { registrations } = useAdminRegistrations({ limit: 200 });
   const financeApi = useFinanceSummary();
   const { submissions } = useAdminSubmissions({ limit: 100 });
+  const mediaStats = useMediaAccreditationStats();
   const store = useStore();
   const event = getEventConfig();
   const [annOpen, setAnnOpen] = useState(false);
@@ -188,7 +190,7 @@ export default function AdminOverview() {
             <li className="flex justify-between"><span>Open sponsorship invoices</span><Link href="/admin/exhibitors/sponsors" className="font-bold text-amber-900">{(store.sponsorshipInvoices ?? []).filter((i) => i.status !== "paid").length} →</Link></li>
             <li className="flex justify-between"><span>Speaker applications</span><Link href="/admin/abstracts" className="font-bold text-amber-900">{pendingApps} →</Link></li>
             <li className="flex justify-between"><span>Exhibitor applications</span><Link href="/admin/exhibitors/applications" className="font-bold text-amber-900">{store.organizationApplications.filter((a) => a.status === "pending").length} →</Link></li>
-            <li className="flex justify-between"><span>Media accreditation</span><Link href="/admin/media" className="font-bold text-amber-900">{store.mediaApplications.filter((a) => a.status === "pending").length} →</Link></li>
+            <li className="flex justify-between"><span>Media accreditation</span><Link href="/admin/media" className="font-bold text-amber-900">{mediaStats.data?.pending ?? 0} →</Link></li>
             <li className="flex justify-between"><span>Abstracts under review</span><Link href="/admin/abstracts" className="font-bold text-amber-900">{reviewAbs} →</Link></li>
           </ul>
           <Button asChild className="w-full mt-4 gradient-blue text-accent-foreground" size="sm"><Link href="/admin/checkin"><ScanLine className="h-3.5 w-3.5 mr-1" /> Open check-in</Link></Button>

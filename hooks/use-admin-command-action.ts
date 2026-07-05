@@ -45,7 +45,7 @@ const TAB_PAGES: Record<string, { valid: string[]; defaultTab: string }> = {
   "/admin/finance": { valid: ["overview", "transactions", "sponsorship", "bank", "reports", "settings"], defaultTab: "overview" },
   "/admin/registrations": { valid: ["individual", "groups"], defaultTab: "individual" },
   "/admin/refunds": { valid: ["cancellations", "waitlist", "plans"], defaultTab: "cancellations" },
-  "/admin/media": { valid: ["pending", "approved", "rejected", "all"], defaultTab: "pending" },
+  "/admin/media": { valid: ["pending", "approved", "rejected", "revoked", "all"], defaultTab: "pending" },
   "/admin/checkin": { valid: ["scan", "dashboard"], defaultTab: "scan" },
   "/admin/users": { valid: ["users", "invites", "roles", "audit"], defaultTab: "users" },
   "/admin/speakers": { valid: ["list", "submissions"], defaultTab: "list" },
