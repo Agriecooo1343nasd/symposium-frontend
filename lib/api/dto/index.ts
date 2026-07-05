@@ -808,6 +808,51 @@ export type MediaAccreditationStatsDto = {
   total: number;
 };
 
+/** Admin/desk manual onboarding — maps to future POST /cms/admin/media-accreditations */
+export type CreateMediaAccreditationAdminDto = {
+  fullName: string;
+  email: string;
+  phone?: string;
+  country?: string;
+  jobTitle?: string;
+  outletName: string;
+  outletType?: string;
+  outletWebsite?: string;
+  outletCountry?: string;
+  editorName?: string;
+  editorEmail?: string;
+  coverageType?: string;
+  equipmentNeeds?: string;
+  pressCardUrl?: string;
+  letterUrl?: string;
+  assignmentUrl?: string;
+  /** When true, accreditation is approved on creation (default for desk walk-ins). */
+  autoApprove?: boolean;
+  /** When true, backend sends set-password / welcome email (simulated until endpoint exists). */
+  sendWelcomeEmail?: boolean;
+  adminNotes?: string;
+};
+
+export type CreateMediaAccreditationAdminResultDto = {
+  accreditation: MediaAccreditationDto;
+  userCreated: boolean;
+  registrationCreated: boolean;
+  welcomeEmailSent: boolean;
+  /** True when the frontend used local mock because the admin endpoint is not deployed yet. */
+  simulated?: boolean;
+};
+
+/** Optional fields persisted in mock layer until backend extends MediaAccreditation model. */
+export type MediaAccreditationExtended = MediaAccreditationDto & {
+  outletWebsite?: string | null;
+  outletCountry?: string | null;
+  editorName?: string | null;
+  editorEmail?: string | null;
+  letterUrl?: string | null;
+  assignmentUrl?: string | null;
+  manuallyAdded?: boolean;
+};
+
 export type SubmissionDecision = "accept" | "reject" | "revision_required";
 
 export type SubmissionDecisionDto = {
@@ -1170,7 +1215,8 @@ export type CommitteeMemberDto = {
   role: string;
   organization?: string | null;
   photoUrl?: string | null;
-  sortOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type UpsertCommitteeMemberDto = {
@@ -1179,7 +1225,6 @@ export type UpsertCommitteeMemberDto = {
   role: string;
   organization?: string;
   photoUrl?: string;
-  sortOrder?: number;
 };
 
 export type ContactMessageInboxDto = {

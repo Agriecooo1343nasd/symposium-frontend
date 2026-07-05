@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
 import {
   attendanceService,
-  cmsService,
   registrationsService,
   submissionsService,
 } from "@/lib/api/services";
@@ -12,12 +11,10 @@ import { registrationStatusLabel } from "@/lib/api/mappers/registration-helpers"
 import { getAccessToken } from "@/lib/api/client";
 import type {
   ManualCheckInDto,
-  MediaAccreditationStatus,
   QrCheckInDto,
   RegistrationStatus,
   SubmissionDecisionDto,
   VerifyChecklistDto,
-  UpdateMediaAccreditationDto,
 } from "@/lib/api/dto";
 import { useSymposiumId } from "./useSymposium";
 
@@ -145,50 +142,11 @@ export function useSubmissionDecision() {
   });
 }
 
-export function useMediaAccreditations(params?: { status?: MediaAccreditationStatus; limit?: number }) {
-  const query = useQuery({
-    queryKey: queryKeys.cms.mediaAccreditations(params),
-    queryFn: () => cmsService.listMediaAccreditations({ ...params, limit: params?.limit ?? 50 }),
-    enabled: enabled(),
-    staleTime: 30_000,
-  });
-  return { ...query, accreditations: query.data?.items ?? [] };
-}
-
-export function useMediaAccreditation(id: string) {
-  const list = useMediaAccreditations({ limit: 100 });
-  const fromList = list.accreditations.find((a) => a.id === id);
-  const detail = useQuery({
-    queryKey: ["cms", "media-accreditation", id],
-    queryFn: async () => {
-      if (fromList) return fromList;
-      const page = await cmsService.listMediaAccreditations({ limit: 100 });
-      return page.items.find((a) => a.id === id) ?? null;
-    },
-    enabled: enabled() && Boolean(id),
-    staleTime: 30_000,
-  });
-  return { ...detail, accreditation: detail.data ?? fromList ?? null, isLoading: list.isLoading || detail.isLoading };
-}
-
-export function useMediaAccreditationStats() {
-  return useQuery({
-    queryKey: queryKeys.cms.mediaAccreditationStats,
-    queryFn: () => cmsService.getMediaAccreditationStats(),
-    enabled: enabled(),
-    staleTime: 60_000,
-  });
-}
-
-export function useUpdateMediaAccreditation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: UpdateMediaAccreditationDto }) =>
-      cmsService.updateMediaAccreditation(id, dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cms"] });
-    },
-  });
-}
+export {
+  useMediaAccreditations,
+  useMediaAccreditation,
+  useMediaAccreditationStats,
+  useUpdateMediaAccreditation,
+} from "./useMediaAccreditation";
 
 export { registrationStatusLabel };
