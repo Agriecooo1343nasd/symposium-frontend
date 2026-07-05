@@ -200,15 +200,22 @@ export default function ApplyExhibitPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(tierPricing.length ? tierPricing : store.sponsorshipTiers).map((t) => {
-                      const tierName = "tier" in t ? String(t.tier) : t.tier;
-                      const usd = "amountUsd" in t ? t.amountUsd : t.baseFeeUsd;
-                      return (
-                        <SelectItem key={tierName} value={tierName.charAt(0).toUpperCase() + tierName.slice(1)}>
-                          {tierName} — ${usd.toLocaleString()}
-                        </SelectItem>
-                      );
-                    })}
+                    {(tierPricing.length
+                      ? tierPricing.map((t) => ({
+                          key: t.tier,
+                          label: `${t.tier.charAt(0).toUpperCase()}${t.tier.slice(1)} — $${t.amountUsd.toLocaleString()}`,
+                          value: `${t.tier.charAt(0).toUpperCase()}${t.tier.slice(1)}` as SponsorshipTier,
+                        }))
+                      : store.sponsorshipTiers.map((t) => ({
+                          key: t.tier,
+                          label: `${t.tier} — $${t.baseFeeUsd.toLocaleString()}`,
+                          value: t.tier,
+                        }))
+                    ).map((opt) => (
+                      <SelectItem key={opt.key} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
