@@ -49,7 +49,7 @@ const TAB_PAGES: Record<string, { valid: string[]; defaultTab: string }> = {
   "/admin/checkin": { valid: ["scan", "dashboard"], defaultTab: "scan" },
   "/admin/users": { valid: ["users", "invites", "roles", "audit"], defaultTab: "users" },
   "/admin/speakers": { valid: ["list", "submissions"], defaultTab: "list" },
-  "/admin/programme": { valid: ["sessions", "timeline1", "timeline2", "rooms", "ratings"], defaultTab: "sessions" },
+  "/admin/programme": { valid: ["sessions", "run-of-show", "rooms", "ratings"], defaultTab: "sessions" },
   "/admin/communications": { valid: ["email", "invites", "auto", "announce"], defaultTab: "email" },
 };
 

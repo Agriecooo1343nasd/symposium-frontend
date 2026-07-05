@@ -5,11 +5,13 @@ import { Loader2, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { MediaAccreditationReviewList } from "@/components/media/MediaAccreditationReviewList";
+import { MediaAccreditationStatsSection } from "@/components/media/MediaAccreditationStatsSection";
 import { AddMediaPersonDialog } from "@/components/media/AddMediaPersonDialog";
-import { useMediaAccreditations } from "@/hooks/api/useMediaAccreditation";
+import { useMediaAccreditations, useMediaAccreditationStats } from "@/hooks/api/useMediaAccreditation";
 
 export default function DeskMediaPage() {
   const { accreditations, isLoading, isError, error, refetch, isFetching } = useMediaAccreditations({ limit: 200 });
+  const statsQuery = useMediaAccreditationStats();
   const pending = accreditations.filter((a) => a.status === "pending");
   const [addOpen, setAddOpen] = useState(false);
 
@@ -44,18 +46,25 @@ export default function DeskMediaPage() {
       )}
 
       {!isLoading && !isError && (
-        <Tabs defaultValue="pending">
-          <TabsList>
-            <TabsTrigger value="pending">Pending ({pending.length})</TabsTrigger>
-            <TabsTrigger value="all">All applications ({accreditations.length})</TabsTrigger>
-          </TabsList>
-          <TabsContent value="pending" className="mt-6">
-            <MediaAccreditationReviewList accreditations={pending} detailBasePath="/desk/media" />
-          </TabsContent>
-          <TabsContent value="all" className="mt-6">
-            <MediaAccreditationReviewList accreditations={accreditations} detailBasePath="/desk/media" showSearch />
-          </TabsContent>
-        </Tabs>
+        <>
+          <MediaAccreditationStatsSection
+            accreditations={accreditations}
+            stats={statsQuery.data}
+            storageKey="nas_desk_media_stats"
+          />
+          <Tabs defaultValue="pending">
+            <TabsList>
+              <TabsTrigger value="pending">Pending ({pending.length})</TabsTrigger>
+              <TabsTrigger value="all">All applications ({accreditations.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="pending" className="mt-6">
+              <MediaAccreditationReviewList accreditations={pending} detailBasePath="/desk/media" />
+            </TabsContent>
+            <TabsContent value="all" className="mt-6">
+              <MediaAccreditationReviewList accreditations={accreditations} detailBasePath="/desk/media" showSearch />
+            </TabsContent>
+          </Tabs>
+        </>
       )}
 
       <AddMediaPersonDialog open={addOpen} onOpenChange={setAddOpen} addedBy="desk" />

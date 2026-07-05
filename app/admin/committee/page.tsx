@@ -128,10 +128,7 @@ export default function Page() {
       <div className="xl:w-[340px] shrink-0 space-y-4">
         <div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold">Organizing committee</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Persisted via <code className="text-xs">/cms/admin/committee-members</code>. Shown on the public About page
-            once a public read endpoint exists (see ai/reports.txt).
-          </p>
+         
         </div>
         <Button size="sm" className="gradient-blue text-accent-foreground w-full" onClick={clearForm}>
           <Plus className="h-4 w-4 mr-1" /> New member

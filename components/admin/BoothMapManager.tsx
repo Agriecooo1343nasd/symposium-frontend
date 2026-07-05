@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Plus, Pencil, Trash2, Save, Info, MonitorPlay, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useStore } from "@/hooks/use-store";
-import { patchStore, uid, type Booth, type BoothStatus } from "@/lib/store";
+import { patchStore, uid, loadStore, type Booth, type BoothStatus } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
@@ -29,21 +29,37 @@ const DEFAULT_INCLUDES = [
     "Daily cleaning service",
 ];
 
-const emptyDraft = (): BoothDraft => ({
-    code: "",
-    row: 0,
-    col: 0,
-    capacity: 4,
-    location: "Main exhibition hall",
-    status: "available",
-    dimensions: "3m × 3m",
-    floor: "Ground floor",
-    includes: [...DEFAULT_INCLUDES],
-    setupWindow: "12 Aug · 14:00–18:00",
-    breakdownWindow: "14 Aug · 18:00–20:00",
-    onSiteContact: "Thierry Niyonsenga · +250 788 000 000",
-    notes: "",
-});
+function nextAvailableCell(booths: Booth[], skipId?: string): { row: number; col: number } {
+    const occupied = new Set(
+        booths.filter((b) => b.id !== skipId).map((b) => `${b.row},${b.col}`),
+    );
+    for (let row = 0; row < 12; row++) {
+        for (let col = 0; col < 12; col++) {
+            if (!occupied.has(`${row},${col}`)) return { row, col };
+        }
+    }
+    const maxRow = booths.reduce((m, b) => Math.max(m, b.row), 0);
+    return { row: maxRow + 1, col: 0 };
+}
+
+function createDraft(booths: Booth[]): BoothDraft {
+    const { row, col } = nextAvailableCell(booths);
+    return {
+        code: "",
+        row,
+        col,
+        capacity: 4,
+        location: "Main exhibition hall",
+        status: "available",
+        dimensions: "3m × 3m",
+        floor: "Ground floor",
+        includes: [...DEFAULT_INCLUDES],
+        setupWindow: "12 Aug · 14:00–18:00",
+        breakdownWindow: "14 Aug · 18:00–20:00",
+        onSiteContact: "Thierry Niyonsenga · +250 788 000 000",
+        notes: "",
+    };
+}
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -66,6 +82,7 @@ function BoothDialog({
     setDraft,
     onSave,
     isEdit,
+    saving,
 }: {
     open: boolean;
     onOpenChange: (v: boolean) => void;
@@ -73,6 +90,7 @@ function BoothDialog({
     setDraft: (d: BoothDraft) => void;
     onSave: () => void;
     isEdit: boolean;
+    saving: boolean;
 }) {
     const [includeInput, setIncludeInput] = useState("");
 
@@ -87,6 +105,11 @@ function BoothDialog({
         setDraft({ ...draft, includes: (draft.includes ?? []).filter((_, idx) => idx !== i) });
     };
 
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave();
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -94,6 +117,7 @@ function BoothDialog({
                     <DialogTitle className="font-serif">{isEdit ? "Edit booth" : "Create booth"}</DialogTitle>
                 </DialogHeader>
 
+                <form onSubmit={submit}>
                 <Tabs defaultValue="identity">
                     <TabsList className="mb-4">
                         <TabsTrigger value="identity">Identity</TabsTrigger>
@@ -264,11 +288,14 @@ function BoothDialog({
                 </Tabs>
 
                 <DialogFooter className="mt-2">
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={onSave} className="gradient-blue text-accent-foreground">
-                        <Save className="h-3.5 w-3.5 mr-1" /> Save booth
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" disabled={saving} className="gradient-blue text-accent-foreground">
+                        <Save className="h-3.5 w-3.5 mr-1" /> {saving ? "Saving…" : "Save booth"}
                     </Button>
                 </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );
@@ -474,13 +501,15 @@ export function BoothMapManager() {
     const store = useStore();
     const [open, setOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [draft, setDraft] = useState<BoothDraft>(emptyDraft());
+    const [draft, setDraft] = useState<BoothDraft>(() => createDraft(loadStore().booths));
+    const [saving, setSaving] = useState(false);
+    const savingRef = useRef(false);
 
-    const openCreate = () => {
+    const openCreate = useCallback(() => {
         setEditingId(null);
-        setDraft(emptyDraft());
+        setDraft(createDraft(loadStore().booths));
         setOpen(true);
-    };
+    }, []);
 
     useAdminCommandAction({
         "new-booth": openCreate,
@@ -507,26 +536,48 @@ export function BoothMapManager() {
     };
 
     const save = () => {
-        if (!draft.code.trim()) return toast.error("Booth code required");
-        if (editingId) {
-            patchStore((s) => ({
-                ...s,
-                booths: s.booths.map((b) =>
-                    b.id === editingId ? { ...b, ...draft, code: draft.code.trim() } : b,
-                ),
-            }));
-            toast.success("Booth updated");
-        } else {
-            patchStore((s) => ({
-                ...s,
-                booths: [
-                    ...s.booths,
-                    { id: uid("booth"), ...draft, code: draft.code.trim() },
-                ],
-            }));
-            toast.success("Booth created");
+        if (savingRef.current) return;
+
+        const code = draft.code.trim();
+        if (!code) return toast.error("Booth code required");
+
+        const current = loadStore().booths;
+        const duplicate = current.some(
+            (b) => b.code.toLowerCase() === code.toLowerCase() && b.id !== editingId,
+        );
+        if (duplicate) return toast.error(`Booth code "${code}" is already in use`);
+
+        const cellTaken = current.some(
+            (b) => b.row === draft.row && b.col === draft.col && b.id !== editingId,
+        );
+        if (cellTaken) {
+            return toast.error(`Grid cell R${draft.row} C${draft.col} is already occupied — pick another row/column`);
         }
-        setOpen(false);
+
+        savingRef.current = true;
+        setSaving(true);
+
+        try {
+            if (editingId) {
+                patchStore((s) => ({
+                    ...s,
+                    booths: s.booths.map((b) =>
+                        b.id === editingId ? { ...b, ...draft, code } : b,
+                    ),
+                }));
+                toast.success("Booth updated");
+            } else {
+                patchStore((s) => ({
+                    ...s,
+                    booths: [...s.booths, { id: uid("booth"), ...draft, code }],
+                }));
+                toast.success("Booth created");
+            }
+            setOpen(false);
+        } finally {
+            savingRef.current = false;
+            setSaving(false);
+        }
     };
 
     const remove = (id: string) => {
@@ -613,6 +664,7 @@ export function BoothMapManager() {
                 setDraft={setDraft}
                 onSave={save}
                 isEdit={!!editingId}
+                saving={saving}
             />
         </div>
     );
