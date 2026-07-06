@@ -36,7 +36,14 @@ export default function Page() {
         </Button>
       </div>
 
-      <AdminSpeakerFormDialog open={open} onOpenChange={setOpen} speaker={edit} />
+      <AdminSpeakerFormDialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setEdit(null);
+        }}
+        speaker={edit}
+      />
 
       <Tabs value={activeTab}>
         <TabsList>

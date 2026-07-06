@@ -97,3 +97,24 @@ export function nextSortOrder(items: RunOfShowItem[], day: 1 | 2): number {
   if (dayItems.length === 0) return 1;
   return Math.max(...dayItems.map((i) => i.order)) + 1;
 }
+
+/** Build a run-of-show row from an existing programme session (link-only; no session mutation). */
+export function linkSessionToRunOfShowItem(
+  session: Session,
+  extras: Pick<RunOfShowItem, "notes" | "ownerName" | "ownerEmail" | "status" | "order" | "id">,
+): RunOfShowItem {
+  return {
+    id: extras.id ?? "",
+    day: session.day,
+    order: extras.order,
+    title: session.title,
+    startTime: session.start,
+    endTime: session.end,
+    type: "session",
+    sessionId: session.id,
+    status: extras.status ?? "upcoming",
+    notes: extras.notes,
+    ownerName: extras.ownerName,
+    ownerEmail: extras.ownerEmail,
+  };
+}

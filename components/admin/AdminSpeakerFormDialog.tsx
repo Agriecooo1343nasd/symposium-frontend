@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,34 +19,43 @@ type Props = {
   speaker?: SpeakerDto | null;
 };
 
+const EMPTY_FORM = {
+  name: "",
+  title: "",
+  organization: "",
+  country: "",
+  bio: "",
+  photoUrl: "",
+  isKeynote: false,
+  isFeatured: false,
+};
+
+function speakerToForm(speaker?: SpeakerDto | null) {
+  if (!speaker) return { ...EMPTY_FORM };
+  return {
+    name: speaker.name ?? "",
+    title: speaker.title ?? "",
+    organization: speaker.organization ?? "",
+    country: speaker.country ?? "",
+    bio: speaker.bio ?? "",
+    photoUrl: speaker.photoUrl ?? "",
+    isKeynote: speaker.isKeynote ?? false,
+    isFeatured: speaker.isFeatured ?? false,
+  };
+}
+
 export function AdminSpeakerFormDialog({ open, onOpenChange, speaker }: Props) {
   const symposiumId = useSymposiumId();
   const create = useCreateSpeaker();
   const update = useUpdateSpeaker();
   const uploadFile = useUploadFile();
   const [uploading, setUploading] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    title: "",
-    organization: "",
-    country: "",
-    bio: "",
-    photoUrl: "",
-    isKeynote: false,
-    isFeatured: false,
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  const reset = () =>
-    setForm({
-      name: speaker?.name ?? "",
-      title: speaker?.title ?? "",
-      organization: speaker?.organization ?? "",
-      country: speaker?.country ?? "",
-      bio: speaker?.bio ?? "",
-      photoUrl: speaker?.photoUrl ?? "",
-      isKeynote: speaker?.isKeynote ?? false,
-      isFeatured: speaker?.isFeatured ?? false,
-    });
+  useEffect(() => {
+    if (!open) return;
+    setForm(speakerToForm(speaker));
+  }, [open, speaker]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +86,7 @@ export function AdminSpeakerFormDialog({ open, onOpenChange, speaker }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (o) reset(); onOpenChange(o); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{speaker ? "Edit speaker" : "Add speaker"}</DialogTitle>
@@ -85,25 +94,51 @@ export function AdminSpeakerFormDialog({ open, onOpenChange, speaker }: Props) {
         <form onSubmit={submit} className="space-y-3">
           <div>
             <Label>Name *</Label>
-            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1" />
+            <Input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="mt-1"
+              placeholder="e.g. Dr. Jane Mukamana"
+              required
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Title</Label>
-              <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1" />
+              <Input
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                className="mt-1"
+                placeholder="e.g. Director of Research"
+              />
             </div>
             <div>
               <Label>Country</Label>
-              <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className="mt-1" />
+              <Input
+                value={form.country}
+                onChange={(e) => setForm({ ...form, country: e.target.value })}
+                className="mt-1"
+                placeholder="e.g. Rwanda"
+              />
             </div>
           </div>
           <div>
             <Label>Organization</Label>
-            <Input value={form.organization} onChange={(e) => setForm({ ...form, organization: e.target.value })} className="mt-1" />
+            <Input
+              value={form.organization}
+              onChange={(e) => setForm({ ...form, organization: e.target.value })}
+              className="mt-1"
+              placeholder="e.g. Rwanda Agriculture Board"
+            />
           </div>
           <div>
             <Label>Photo URL</Label>
-            <Input value={form.photoUrl} onChange={(e) => setForm({ ...form, photoUrl: e.target.value })} className="mt-1" placeholder="https://…" />
+            <Input
+              value={form.photoUrl}
+              onChange={(e) => setForm({ ...form, photoUrl: e.target.value })}
+              className="mt-1"
+              placeholder="https://… or upload below"
+            />
             <Input
               type="file"
               accept="image/*"
@@ -127,7 +162,13 @@ export function AdminSpeakerFormDialog({ open, onOpenChange, speaker }: Props) {
           </div>
           <div>
             <Label>Bio</Label>
-            <Textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} className="mt-1" rows={3} />
+            <Textarea
+              value={form.bio}
+              onChange={(e) => setForm({ ...form, bio: e.target.value })}
+              className="mt-1"
+              rows={3}
+              placeholder="Short biography for the programme and speaker directory…"
+            />
           </div>
           <div className="flex gap-6">
             <label className="flex items-center gap-2 text-sm">
