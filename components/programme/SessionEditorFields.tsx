@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,10 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { useAdminSpeakers } from "@/hooks/api/useAdmin";
+import { useRooms } from "@/hooks/api/useProgramme";
 import { SUB_THEMES, type Session, type SubTheme } from "@/lib/mock-data";
-import { getRooms } from "@/lib/platform-settings";
-import { useStore } from "@/hooks/use-store";
-import { cn } from "@/lib/utils";
+import { cn, speakerInitials, speakerPhotoSrc } from "@/lib/utils";
 
 const SESSION_TYPES: Session["type"][] = ["Keynote", "Plenary", "Panel", "Workshop", "Field Visit"];
 
@@ -22,21 +22,26 @@ type Props = {
 };
 
 export function SessionEditorFields({ form, onChange, showVisibility = true }: Props) {
-  const store = useStore();
-  const rooms = getRooms();
+  const { rooms, isLoading: roomsLoading } = useRooms();
+  const { speakers, isLoading: speakersLoading } = useAdminSpeakers({ limit: 100 });
   const [speakerQuery, setSpeakerQuery] = useState("");
 
-  const speakers = store.speakerProfiles;
   const filteredSpeakers = useMemo(() => {
     const q = speakerQuery.trim().toLowerCase();
     if (!q) return speakers;
     return speakers.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
-        s.org.toLowerCase().includes(q) ||
-        s.title.toLowerCase().includes(q),
+        (s.organization ?? "").toLowerCase().includes(q) ||
+        (s.title ?? "").toLowerCase().includes(q),
     );
   }, [speakers, speakerQuery]);
+
+  useEffect(() => {
+    if (rooms.length === 0 || form.room) return;
+    onChange({ ...form, room: rooms[0].name, capacity: rooms[0].capacity ?? form.capacity });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only seed defaults when rooms first load
+  }, [rooms.length]);
 
   const toggleSpeaker = (id: string) => {
     onChange({
@@ -117,16 +122,36 @@ export function SessionEditorFields({ form, onChange, showVisibility = true }: P
         </div>
         <div>
           <Label>Room / location *</Label>
-          <Select value={form.room} onValueChange={(v) => onChange({ ...form, room: v })}>
+          <Select
+            value={form.room || undefined}
+            onValueChange={(v) => {
+              const room = rooms.find((r) => r.name === v);
+              onChange({
+                ...form,
+                room: v,
+                capacity: room?.capacity ?? form.capacity,
+              });
+            }}
+            disabled={roomsLoading && rooms.length === 0}
+          >
             <SelectTrigger className="mt-1">
-              <SelectValue />
+              <SelectValue placeholder={roomsLoading ? "Loading rooms…" : "Select room"} />
             </SelectTrigger>
             <SelectContent>
+              {rooms.length === 0 && !roomsLoading && (
+                <SelectItem value="TBD" disabled>
+                  No rooms — add rooms on the Rooms tab
+                </SelectItem>
+              )}
               {rooms.map((r) => (
                 <SelectItem key={r.id} value={r.name}>
                   {r.name}
+                  {r.capacity != null ? ` (${r.capacity})` : ""}
                 </SelectItem>
               ))}
+              {form.room && !rooms.some((r) => r.name === form.room) && (
+                <SelectItem value={form.room}>{form.room} (legacy)</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -200,27 +225,37 @@ export function SessionEditorFields({ form, onChange, showVisibility = true }: P
           />
         </div>
         <div className="max-h-40 overflow-y-auto rounded-md border border-border p-2 space-y-1">
-          {filteredSpeakers.length === 0 && (
+          {speakersLoading && <p className="text-xs text-muted-foreground p-2">Loading speakers…</p>}
+          {!speakersLoading && filteredSpeakers.length === 0 && (
             <p className="text-xs text-muted-foreground p-2">No speakers match your search.</p>
           )}
-          {filteredSpeakers.map((s) => (
-            <label
-              key={s.id}
-              className={cn(
-                "flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer text-sm hover:bg-secondary/60",
-                form.speakers.includes(s.id) && "bg-secondary/80",
-              )}
-            >
-              <input type="checkbox" checked={form.speakers.includes(s.id)} onChange={() => toggleSpeaker(s.id)} />
-              <img src={s.photo} alt="" className="h-7 w-7 rounded-full object-cover" />
-              <span className="min-w-0 flex-1">
-                <span className="font-medium">{s.name}</span>
-                <span className="text-xs text-muted-foreground block truncate">
-                  {s.title} · {s.org}
+          {filteredSpeakers.map((s) => {
+            const photo = speakerPhotoSrc(s.photoUrl);
+            return (
+              <label
+                key={s.id}
+                className={cn(
+                  "flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer text-sm hover:bg-secondary/60",
+                  form.speakers.includes(s.id) && "bg-secondary/80",
+                )}
+              >
+                <input type="checkbox" checked={form.speakers.includes(s.id)} onChange={() => toggleSpeaker(s.id)} />
+                {photo ? (
+                  <img src={photo} alt="" className="h-7 w-7 rounded-full object-cover" />
+                ) : (
+                  <span className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-[10px] font-semibold shrink-0">
+                    {speakerInitials(s.name)}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="font-medium">{s.name}</span>
+                  <span className="text-xs text-muted-foreground block truncate">
+                    {[s.title, s.organization].filter(Boolean).join(" · ")}
+                  </span>
                 </span>
-              </span>
-            </label>
-          ))}
+              </label>
+            );
+          })}
         </div>
         {form.speakers.length > 0 && (
           <p className="text-xs text-muted-foreground mt-1">{form.speakers.length} speaker(s) selected</p>

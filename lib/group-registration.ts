@@ -1,7 +1,11 @@
 import type { SubTheme } from "./mock-data";
 import {
+  getServerGroupRegistrationSettings,
+  calculateServerGroupDiscountPercent,
+  GROUP_REGISTRATION_POLICY,
+} from "./group-registration-policy";
+import {
   appendAudit,
-  DEFAULT_GROUP_REGISTRATION_SETTINGS,
   loadStore,
   patchStore,
   uid,
@@ -30,25 +34,20 @@ export type GroupPricing = {
 };
 
 export function getGroupSettings(): GroupRegistrationSettings {
-  return {
-    ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
-    ...loadStore().platformSettings?.groupRegistration,
-  };
+  return getServerGroupRegistrationSettings();
 }
 
 export function calculateGroupPricing(memberCount: number, pricePerSeatUsd: number): GroupPricing {
   const settings = getGroupSettings();
   const count = Math.max(1, memberCount);
   const subtotalUsd = Math.round(pricePerSeatUsd * count * 100) / 100;
-  let discountPercent = 0;
+  const discountPercent = calculateServerGroupDiscountPercent(count);
   let tierLabel = "No group discount";
 
-  if (count >= 10) {
-    discountPercent = settings.tier10PlusPercent;
+  if (count >= GROUP_REGISTRATION_POLICY.tier10Min) {
     tierLabel = `10+ delegates (${discountPercent}% off)`;
   } else if (count >= settings.minSize) {
-    discountPercent = settings.tier5to9Percent;
-    tierLabel = `${settings.minSize}–9 delegates (${discountPercent}% off)`;
+    tierLabel = `${settings.minSize}–${GROUP_REGISTRATION_POLICY.tier5to9Max} delegates (${discountPercent}% off)`;
   }
 
   const discountUsd = Math.round(subtotalUsd * (discountPercent / 100) * 100) / 100;

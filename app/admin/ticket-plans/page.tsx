@@ -138,7 +138,7 @@ export default function Page() {
         <div className="min-w-0">
           <h1 className="font-serif text-2xl sm:text-3xl font-bold">Registration fees &amp; pass plans</h1>
           <p className="text-muted-foreground text-sm mt-1 max-w-2xl">
-            Managed via `GET/POST/PATCH/DELETE /ticket-categories/admin`. Changes apply on the public{" "}
+           . Changes apply on the public{" "}
             <Link href="/register" target="_blank" className="text-accent hover:underline">
               registration page
             </Link>
@@ -146,11 +146,7 @@ export default function Page() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
-          <Button size="sm" variant="outline" asChild>
-            <Link href="/register" target="_blank">
-              <ExternalLink className="h-3.5 w-3.5 mr-1" /> Preview register page
-            </Link>
-          </Button>
+         
           <Button size="sm" className="gradient-blue text-accent-foreground" onClick={openNew}>
             <Plus className="h-3.5 w-3.5 mr-1" /> Add pass plan
           </Button>

@@ -44,15 +44,38 @@ export function toQueryParams(params?: Record<string, string | number | boolean 
 
 export function unwrapPaginated<T>(res: AxiosResponse<ApiResponse<T[]>>): PaginatedResult<T> {
   const meta = res.data.meta ?? { total: 0, page: 1, limit: 20 };
+  const raw = res.data.data;
+
+  let items: T[] = [];
+  if (Array.isArray(raw)) {
+    items = raw;
+  } else if (raw && typeof raw === "object") {
+    const record = raw as { rows?: unknown; items?: unknown; count?: number };
+    if (Array.isArray(record.rows)) {
+      items = record.rows as T[];
+      if ((meta.total ?? 0) === 0 && typeof record.count === "number") {
+        meta.total = record.count;
+      }
+    } else if (Array.isArray(record.items)) {
+      items = record.items as T[];
+    }
+  }
+
   return {
-    items: res.data.data ?? [],
+    items,
     meta: {
-      total: meta.total ?? 0,
+      total: meta.total ?? items.length,
       page: meta.page ?? 1,
       limit: meta.limit ?? 20,
       totalPages: meta.totalPages,
     },
   };
+}
+
+/** Safe accessor — hooks should use this instead of `query.data?.items ?? []`. */
+export function paginatedItems<T>(result: PaginatedResult<T> | undefined | null): T[] {
+  const items = result?.items;
+  return Array.isArray(items) ? items : [];
 }
 
 export async function fetchPaginatedList<T>(
@@ -88,21 +111,22 @@ export async function fetchPaginatedList<T>(
       search: options?.pagination?.search,
     });
     lastMeta = res.meta;
-    const batch = match ? res.items.filter(match) : res.items;
+    const pageItems = paginatedItems(res);
+    const batch = match ? pageItems.filter(match) : pageItems;
     collected.push(...batch);
     const totalPages =
       lastMeta.totalPages ?? Math.max(1, Math.ceil((lastMeta.total || 0) / pageSize));
-    if (page >= totalPages || res.items.length === 0) break;
+    if (page >= totalPages || pageItems.length === 0) break;
     page += 1;
   }
 
-  const items = collected.slice(0, desired);
+  const resultItems = collected.slice(0, desired);
   return {
-    items,
+    items: resultItems,
     meta: {
       ...lastMeta,
       page: startPage,
-      limit: items.length,
+      limit: resultItems.length,
     },
   };
 }

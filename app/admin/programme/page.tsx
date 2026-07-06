@@ -61,7 +61,7 @@ export default function AdminProgrammePage() {
         </TabsContent>
 
         <TabsContent value="run-of-show" className="mt-6">
-          <RunOfShowPanel dayFilter={rosDayFilter} onDayFilterChange={(d) => setDayFilter(d)} showDayFilter={false} />
+          <RunOfShowPanel dayFilter={rosDayFilter} onDayFilterChange={(d) => setDayFilter(d)} showDayFilter={false} dataSource="api" />
         </TabsContent>
 
         <TabsContent value="rooms" className="mt-6">

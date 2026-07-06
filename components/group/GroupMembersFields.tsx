@@ -3,8 +3,7 @@
 import { Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useStore } from "@/hooks/use-store";
-import { DEFAULT_GROUP_REGISTRATION_SETTINGS } from "@/lib/store";
+import { getServerGroupRegistrationSettings } from "@/lib/group-registration-policy";
 import type { GroupMemberInput } from "@/lib/group-registration";
 
 type Props = {
@@ -22,11 +21,7 @@ export function GroupMembersFields({
   onMembersChange,
   representativeEmail,
 }: Props) {
-  const store = useStore();
-  const settings = {
-    ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
-    ...store.platformSettings.groupRegistration,
-  };
+  const settings = getServerGroupRegistrationSettings();
   const additionalCount = Math.max(0, groupSize - 1);
 
   const syncMembers = (size: number) => {

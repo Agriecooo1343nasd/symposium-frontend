@@ -1,28 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   SessionEditorFields,
   normalizeSessionForm,
   validateSessionForm,
 } from "@/components/programme/SessionEditorFields";
+import { SessionProductionFields } from "@/components/programme/SessionProductionFields";
 import { SessionDetailPreview } from "@/components/programme/SessionDetailPreview";
 import { saveSessionAndRunOfShow, upsertRunOfShowItem } from "@/lib/programme-sync";
 import { getSessionById } from "@/lib/sessions";
 import { uid, type RunOfShowItem } from "@/lib/store";
-import { SUB_THEMES, SPEAKERS, type Session } from "@/lib/mock-data";
-import { getRooms } from "@/lib/platform-settings";
+import type { Session } from "@/lib/mock-data";
+import { buildEmptySession } from "@/lib/session-form-defaults";
+import {
+  nextSortOrder,
+  runOfShowItemToCreateDto,
+  runOfShowItemToUpdateDto,
+  sessionToRunOfShowDto,
+} from "@/lib/run-of-show-mapping";
+import {
+  apiSessionToForm,
+  persistSessionExtras,
+  sessionFormToApiDto,
+  sessionFormToUpdateDto,
+} from "@/lib/session-admin-bridge";
+import { useAdminSessions, useCreateSession, useUpdateSession } from "@/hooks/api/useAdmin";
+import { useCreateRunOfShowItem, useRooms, useUpdateRunOfShowItem } from "@/hooks/api/useProgramme";
+import { useSymposiumId } from "@/hooks/api/useSymposium";
 import { toast } from "sonner";
 
 export type RunOfShowDialogMode = "add" | "edit" | "view";
+export type RunOfShowDataSource = "api" | "store";
 
 type Props = {
   open: boolean;
@@ -31,29 +47,11 @@ type Props = {
   day: 1 | 2;
   item?: RunOfShowItem | null;
   onSaved?: () => void;
+  dataSource?: RunOfShowDataSource;
+  allItems?: RunOfShowItem[];
 };
 
 type ActivityKind = "session" | "break" | "custom";
-
-function emptySession(day: 1 | 2): Session {
-  const rooms = getRooms();
-  return {
-    id: uid("ss"),
-    day,
-    start: "09:00",
-    end: "10:00",
-    title: "",
-    type: "Plenary",
-    room: rooms[0]?.name ?? "Grand Ballroom",
-    subTheme: SUB_THEMES[0],
-    speakers: [],
-    description: "",
-    longDescription: "",
-    learningObjectives: [""],
-    capacity: 100,
-    visibility: "public",
-  };
-}
 
 function emptyRos(day: 1 | 2, type: ActivityKind = "custom"): RunOfShowItem {
   return {
@@ -68,52 +66,81 @@ function emptyRos(day: 1 | 2, type: ActivityKind = "custom"): RunOfShowItem {
   };
 }
 
-export function RunOfShowActivityDialog({ open, onOpenChange, mode, day, item, onSaved }: Props) {
+export function RunOfShowActivityDialog({
+  open,
+  onOpenChange,
+  mode,
+  day,
+  item,
+  onSaved,
+  dataSource = "store",
+  allItems = [],
+}: Props) {
+  const isApi = dataSource === "api";
+  const symposiumId = useSymposiumId();
+  const { rooms } = useRooms();
+  const { sessions: apiSessions } = useAdminSessions({ limit: 200 });
+  const createSession = useCreateSession();
+  const updateSession = useUpdateSession();
+  const createRos = useCreateRunOfShowItem();
+  const updateRos = useUpdateRunOfShowItem();
+
   const isView = mode === "view";
   const [kind, setKind] = useState<ActivityKind>("session");
-  const [sessionForm, setSessionForm] = useState<Session>(() => emptySession(day));
+  const [sessionForm, setSessionForm] = useState<Session>(() => buildEmptySession(day, rooms));
   const [rosForm, setRosForm] = useState<RunOfShowItem>(() => emptyRos(day));
+  const [saving, setSaving] = useState(false);
+
+  const apiSessionMap = useMemo(() => {
+    const map = new Map<string, Session>();
+    apiSessions.forEach((dto) => map.set(dto.id, apiSessionToForm(dto)));
+    return map;
+  }, [apiSessions]);
 
   useEffect(() => {
     if (!open) return;
     if (!item) {
       setKind("session");
-      setSessionForm(emptySession(day));
+      setSessionForm(buildEmptySession(day, rooms));
       setRosForm(emptyRos(day));
       return;
     }
     setRosForm({ ...item });
     if (item.type === "session" && item.sessionId) {
       setKind("session");
-      const linked = getSessionById(item.sessionId);
+      const linked = isApi
+        ? apiSessionMap.get(item.sessionId)
+        : getSessionById(item.sessionId);
       if (linked) {
         setSessionForm({ ...linked });
       } else {
-        const sid = item.sessionId;
-        setSessionForm({ ...emptySession(item.day), id: sid });
+        setSessionForm({ ...buildEmptySession(item.day, rooms), id: item.sessionId });
       }
     } else {
       setKind(item.type === "break" ? "break" : "custom");
     }
-  }, [open, item, day]);
+  }, [open, item, day, rooms, isApi, apiSessionMap]);
 
   const previewSession =
     isView && item?.sessionId
-      ? getSessionById(item.sessionId)
+      ? isApi
+        ? apiSessionMap.get(item.sessionId)
+        : getSessionById(item.sessionId)
       : kind === "session"
         ? sessionForm
         : undefined;
 
-  const setOwner = (speakerId: string) => {
-    const sp = SPEAKERS.find((s) => s.id === speakerId);
-    setRosForm({
-      ...rosForm,
-      ownerName: sp?.name ?? "",
-      ownerEmail: sp ? `${sp.id}@nas2026.rw` : "",
-    });
+  const productionValue: Pick<RunOfShowItem, "notes" | "ownerName" | "ownerEmail"> = {
+    notes: rosForm.notes,
+    ownerName: rosForm.ownerName,
+    ownerEmail: rosForm.ownerEmail,
   };
 
-  const save = (e: React.FormEvent) => {
+  const setProduction = (next: Pick<RunOfShowItem, "notes" | "ownerName" | "ownerEmail">) => {
+    setRosForm({ ...rosForm, ...next });
+  };
+
+  const saveStore = (e: React.FormEvent) => {
     e.preventDefault();
     if (isView) {
       onOpenChange(false);
@@ -123,12 +150,7 @@ export function RunOfShowActivityDialog({ open, onOpenChange, mode, day, item, o
     if (kind === "session") {
       const err = validateSessionForm(sessionForm);
       if (err) return toast.error(err);
-      const normalized = normalizeSessionForm({
-        ...sessionForm,
-        day,
-        start: sessionForm.start,
-        end: sessionForm.end,
-      });
+      const normalized = normalizeSessionForm({ ...sessionForm, day });
       saveSessionAndRunOfShow(
         normalized,
         {
@@ -155,6 +177,94 @@ export function RunOfShowActivityDialog({ open, onOpenChange, mode, day, item, o
     }
     onSaved?.();
     onOpenChange(false);
+  };
+
+  const saveApi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isView) {
+      onOpenChange(false);
+      return;
+    }
+    if (!symposiumId) return toast.error("Symposium not loaded");
+
+    setSaving(true);
+    try {
+      if (kind === "session") {
+        const err = validateSessionForm(sessionForm);
+        if (err) {
+          toast.error(err);
+          return;
+        }
+        const normalized = normalizeSessionForm({ ...sessionForm, day });
+        const isEdit = Boolean(item?.sessionId && apiSessions.some((s) => s.id === normalized.id));
+
+        const sessionDto = isEdit
+          ? await updateSession.mutateAsync({
+              id: normalized.id,
+              dto: sessionFormToUpdateDto(normalized, symposiumId),
+            })
+          : await createSession.mutateAsync(sessionFormToApiDto(normalized, symposiumId));
+
+        const withId = { ...normalized, id: sessionDto.id };
+        persistSessionExtras(withId);
+
+        const order = item?.order ?? nextSortOrder(allItems, day);
+        const rosPayload: RunOfShowItem = {
+          ...rosForm,
+          id: item?.id ?? rosForm.id,
+          day,
+          order,
+          type: "session",
+          sessionId: withId.id,
+          title: withId.title,
+          startTime: withId.start,
+          endTime: withId.end,
+        };
+
+        if (item?.id) {
+          await updateRos.mutateAsync({ id: item.id, dto: runOfShowItemToUpdateDto(rosPayload) });
+        } else {
+          await createRos.mutateAsync(sessionToRunOfShowDto(withId, symposiumId, {
+            notes: rosForm.notes,
+            ownerName: rosForm.ownerName,
+            ownerEmail: rosForm.ownerEmail,
+            status: rosForm.status ?? "upcoming",
+            order,
+          }));
+        }
+        toast.success(item ? "Session & run-of-show updated" : "Session added to run of show");
+      } else {
+        if (!rosForm.title.trim()) {
+          toast.error("Title is required");
+          return;
+        }
+        if (!rosForm.startTime.trim() || !rosForm.endTime.trim()) {
+          toast.error("Start and end times are required");
+          return;
+        }
+        const payload: RunOfShowItem = {
+          ...rosForm,
+          id: item?.id ?? rosForm.id,
+          day,
+          type: kind,
+          title: rosForm.title.trim(),
+          sessionId: undefined,
+          order: item?.order ?? nextSortOrder(allItems, day),
+        };
+        if (item?.id) {
+          await updateRos.mutateAsync({ id: item.id, dto: runOfShowItemToUpdateDto(payload) });
+        } else {
+          await createRos.mutateAsync(runOfShowItemToCreateDto(payload, symposiumId));
+        }
+        toast.success(item ? "Activity updated" : "Activity added");
+      }
+      onSaved?.();
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const title =
@@ -190,6 +300,11 @@ export function RunOfShowActivityDialog({ open, onOpenChange, mode, day, item, o
               <p className="text-sm text-muted-foreground mt-1">
                 {item.startTime} – {item.endTime} · <span className="capitalize">{item.type}</span>
               </p>
+              {item.ownerName && (
+                <p className="text-sm mt-2">
+                  Owner: <span className="font-medium">{item.ownerName}</span>
+                </p>
+              )}
               {item.notes && <p className="text-sm mt-3">{item.notes}</p>}
             </div>
             <DialogFooter>
@@ -199,7 +314,7 @@ export function RunOfShowActivityDialog({ open, onOpenChange, mode, day, item, o
             </DialogFooter>
           </div>
         ) : (
-          <form onSubmit={save} className="space-y-5">
+          <form onSubmit={isApi ? saveApi : saveStore} className="space-y-5">
             {!item && (
               <div>
                 <Label>Activity type *</Label>
@@ -226,55 +341,7 @@ export function RunOfShowActivityDialog({ open, onOpenChange, mode, day, item, o
             {kind === "session" ? (
               <>
                 <SessionEditorFields form={sessionForm} onChange={setSessionForm} />
-                <div className="border-t pt-4 space-y-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                    Production & ownership
-                  </h3>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <div>
-                      <Label>Segment owner (optional)</Label>
-                      <Select
-                        value={rosForm.ownerName ? SPEAKERS.find((s) => s.name === rosForm.ownerName)?.id ?? "custom" : "none"}
-                        onValueChange={(v) => {
-                          if (v === "none") setRosForm({ ...rosForm, ownerName: "", ownerEmail: "" });
-                          else if (v !== "custom") setOwner(v);
-                        }}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select owner" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No owner</SelectItem>
-                          {SPEAKERS.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.name}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="custom">Custom…</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Owner email</Label>
-                      <Input
-                        type="email"
-                        value={rosForm.ownerEmail ?? ""}
-                        onChange={(e) => setRosForm({ ...rosForm, ownerEmail: e.target.value })}
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Production notes</Label>
-                    <Textarea
-                      rows={3}
-                      value={rosForm.notes ?? ""}
-                      onChange={(e) => setRosForm({ ...rosForm, notes: e.target.value })}
-                      placeholder="Cue cards, AV handoff, transitions — not shown on public programme…"
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
+                <SessionProductionFields value={productionValue} onChange={setProduction} />
               </>
             ) : (
               <>
@@ -289,6 +356,22 @@ export function RunOfShowActivityDialog({ open, onOpenChange, mode, day, item, o
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Day *</Label>
+                    <Select
+                      value={String(rosForm.day)}
+                      onValueChange={(v) => setRosForm({ ...rosForm, day: Number(v) as 1 | 2 })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Day 1 · 13 Aug</SelectItem>
+                        <SelectItem value="2">Day 2 · 14 Aug</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div />
                   <div>
                     <Label>Start *</Label>
                     <Input
@@ -310,24 +393,20 @@ export function RunOfShowActivityDialog({ open, onOpenChange, mode, day, item, o
                     />
                   </div>
                 </div>
-                <div>
-                  <Label>Notes</Label>
-                  <Textarea
-                    rows={3}
-                    value={rosForm.notes ?? ""}
-                    onChange={(e) => setRosForm({ ...rosForm, notes: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
+                <SessionProductionFields
+                  value={productionValue}
+                  onChange={setProduction}
+                  notesPlaceholder="Notes for breaks and transitions…"
+                />
               </>
             )}
 
             <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
                 Cancel
               </Button>
-              <Button type="submit" className="gradient-blue text-accent-foreground">
-                {item ? "Save changes" : "Add to run of show"}
+              <Button type="submit" className="gradient-blue text-accent-foreground" disabled={saving}>
+                {saving ? "Saving…" : item ? "Save changes" : "Add to run of show"}
               </Button>
             </DialogFooter>
           </form>

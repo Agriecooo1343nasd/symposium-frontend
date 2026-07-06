@@ -42,7 +42,7 @@ import {
   calculateGroupPricing,
   type GroupMemberInput,
 } from "@/lib/group-registration";
-import { DEFAULT_GROUP_REGISTRATION_SETTINGS } from "@/lib/store";
+import { getServerGroupRegistrationSettings } from "@/lib/group-registration-policy";
 import { useAuth } from "@/hooks/use-auth";
 import { useSymposium } from "@/hooks/api/useSymposium";
 import { usePublicTicketCategories } from "@/hooks/api/usePublicData";
@@ -87,7 +87,7 @@ export default function Register() {
   const { raw: categories, isLoading: plansLoading } = usePublicTicketCategories();
   const plans: Plan[] = useMemo(() => categories.map(mapTicketCategoryToPlan), [categories]);
   const exchangeRate = symposium?.exchangeRateUsdRwf ?? EVENT.exchangeRate;
-  const groupSettings = DEFAULT_GROUP_REGISTRATION_SETTINGS;
+  const groupSettings = getServerGroupRegistrationSettings();
   const cancellationPolicy = getCancellationPolicy();
 
   const registerAccount = useRegisterAccount();

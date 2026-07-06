@@ -20,7 +20,7 @@ const paymentStatusLabel: Record<string, string> = {
 
 export function GroupRegistrationsManager({ basePath }: Props) {
   const [q, setQ] = useState("");
-  const { groups, isLoading } = useAdminGroups({ search: q || undefined });
+  const { groups, isLoading, isError } = useAdminGroups({ search: q || undefined });
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const selected = groups.find((g) => g.id === selectedId) ?? groups[0];
@@ -38,6 +38,9 @@ export function GroupRegistrationsManager({ basePath }: Props) {
       </div>
 
       <div className="grid lg:grid-cols-[1.1fr_1fr] gap-6 items-start">
+        {isError && (
+          <p className="lg:col-span-2 text-sm text-destructive">Could not load group registrations.</p>
+        )}
         <div className="rounded-md border bg-card overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-secondary/60 text-xs uppercase text-muted-foreground">

@@ -19,6 +19,7 @@ import {
 } from "@/lib/api/services";
 import { submissionsService } from "@/lib/api/services/submissions";
 import { getAccessToken } from "@/lib/api/client";
+import { paginatedItems } from "@/lib/api/helpers";
 import type {
   AdminCreateGroupRegistrationDto,
   AdminCreateUserDto,
@@ -252,7 +253,7 @@ export function useAdminSpeakers(params?: { page?: number; limit?: number }) {
     enabled: enabled() && Boolean(symposiumId),
     staleTime: 60_000,
   });
-  return { ...query, speakers: query.data?.items ?? [] };
+  return { ...query, speakers: paginatedItems(query.data) };
 }
 
 export function useCreateSpeaker() {
@@ -384,20 +385,31 @@ export function useRecentRegistrations() {
   });
 }
 
-export function useAdminExhibitors(params?: { page?: number; limit?: number }) {
+export function useAdminExhibitors(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sort?: string;
+}) {
   const symposiumId = useSymposiumId();
   const query = useQuery({
     queryKey: queryKeys.exhibitors.admin({ ...params, symposiumId }),
     queryFn: () =>
       exhibitorsService.listAdmin({
-        ...params,
         symposiumId: symposiumId ?? undefined,
-        limit: params?.limit ?? 50,
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 9,
+        search: params?.search || undefined,
+        sort: params?.sort,
       }),
     enabled: enabled() && Boolean(symposiumId),
     staleTime: 60_000,
   });
-  return { ...query, exhibitors: query.data?.items ?? [] };
+  return {
+    ...query,
+    exhibitors: query.data?.items ?? [],
+    meta: query.data?.meta,
+  };
 }
 
 export function useCreateExhibitor() {

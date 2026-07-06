@@ -12,7 +12,7 @@ import { StatsCounter } from "@/components/StatsCounter";
 import { CurrencyToggle, formatPrice } from "@/components/CurrencyToggle";
 import { EVENT } from "@/lib/mock-data";
 import { useStore } from "@/hooks/use-store";
-import { DEFAULT_GROUP_REGISTRATION_SETTINGS } from "@/lib/store";
+import { getServerGroupRegistrationSettings } from "@/lib/group-registration-policy";
 import { GroupDiscountTiersCard } from "@/components/group/GroupDiscountTiersCard";
 import { useSymposium } from "@/hooks/api/useSymposium";
 import {
@@ -33,10 +33,7 @@ export default function Home() {
   const { news } = usePublicAnnouncements();
   const ticketPlans = ticketCategories;
   const exchangeRate = symposium?.exchangeRateUsdRwf ?? EVENT.exchangeRate;
-  const groupSettings = {
-    ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
-    ...store.platformSettings.groupRegistration,
-  };
+  const groupSettings = getServerGroupRegistrationSettings();
   const popularPlan = ticketPlans.find((t) => t.popular) ?? ticketPlans[0];
   const featuredSpeakers = (speakers.filter((s) => s.featured).length ? speakers.filter((s) => s.featured) : speakers).slice(0, 6);
   const speakerPhotoById = new Map(

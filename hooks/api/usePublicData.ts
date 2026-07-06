@@ -16,6 +16,7 @@ import { mapAnnouncements } from "@/lib/api/mappers/announcement";
 import { mapSessionDto, mapSessions } from "@/lib/api/mappers/session";
 import { mapSpeakers } from "@/lib/api/mappers/speaker";
 import { mapTicketCategories } from "@/lib/api/mappers/ticketCategory";
+import { paginatedItems } from "@/lib/api/helpers";
 import type { CreateContactMessageDto, SessionDto } from "@/lib/api/dto";
 
 const LONG_STALE = 5 * 60_000;
@@ -70,7 +71,7 @@ export function usePublicSpeakers() {
   });
   return {
     ...query,
-    speakers: mapSpeakers(query.data?.items ?? []),
+    speakers: mapSpeakers(paginatedItems(query.data)),
   };
 }
 
