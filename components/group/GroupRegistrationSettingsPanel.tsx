@@ -53,12 +53,7 @@ export function GroupRegistrationSettingsPanel() {
           </div>
         </div>
 
-        <p className="text-xs text-muted-foreground border-t pt-4">
-          Backend reference: <code className="text-[10px]">registrations.constants.ts</code> · Applied on{" "}
-          <code className="text-[10px]">POST /registrations/group</code>,{" "}
-          <code className="text-[10px]">POST /registrations/admin/group</code>, and{" "}
-          <code className="text-[10px]">POST /registrations/desk/group</code>.
-        </p>
+  
       </div>
 
       {settings.enabled && (
