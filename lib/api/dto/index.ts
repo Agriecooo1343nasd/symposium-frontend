@@ -169,6 +169,7 @@ export type TicketCategoryDto = {
   capacity?: number | null;
   soldCount: number;
   isActive: boolean;
+  isSoldOut: boolean;
   sortOrder: number;
   benefits?: Record<string, unknown>[] | null;
   available: number | null;
@@ -184,6 +185,7 @@ export type CreateTicketCategoryDto = {
   requiresVerification?: boolean;
   capacity?: number;
   isActive?: boolean;
+  isSoldOut?: boolean;
   sortOrder?: number;
   benefits?: Record<string, unknown>[];
 };
@@ -1278,3 +1280,193 @@ export type CreateReviewDto = {
 export type SetFacePhotoDto = { facePhotoUrl: string };
 export type FaceVerificationDto = { status: "approved" | "rejected" };
 export type DeskCashPaymentDto = { registrationId: string; notes?: string };
+
+export type VenueRoomDto = {
+  id: string;
+  symposiumId: string;
+  name: string;
+  capacity?: number | null;
+  floor?: string | null;
+  avSetup?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UpsertVenueRoomDto = {
+  symposiumId: string;
+  name: string;
+  capacity?: number;
+  floor?: string;
+  avSetup?: string;
+};
+
+export type UpdateVenueRoomDto = Partial<Omit<UpsertVenueRoomDto, "symposiumId">>;
+
+export type RunOfShowItemType = "session" | "break" | "custom";
+export type RunOfShowItemStatus = "upcoming" | "live" | "done";
+
+export type RunOfShowItemDto = {
+  id: string;
+  symposiumId: string;
+  sessionId?: string | null;
+  itemType: RunOfShowItemType;
+  title: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  dayIndex: number;
+  sortOrder: number;
+  status: RunOfShowItemStatus;
+  notes?: string | null;
+  ownerName?: string | null;
+  ownerEmail?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UpsertRunOfShowItemDto = {
+  symposiumId: string;
+  sessionId?: string;
+  itemType: RunOfShowItemType;
+  title: string;
+  startTime?: string;
+  endTime?: string;
+  dayIndex?: number;
+  sortOrder?: number;
+  status?: RunOfShowItemStatus;
+  notes?: string;
+  ownerName?: string;
+  ownerEmail?: string;
+};
+
+export type UpdateRunOfShowItemDto = Partial<Omit<UpsertRunOfShowItemDto, "symposiumId">>;
+
+export type ReorderRunOfShowDto = { day: number; orderedIds: string[] };
+
+export type ExhibitionBoothStatus = "available" | "reserved" | "occupied";
+
+export type ExhibitionBoothDto = {
+  id: string;
+  symposiumId: string;
+  code: string;
+  row: number;
+  col: number;
+  capacity: number;
+  location?: string | null;
+  status: ExhibitionBoothStatus;
+  dimensions?: string | null;
+  floor?: string | null;
+  includes?: string[] | null;
+  setupWindow?: string | null;
+  breakdownWindow?: string | null;
+  onSiteContact?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UpsertExhibitionBoothDto = {
+  symposiumId: string;
+  code: string;
+  row?: number;
+  col?: number;
+  capacity?: number;
+  location?: string;
+  status?: ExhibitionBoothStatus;
+  dimensions?: string;
+  floor?: string;
+  includes?: string[];
+  setupWindow?: string;
+  breakdownWindow?: string;
+  onSiteContact?: string;
+  notes?: string;
+};
+
+export type UpdateExhibitionBoothDto = Partial<Omit<UpsertExhibitionBoothDto, "symposiumId">>;
+
+export type SymposiumArchiveItemType = "photo" | "document";
+
+export type SymposiumArchiveItemDto = {
+  id: string;
+  symposiumId: string;
+  itemType: string;
+  title: string;
+  description?: string | null;
+  fileUrl: string;
+  thumbnailUrl?: string | null;
+  sortOrder: number;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UpsertSymposiumArchiveItemDto = {
+  symposiumId: string;
+  itemType: SymposiumArchiveItemType;
+  title: string;
+  description?: string;
+  fileUrl: string;
+  thumbnailUrl?: string;
+  sortOrder?: number;
+  isPublished?: boolean;
+};
+
+export type UpdateSymposiumArchiveItemDto = Partial<
+  Omit<UpsertSymposiumArchiveItemDto, "symposiumId">
+>;
+
+export type AdminGroupPaymentStatus = "comp" | "paid" | "pending";
+
+export type AdminGroupDelegateDto = {
+  fullName: string;
+  email: string;
+  jobTitle?: string;
+  phone?: string;
+};
+
+export type AdminCreateGroupRegistrationDto = {
+  symposiumId: string;
+  ticketCategoryId: string;
+  currency: Currency;
+  organizationName: string;
+  country?: string;
+  representativeName: string;
+  representativeEmail: string;
+  representativePhone?: string;
+  paymentStatus: AdminGroupPaymentStatus;
+  delegates: AdminGroupDelegateDto[];
+};
+
+export type GroupRegistrationMemberResponseDto = {
+  registrationId: string;
+  fullName: string;
+  email: string;
+  jobTitle?: string | null;
+  status: string;
+  checkedIn: boolean;
+};
+
+export type GroupRegistrationAdminDto = {
+  id: string;
+  groupCode: string;
+  symposiumId: string;
+  organizationName: string;
+  representativeName: string;
+  representativeEmail: string;
+  representativePhone?: string | null;
+  country?: string | null;
+  seatCount: number;
+  discountPercent: number;
+  subtotalUsd: number;
+  subtotalRwf: number;
+  totalUsd: number;
+  totalRwf: number;
+  paymentStatus: AdminGroupPaymentStatus;
+  checkedInCount: number;
+  members: GroupRegistrationMemberResponseDto[];
+  createdAt: string;
+};
+
+export type AdminUpdateRefundStatusDto = {
+  status: RefundStatus;
+  adminNotes?: string;
+};

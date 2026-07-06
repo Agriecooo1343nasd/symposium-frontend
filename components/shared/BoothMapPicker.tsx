@@ -2,7 +2,17 @@
 
 import { MonitorPlay, DoorOpen, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Booth } from "@/lib/store";
+
+export type PickerBooth = {
+    id: string;
+    code: string;
+    row: number;
+    col: number;
+    status: "available" | "reserved" | "occupied";
+    dimensions?: string | null;
+};
+
+type Booth = PickerBooth;
 
 /**
  * Read-only booth map with three modes:

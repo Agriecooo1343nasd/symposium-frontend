@@ -4,7 +4,7 @@ import { useState } from "react";
 import { X, ChevronLeft, ChevronRight, ZoomIn, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { GalleryImage, PreviousPresentation, SymposiumArchiveKind } from "@/lib/store";
+import type { GalleryPhoto as GalleryImage, ArchiveDoc as PreviousPresentation, ArchiveKind as SymposiumArchiveKind } from "@/lib/archive-mapping";
 import { useFileViewerOptional } from "@/components/file-viewer";
 
 // ─── Lightbox ────────────────────────────────────────────────────────────────

@@ -147,4 +147,22 @@ export const queryKeys = {
     committee: (symposiumId: string) => ["cms", "admin", "committee", symposiumId] as const,
     contactMessages: (params?: Record<string, unknown>) => ["cms", "admin", "contact-messages", params] as const,
   },
+  programme: {
+    rooms: (symposiumId: string) => ["programme", "rooms", symposiumId] as const,
+    runOfShow: (symposiumId: string, day?: number) =>
+      ["programme", "run-of-show", symposiumId, day ?? "all"] as const,
+  },
+  booths: {
+    bySymposium: (symposiumId: string) => ["booths", symposiumId] as const,
+  },
+  archive: {
+    public: (symposiumId: string) => ["archive", "public", symposiumId] as const,
+    admin: (symposiumId: string) => ["archive", "admin", symposiumId] as const,
+  },
+  committee: {
+    public: (symposiumId?: string) => ["committee", "public", symposiumId] as const,
+  },
+  groups: {
+    admin: (params?: Record<string, unknown>) => ["groups", "admin", params] as const,
+  },
 } as const;

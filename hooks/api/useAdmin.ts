@@ -8,6 +8,7 @@ import {
   exhibitorsService,
   financeService,
   paymentsService,
+  refundsService,
   registrationsService,
   reviewsService,
   rolesService,
@@ -19,9 +20,11 @@ import {
 import { submissionsService } from "@/lib/api/services/submissions";
 import { getAccessToken } from "@/lib/api/client";
 import type {
+  AdminCreateGroupRegistrationDto,
   AdminCreateUserDto,
   AdminUpdateUserDto,
   AdminUpdateRegistrationDto,
+  AdminUpdateRefundStatusDto,
   ConfirmManualPaymentDto,
   CreateAnnouncementDto,
   CreateExhibitorDto,
@@ -452,6 +455,46 @@ export function useSubmissionReviews(submissionId: string) {
     queryKey: ["reviews", submissionId],
     queryFn: () => reviewsService.listForSubmission(submissionId),
     enabled: enabled() && Boolean(submissionId),
+  });
+}
+
+export function useAdminGroups(params?: { search?: string; page?: number; limit?: number }) {
+  const symposiumId = useSymposiumId();
+  const query = useQuery({
+    queryKey: queryKeys.groups.admin({ symposiumId, ...params }),
+    queryFn: () =>
+      registrationsService.listAdminGroups({
+        symposiumId: symposiumId!,
+        search: params?.search,
+        page: params?.page,
+        limit: params?.limit ?? 100,
+      }),
+    enabled: enabled() && Boolean(symposiumId),
+    staleTime: 30_000,
+  });
+  return { ...query, groups: query.data?.items ?? [], meta: query.data?.meta };
+}
+
+export function useAdminCreateGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: AdminCreateGroupRegistrationDto) => registrationsService.adminCreateGroup(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups", "admin"] });
+      queryClient.invalidateQueries({ queryKey: ["registrations"] });
+    },
+  });
+}
+
+export function useAdminUpdateRefund() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: AdminUpdateRefundStatusDto }) =>
+      refundsService.adminUpdateStatus(id, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance", "refunds"] });
+      queryClient.invalidateQueries({ queryKey: ["registrations"] });
+    },
   });
 }
 

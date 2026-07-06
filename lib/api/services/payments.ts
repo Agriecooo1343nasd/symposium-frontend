@@ -3,6 +3,7 @@ import type { ApiResponse } from "../types";
 import type {
   BankTransferProformaDto,
   ConfirmManualPaymentDto,
+  DeskCashPaymentDto,
   InitiatePaymentDto,
   PaymentInitiateResponseDto,
   PaymentTransactionDto,
@@ -27,7 +28,7 @@ export const paymentsService = {
       .patch<ApiResponse<PaymentTransactionDto>>(`/payments/${id}/confirm-manual`, dto)
       .then(unwrapApi);
   },
-  recordDeskCash(dto: Record<string, unknown>) {
+  recordDeskCash(dto: DeskCashPaymentDto) {
     return apiClient.post<ApiResponse<PaymentTransactionDto>>("/payments/desk/cash", dto).then(unwrapApi);
   },
 };

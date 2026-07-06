@@ -16,9 +16,10 @@ import {
   usePublicExhibitorPackages,
   useSponsorshipTierPricing,
 } from "@/hooks/api/useExhibitor";
-import { patchStore, uid, type OrgType, type ParticipationType, type SponsorshipTier, type Booth } from "@/lib/store";
+import { patchStore, uid, type OrgType, type ParticipationType, type SponsorshipTier } from "@/lib/store";
+import { useBooths } from "@/hooks/api/useBooths";
 import { ExhibitorPackageEstimator } from "@/components/apply/ExhibitorPackageEstimator";
-import { BoothMapPicker } from "@/components/shared/BoothMapPicker";
+import { BoothMapPicker, type PickerBooth } from "@/components/shared/BoothMapPicker";
 import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "sonner";
 
@@ -29,6 +30,7 @@ export default function ApplyExhibitPage() {
   const { symposiumId } = useSymposium();
   const { packages, isLoading: packagesLoading } = usePublicExhibitorPackages(symposiumId || undefined);
   const { pricing: tierPricing } = useSponsorshipTierPricing(symposiumId || undefined);
+  const { booths } = useBooths(symposiumId);
   const createSponsorshipApplication = useCreateSponsorshipApplication();
 
   const [org, setOrg] = useState({
@@ -46,12 +48,12 @@ export default function ApplyExhibitPage() {
     packageId: "" as string,
   });
   const [staffCount, setStaffCount] = useState(2);
-  const [pickedBooth, setPickedBooth] = useState<Booth | null>(null);
+  const [pickedBooth, setPickedBooth] = useState<PickerBooth | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const activePackages = packages.filter((p) => p.isActive);
 
-  const handleBoothPick = (b: Booth) => {
+  const handleBoothPick = (b: PickerBooth) => {
     setPickedBooth(b);
     setOrg((p) => ({ ...p, preferredBoothId: b.id, boothPreference: b.code }));
   };
@@ -269,7 +271,7 @@ export default function ApplyExhibitPage() {
         {(org.participation === "exhibitor" || org.participation === "both") && (
           <div className="rounded-2xl bg-card border border-border p-6 space-y-4">
             <h2 className="font-serif font-bold">Preferred booth</h2>
-            <BoothMapPicker booths={store.booths} mode="pick" selectedId={pickedBooth?.id} onSelect={handleBoothPick} />
+            <BoothMapPicker booths={booths} mode="pick" selectedId={pickedBooth?.id} onSelect={handleBoothPick} />
             {pickedBooth ? (
               <div className="flex items-center gap-2 rounded-xl bg-accent/10 border border-accent/30 px-4 py-3 text-sm">
                 <CheckCircle2 className="h-4 w-4 text-accent flex-shrink-0" />

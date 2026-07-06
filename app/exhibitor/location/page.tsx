@@ -3,16 +3,16 @@
 import { MapPin, Clock, Phone, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/hooks/use-store";
-import { useAuth } from "@/hooks/use-auth";
 import { getExhibitorOrgId } from "@/lib/store";
+import { useBooths } from "@/hooks/api/useBooths";
 import { BoothMapPicker } from "@/components/shared/BoothMapPicker";
 
 export default function Page() {
   const store = useStore();
-  const { session } = useAuth();
+  const { booths } = useBooths();
   const orgId = getExhibitorOrgId();
   const org = store.approvedOrganizations.find((o) => o.id === orgId) ?? store.approvedOrganizations[0];
-  const booth = store.booths.find((b) => b.code === org?.booth) ?? store.booths[0];
+  const booth = booths.find((b) => b.code === org?.booth) ?? booths[0];
 
   return (
     <div className="space-y-8">
@@ -74,7 +74,7 @@ export default function Page() {
         <p className="text-sm text-muted-foreground mb-4">
           Your booth is highlighted in gold. Occupied and reserved booths are shown for context.
         </p>
-        <BoothMapPicker booths={store.booths} mode="view" myBoothCode={org?.booth} />
+        <BoothMapPicker booths={booths} mode="view" myBoothCode={org?.booth} />
       </div>
 
       <div className="rounded-2xl bg-card border border-border p-6">

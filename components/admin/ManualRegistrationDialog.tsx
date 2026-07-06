@@ -5,21 +5,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAdminTicketCategories, useWalkInRegistration } from "@/hooks/api/useAdmin";
+import { useDeskCashPayment } from "@/hooks/api/useDesk";
 import { useSymposiumId } from "@/hooks/api/useSymposium";
+import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "sonner";
 import type { Currency } from "@/lib/api/dto";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Desk-only: show an option to record an on-site cash payment for the new registration. */
+  enableCashPayment?: boolean;
 };
 
-export function ManualRegistrationDialog({ open, onOpenChange }: Props) {
+export function ManualRegistrationDialog({ open, onOpenChange, enableCashPayment = false }: Props) {
   const symposiumId = useSymposiumId();
   const { categories } = useAdminTicketCategories();
   const walkIn = useWalkInRegistration();
+  const cashPayment = useDeskCashPayment();
   const [ticketCategoryId, setTicketCategoryId] = useState("");
   const [currency, setCurrency] = useState<Currency>("USD");
+  const [recordCash, setRecordCash] = useState(false);
   const [form, setForm] = useState({
     email: "",
     firstName: "",
@@ -27,12 +33,12 @@ export function ManualRegistrationDialog({ open, onOpenChange }: Props) {
     phone: "",
   });
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!symposiumId || !ticketCategoryId) return toast.error("Select a pass category");
     if (!form.email.trim()) return toast.error("Email is required");
-    walkIn.mutate(
-      {
+    try {
+      const registration = await walkIn.mutateAsync({
         symposiumId,
         ticketCategoryId,
         currency,
@@ -41,17 +47,22 @@ export function ManualRegistrationDialog({ open, onOpenChange }: Props) {
         lastName: form.lastName.trim() || undefined,
         phone: form.phone.trim() || undefined,
         attendanceType: "in_person",
-      },
-      {
-        onSuccess: () => {
-          toast.success("Walk-in registration created");
-          onOpenChange(false);
-          setForm({ email: "", firstName: "", lastName: "", phone: "" });
-        },
-        onError: (err) => toast.error(err instanceof Error ? err.message : "Walk-in failed"),
-      },
-    );
+      });
+      if (enableCashPayment && recordCash) {
+        await cashPayment.mutateAsync({ registrationId: registration.id, notes: "On-site cash payment (desk)" });
+        toast.success("Walk-in created and cash payment recorded");
+      } else {
+        toast.success("Walk-in registration created");
+      }
+      onOpenChange(false);
+      setForm({ email: "", firstName: "", lastName: "", phone: "" });
+      setRecordCash(false);
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
   };
+
+  const pending = walkIn.isPending || cashPayment.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -108,9 +119,20 @@ export function ManualRegistrationDialog({ open, onOpenChange }: Props) {
             <Label>Phone</Label>
             <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1" />
           </div>
+          {enableCashPayment && (
+            <label className="flex items-center gap-2 text-sm rounded-lg border bg-secondary/40 px-3 py-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={recordCash}
+                onChange={(e) => setRecordCash(e.target.checked)}
+                className="h-4 w-4"
+              />
+              Record on-site cash payment for this registration
+            </label>
+          )}
           <DialogFooter>
-            <Button type="submit" className="gradient-blue text-accent-foreground" disabled={walkIn.isPending}>
-              Create walk-in
+            <Button type="submit" className="gradient-blue text-accent-foreground" disabled={pending}>
+              {pending ? "Processing…" : "Create walk-in"}
             </Button>
           </DialogFooter>
         </form>

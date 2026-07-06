@@ -110,15 +110,25 @@ export default function Page() {
 
   if (isError || !profile) {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm max-w-xl">
-        <p className="font-semibold text-amber-950">Exhibitor profile not found</p>
-        <p className="mt-2 text-amber-900">
-          Your account is not linked to an exhibitor record. Contact the secretariat or apply via{" "}
-          <Link href="/dashboard/apply" className="text-accent font-medium underline">
-            Dashboard → Apply
-          </Link>
-          .
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm max-w-xl space-y-3">
+        <p className="font-semibold text-amber-950">No exhibitor profile linked yet</p>
+        <p className="text-amber-900">
+          Your account has exhibitor access, but it isn&apos;t connected to an exhibitor booth record yet. This is
+          normal right after a sponsorship or exhibitor application is approved — the secretariat provisions your booth
+          shortly after.
         </p>
+        <ul className="list-disc pl-5 text-amber-900 space-y-1">
+          <li>If you just applied, please allow the secretariat time to set up your booth.</li>
+          <li>Haven&apos;t applied yet? Submit an exhibitor/sponsor application below.</li>
+        </ul>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button asChild size="sm" className="gradient-blue text-accent-foreground">
+            <Link href="/dashboard/apply-exhibit">Apply to exhibit / sponsor</Link>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link href="/contact">Contact secretariat</Link>
+          </Button>
+        </div>
       </div>
     );
   }
