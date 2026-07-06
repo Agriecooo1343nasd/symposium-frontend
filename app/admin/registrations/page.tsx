@@ -12,7 +12,7 @@ import { ManualGroupRegistrationDialog } from "@/components/admin/ManualGroupReg
 import { GroupRegistrationsManager } from "@/components/group/GroupRegistrationsManager";
 import { GroupRegistrationSettingsPanel } from "@/components/group/GroupRegistrationSettingsPanel";
 import { useAdminCommandAction, useAdminTabNavigation } from "@/hooks/use-admin-command-action";
-import { useAdminRegistrations, useExportRegistrations, registrationStatusLabel } from "@/hooks/api/useAdmin";
+import { useAdminRegistrations, useExportRegistrations, useAdminGroups, registrationStatusLabel } from "@/hooks/api/useAdmin";
 import { useUsersLookup } from "@/hooks/api/useUsersLookup";
 import {
   registrationAttendeeLabel,
@@ -38,6 +38,7 @@ export default function Page() {
     limit: 100,
     status: filterVer === "pending_verification" ? "pending_verification" : undefined,
   });
+  const { groups, meta: groupsMeta, isError: groupsError } = useAdminGroups();
   const exportCsv = useExportRegistrations();
 
   useEffect(() => {
@@ -121,7 +122,7 @@ export default function Page() {
             <UserPlus className="h-4 w-4 mr-1" /> Walk-in registration
           </Button>
           <Button variant="outline" onClick={() => { onTabChange("groups"); setGroupOpen(true); }}>
-            <Users className="h-4 w-4 mr-1" /> Add group (local)
+            <Users className="h-4 w-4 mr-1" /> Add group
           </Button>
           <Button onClick={handleExport} variant="outline" disabled={exportCsv.isPending}>
             <Download className="h-4 w-4 mr-1" /> Export CSV
@@ -135,11 +136,13 @@ export default function Page() {
       <Tabs value={activeTab} onValueChange={onTabChange} className="mt-4">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="individual">Individual ({individual.length})</TabsTrigger>
-          <TabsTrigger value="groups">Groups (local mock)</TabsTrigger>
+          <TabsTrigger value="groups">Groups ({groupsMeta?.total ?? groups.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="groups" className="mt-6 space-y-8">
-          <p className="text-sm text-muted-foreground">Group admin list has no API — local mock only.</p>
+          {groupsError && (
+            <p className="text-sm text-destructive">Could not load group registrations from API.</p>
+          )}
           <GroupRegistrationSettingsPanel />
           <GroupRegistrationsManager basePath="/admin/registrations" />
         </TabsContent>

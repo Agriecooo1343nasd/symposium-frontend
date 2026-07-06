@@ -10,6 +10,7 @@ import { useAdminSpeakers, useDeleteSpeaker } from "@/hooks/api/useAdmin";
 import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
 import { useSearchParams } from "next/navigation";
 import type { SpeakerDto } from "@/lib/api/dto";
+import { speakerInitials, speakerPhotoSrc } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function Page() {
@@ -49,13 +50,17 @@ export default function Page() {
           {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
           {isError && <p className="text-sm text-destructive">Could not load speakers.</p>}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {speakers.map((s) => (
+            {speakers.map((s) => {
+              const photo = speakerPhotoSrc(s.photoUrl);
+              return (
               <div key={s.id} className="rounded-2xl bg-card border border-border p-5">
                 <div className="flex items-start gap-3">
-                  {s.photoUrl ? (
-                    <img src={s.photoUrl} alt={s.name} className="h-12 w-12 rounded-full object-cover" />
+                  {photo ? (
+                    <img src={photo} alt={s.name} className="h-12 w-12 rounded-full object-cover" />
                   ) : (
-                    <div className="h-12 w-12 rounded-full bg-secondary" />
+                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-navy/90 to-navy/60 text-white flex items-center justify-center text-xs font-bold">
+                      {speakerInitials(s.name)}
+                    </div>
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="font-serif font-bold text-sm truncate">{s.name}</div>
@@ -81,7 +86,8 @@ export default function Page() {
                   </Button>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         </TabsContent>
       </Tabs>

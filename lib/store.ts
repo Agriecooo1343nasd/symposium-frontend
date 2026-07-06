@@ -18,6 +18,10 @@ import {
   type NewsPost,
   type ParticipationKind,
 } from "./mock-data";
+import {
+  getServerGroupRegistrationSettings,
+  type GroupRegistrationSettings,
+} from "./group-registration-policy";
 import type { ZoomMeeting } from "./zoom-mock";
 
 const STORE_KEY = "nas2026_data";
@@ -133,21 +137,9 @@ export type StoreRegistration = {
   groupRole?: "representative" | "member";
 };
 
-export type GroupRegistrationSettings = {
-  enabled: boolean;
-  minSize: number;
-  tier5to9Percent: number;
-  tier10PlusPercent: number;
-  maxSize: number;
-};
+export type { GroupRegistrationSettings } from "./group-registration-policy";
 
-export const DEFAULT_GROUP_REGISTRATION_SETTINGS: GroupRegistrationSettings = {
-  enabled: true,
-  minSize: 5,
-  tier5to9Percent: 10,
-  tier10PlusPercent: 15,
-  maxSize: 30,
-};
+export const DEFAULT_GROUP_REGISTRATION_SETTINGS = getServerGroupRegistrationSettings();
 
 export type GroupRegistration = {
   id: string;

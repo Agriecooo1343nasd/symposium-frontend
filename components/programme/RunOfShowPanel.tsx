@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, Eye, Lock, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SubThemeBadge } from "@/components/SubThemeBadge";
+import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import {
   RunOfShowActivityDialog,
+  type RunOfShowDataSource,
   type RunOfShowDialogMode,
 } from "@/components/moderator/RunOfShowActivityDialog";
 import { useStore } from "@/hooks/use-store";
@@ -21,6 +23,10 @@ import { patchStore, type RunOfShowItem } from "@/lib/store";
 import { getSessionById } from "@/lib/sessions";
 import { sessionVisibility } from "@/lib/access";
 import { deleteRunOfShowItem } from "@/lib/programme-sync";
+import { dtoToRunOfShowItem } from "@/lib/run-of-show-mapping";
+import { apiSessionToForm } from "@/lib/session-admin-bridge";
+import { useAdminSessions } from "@/hooks/api/useAdmin";
+import { useDeleteRunOfShowItem, useReorderRunOfShow, useRunOfShow } from "@/hooks/api/useProgramme";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -31,19 +37,43 @@ type Props = {
   onDayFilterChange?: (day: RunOfShowDayFilter) => void;
   showDayFilter?: boolean;
   showGoLive?: boolean;
+  dataSource?: RunOfShowDataSource;
 };
 
-export function RunOfShowPanel({ dayFilter, onDayFilterChange, showDayFilter = true, showGoLive = false }: Props) {
+export function RunOfShowPanel({
+  dayFilter,
+  onDayFilterChange,
+  showDayFilter = true,
+  showGoLive = false,
+  dataSource = "store",
+}: Props) {
+  const isApi = dataSource === "api";
   const store = useStore();
+  const apiDay = dayFilter === "all" ? undefined : dayFilter;
+  const { items: apiItems, isLoading, isError } = useRunOfShow(apiDay, { enabled: isApi });
+  const { sessions: apiSessions } = useAdminSessions({ limit: 200 });
+  const deleteRos = useDeleteRunOfShowItem();
+  const reorderRos = useReorderRunOfShow();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<RunOfShowDialogMode>("add");
   const [activeItem, setActiveItem] = useState<RunOfShowItem | null>(null);
   const [dialogDay, setDialogDay] = useState<1 | 2>(1);
+  const [deleteTarget, setDeleteTarget] = useState<RunOfShowItem | null>(null);
+
+  const apiSessionMap = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof apiSessionToForm>>();
+    apiSessions.forEach((dto) => map.set(dto.id, apiSessionToForm(dto)));
+    return map;
+  }, [apiSessions]);
+
+  const allItems: RunOfShowItem[] = useMemo(() => {
+    if (!isApi) return store.runOfShow;
+    return apiItems.map(dtoToRunOfShowItem);
+  }, [isApi, store.runOfShow, apiItems]);
 
   const filtered =
-    dayFilter === "all"
-      ? store.runOfShow
-      : store.runOfShow.filter((r) => r.day === dayFilter);
+    dayFilter === "all" ? allItems : allItems.filter((r) => r.day === dayFilter);
 
   const grouped = ([1, 2] as const)
     .map((day) => ({
@@ -52,7 +82,13 @@ export function RunOfShowPanel({ dayFilter, onDayFilterChange, showDayFilter = t
     }))
     .filter((g) => dayFilter === "all" || g.day === dayFilter);
 
-  const saveItems = (day: 1 | 2, next: RunOfShowItem[]) => {
+  const resolveSession = (sessionId?: string) => {
+    if (!sessionId) return undefined;
+    if (isApi) return apiSessionMap.get(sessionId);
+    return getSessionById(sessionId);
+  };
+
+  const saveItemsStore = (day: 1 | 2, next: RunOfShowItem[]) => {
     patchStore((s) => ({
       ...s,
       runOfShow: [...s.runOfShow.filter((r) => r.day !== day), ...next.map((item, i) => ({ ...item, order: i + 1 }))],
@@ -66,11 +102,21 @@ export function RunOfShowPanel({ dayFilter, onDayFilterChange, showDayFilter = t
     setDialogOpen(true);
   };
 
-  const remove = (id: string) => {
-    if (!confirm("Remove this activity? Linked programme session data is kept unless you delete it separately."))
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    if (isApi) {
+      deleteRos.mutate(deleteTarget.id, {
+        onSuccess: () => {
+          toast.success("Removed from run of show");
+          setDeleteTarget(null);
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
+      });
       return;
-    deleteRunOfShowItem(id);
+    }
+    deleteRunOfShowItem(deleteTarget.id);
     toast.success("Removed from run of show");
+    setDeleteTarget(null);
   };
 
   const move = (day: 1 | 2, items: RunOfShowItem[], id: string, dir: -1 | 1) => {
@@ -79,7 +125,15 @@ export function RunOfShowPanel({ dayFilter, onDayFilterChange, showDayFilter = t
     if (swap < 0 || swap >= items.length) return;
     const copy = [...items];
     [copy[idx], copy[swap]] = [copy[swap], copy[idx]];
-    saveItems(day, copy);
+
+    if (isApi) {
+      reorderRos.mutate(
+        { day, orderedIds: copy.map((i) => i.id) },
+        { onError: (e) => toast.error(e instanceof Error ? e.message : "Reorder failed") },
+      );
+      return;
+    }
+    saveItemsStore(day, copy);
   };
 
   const defaultAddDay = dayFilter === 2 ? 2 : 1;
@@ -107,7 +161,10 @@ export function RunOfShowPanel({ dayFilter, onDayFilterChange, showDayFilter = t
         </Button>
       </div>
 
-      {grouped.every((g) => g.items.length === 0) && (
+      {isApi && isLoading && <p className="text-sm text-muted-foreground">Loading run of show…</p>}
+      {isApi && isError && <p className="text-sm text-destructive">Could not load run of show from API.</p>}
+
+      {!isLoading && grouped.every((g) => g.items.length === 0) && (
         <p className="text-sm text-muted-foreground rounded-md border border-dashed p-8 text-center">
           No activities yet. Add a programme session or a break.
         </p>
@@ -120,7 +177,7 @@ export function RunOfShowPanel({ dayFilter, onDayFilterChange, showDayFilter = t
               <h3 className="font-serif font-bold text-lg">Day {day}</h3>
             )}
             {items.map((item, i) => {
-              const session = item.sessionId ? getSessionById(item.sessionId) : undefined;
+              const session = item.sessionId ? resolveSession(item.sessionId) : undefined;
               const vis = session ? sessionVisibility(session) : null;
 
               return (
@@ -197,10 +254,10 @@ export function RunOfShowPanel({ dayFilter, onDayFilterChange, showDayFilter = t
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <Button size="icon" variant="ghost" onClick={() => move(day, items, item.id, -1)} disabled={i === 0}>
+                    <Button size="icon" variant="ghost" onClick={() => move(day, items, item.id, -1)} disabled={i === 0 || reorderRos.isPending}>
                       <ChevronUp className="h-4 w-4" />
                     </Button>
-                    <Button size="icon" variant="ghost" onClick={() => move(day, items, item.id, 1)} disabled={i === items.length - 1}>
+                    <Button size="icon" variant="ghost" onClick={() => move(day, items, item.id, 1)} disabled={i === items.length - 1 || reorderRos.isPending}>
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => openDialog("view", day, item)}>
@@ -209,7 +266,7 @@ export function RunOfShowPanel({ dayFilter, onDayFilterChange, showDayFilter = t
                     <Button size="sm" variant="outline" onClick={() => openDialog("edit", day, item)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => remove(item.id)}>
+                    <Button size="sm" variant="ghost" onClick={() => setDeleteTarget(item)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -227,6 +284,22 @@ export function RunOfShowPanel({ dayFilter, onDayFilterChange, showDayFilter = t
         day={dialogDay}
         item={activeItem}
         onSaved={() => setActiveItem(null)}
+        dataSource={dataSource}
+        allItems={allItems}
+      />
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Remove from run of show?"
+        description={
+          deleteTarget?.type === "session"
+            ? "This removes the activity from the timeline. The programme session itself is kept unless you delete it on the Sessions tab."
+            : "This activity will be permanently removed from the run of show."
+        }
+        confirmLabel="Remove"
+        loading={deleteRos.isPending}
+        onConfirm={confirmDelete}
       />
     </div>
   );

@@ -17,9 +17,9 @@ import type { GroupMemberInput } from "@/lib/group-registration";
 import type { AdminGroupDelegateDto, TicketCategoryDto } from "@/lib/api/dto";
 import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "sonner";
-import { DEFAULT_GROUP_REGISTRATION_SETTINGS } from "@/lib/store";
+import { getServerGroupRegistrationSettings, GROUP_REGISTRATION_POLICY } from "@/lib/group-registration-policy";
 
-const MIN_GROUP_TOTAL = 5;
+const MIN_GROUP_TOTAL = GROUP_REGISTRATION_POLICY.minSize;
 
 type Props = {
   open: boolean;
@@ -37,11 +37,8 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange, desk = false
   const deskCreate = useDeskCreateGroup();
   const createGroup = desk ? deskCreate : adminCreate;
 
-  const groupSettings = {
-    ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
-    ...store.platformSettings.groupRegistration,
-  };
-  const minSize = Math.max(MIN_GROUP_TOTAL, groupSettings.minSize);
+  const groupSettings = getServerGroupRegistrationSettings();
+  const minSize = Math.max(GROUP_REGISTRATION_POLICY.minSize, groupSettings.minSize);
 
   const [picked, setPicked] = useState<TicketCategoryDto | null>(null);
   const [groupSize, setGroupSize] = useState(minSize);

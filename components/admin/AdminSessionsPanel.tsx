@@ -22,11 +22,13 @@ import {
   normalizeSessionForm,
   validateSessionForm,
 } from "@/components/programme/SessionEditorFields";
+import { ConfirmDeleteDialog } from "@/components/shared/ConfirmDeleteDialog";
 import { useAdminSessions, useCreateSession, useDeleteSession, useUpdateSession } from "@/hooks/api/useAdmin";
+import { useRooms } from "@/hooks/api/useProgramme";
 import { useSymposiumId } from "@/hooks/api/useSymposium";
 import type { SessionDto } from "@/lib/api/dto";
-import { SUB_THEMES, type Session } from "@/lib/mock-data";
-import { getRooms } from "@/lib/platform-settings";
+import type { Session } from "@/lib/mock-data";
+import { buildEmptySession } from "@/lib/session-form-defaults";
 import {
   apiSessionToForm,
   persistSessionExtras,
@@ -35,7 +37,6 @@ import {
 } from "@/lib/session-admin-bridge";
 import { deleteSessionExtras } from "@/lib/session-extras-storage";
 import { upsertSession, deleteSession as deleteLocalSession } from "@/lib/programme-sync";
-import { uid } from "@/lib/store";
 import { toast } from "sonner";
 import { useAdminCommandAction } from "@/hooks/use-admin-command-action";
 
@@ -45,35 +46,17 @@ type Props = {
   dayFilter: SessionDayFilter;
 };
 
-function emptySession(): Session {
-  const rooms = getRooms();
-  return {
-    id: uid("ss"),
-    day: 1,
-    start: "09:00",
-    end: "10:00",
-    title: "",
-    type: "Plenary",
-    room: rooms[0]?.name ?? "Grand Ballroom",
-    subTheme: SUB_THEMES[0],
-    speakers: [],
-    description: "",
-    longDescription: "",
-    learningObjectives: [""],
-    capacity: rooms[0]?.capacity ?? 100,
-    visibility: "public",
-  };
-}
-
 export function AdminSessionsPanel({ dayFilter }: Props) {
   const symposiumId = useSymposiumId();
+  const { rooms } = useRooms();
   const apiDay = dayFilter === "all" ? undefined : dayFilter;
   const { sessions: apiSessions, isLoading, isError } = useAdminSessions({ limit: 200, day: apiDay });
   const create = useCreateSession();
   const update = useUpdateSession();
   const remove = useDeleteSession();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<Session>(emptySession);
+  const [form, setForm] = useState<Session>(() => buildEmptySession(1));
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const sessions = useMemo(() => {
     const mapped = apiSessions.map(apiSessionToForm);
@@ -82,7 +65,7 @@ export function AdminSessionsPanel({ dayFilter }: Props) {
   }, [apiSessions, dayFilter]);
 
   const openCreate = () => {
-    const next = emptySession();
+    const next = buildEmptySession(dayFilter === 2 ? 2 : 1, rooms);
     if (dayFilter === 1 || dayFilter === 2) next.day = dayFilter;
     setForm(next);
     setOpen(true);
@@ -121,13 +104,14 @@ export function AdminSessionsPanel({ dayFilter }: Props) {
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm("Delete this session? It will be removed from run-of-show too.")) return;
-    remove.mutate(id, {
+  const handleDelete = () => {
+    if (!deleteId) return;
+    remove.mutate(deleteId, {
       onSuccess: () => {
-        deleteLocalSession(id);
-        deleteSessionExtras(id);
+        deleteLocalSession(deleteId);
+        deleteSessionExtras(deleteId);
         toast.success("Session deleted");
+        setDeleteId(null);
       },
       onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
     });
@@ -184,7 +168,7 @@ export function AdminSessionsPanel({ dayFilter }: Props) {
                     <Button size="sm" variant="outline" onClick={() => openEdit(dto)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleDelete(s.id)}>
+                    <Button size="sm" variant="ghost" onClick={() => setDeleteId(s.id)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </td>
@@ -194,11 +178,6 @@ export function AdminSessionsPanel({ dayFilter }: Props) {
           </tbody>
         </table>
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        Rich fields (learning objectives, sub-theme, capacity, visibility) are saved locally until the backend extends{" "}
-        <code className="text-[10px]">SessionDto</code>.
-      </p>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -218,6 +197,15 @@ export function AdminSessionsPanel({ dayFilter }: Props) {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteId)}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete session?"
+        description="This permanently deletes the session and removes it from the run of show. This cannot be undone."
+        loading={remove.isPending}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

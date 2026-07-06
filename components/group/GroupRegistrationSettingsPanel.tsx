@@ -1,56 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { Percent, Save } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Percent, Server } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useStore } from "@/hooks/use-store";
-import { patchStore, DEFAULT_GROUP_REGISTRATION_SETTINGS } from "@/lib/store";
 import { GroupDiscountTiersCard } from "@/components/group/GroupDiscountTiersCard";
-import { toast } from "sonner";
+import { getServerGroupRegistrationSettings } from "@/lib/group-registration-policy";
 
 export function GroupRegistrationSettingsPanel() {
   const store = useStore();
-  const current = {
-    ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
-    ...store.platformSettings.groupRegistration,
-  };
-  const [enabled, setEnabled] = useState(current.enabled);
-  const [minSize, setMinSize] = useState(String(current.minSize));
-  const [maxSize, setMaxSize] = useState(String(current.maxSize));
-  const [tier59, setTier59] = useState(String(current.tier5to9Percent));
-  const [tier10, setTier10] = useState(String(current.tier10PlusPercent));
-
-  const previewSettings = {
-    enabled,
-    minSize: Number(minSize) || current.minSize,
-    maxSize: Number(maxSize) || current.maxSize,
-    tier5to9Percent: Number(tier59) || current.tier5to9Percent,
-    tier10PlusPercent: Number(tier10) || current.tier10PlusPercent,
-  };
-
+  const settings = getServerGroupRegistrationSettings();
   const examplePlan = store.ticketPlans.find((t) => t.popular && !t.isMediaAccreditation) ?? store.ticketPlans[0];
-
-  const save = () => {
-    const min = Math.max(2, Number(minSize) || 5);
-    const max = Math.max(min, Number(maxSize) || 30);
-    patchStore((s) => ({
-      ...s,
-      platformSettings: {
-        ...s.platformSettings,
-        groupRegistration: {
-          enabled,
-          minSize: min,
-          maxSize: max,
-          tier5to9Percent: Math.min(100, Math.max(0, Number(tier59) || 0)),
-          tier10PlusPercent: Math.min(100, Math.max(0, Number(tier10) || 0)),
-        },
-      },
-    }));
-    toast.success("Group registration settings saved — visible on /register and homepage");
-  };
 
   return (
     <div className="space-y-6">
@@ -63,44 +23,47 @@ export function GroupRegistrationSettingsPanel() {
             <div>
               <h3 className="font-serif font-bold text-lg">Group registration &amp; discounts</h3>
               <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-                Controls volume discounts on the public registration page and homepage. Finance reports use the same
-                rates when reconciling group invoices.
+                Volume discounts are computed on the server when a group is created. Values below match the live API
+                policy — they cannot be edited here until a settings endpoint is available.
               </p>
             </div>
           </div>
-          <label className="flex items-center gap-2 shrink-0">
-            <Switch checked={enabled} onCheckedChange={setEnabled} />
-            <Label>Enabled on /register</Label>
-          </label>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground shrink-0">
+            <Server className="h-3.5 w-3.5" />
+            Server policy (read-only)
+          </div>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <Label>Minimum group size</Label>
-            <Input type="number" min={2} value={minSize} onChange={(e) => setMinSize(e.target.value)} className="mt-1" />
+            <Input type="number" value={settings.minSize} readOnly disabled className="mt-1 bg-muted" />
           </div>
           <div>
-            <Label>Maximum group size</Label>
-            <Input type="number" min={2} value={maxSize} onChange={(e) => setMaxSize(e.target.value)} className="mt-1" />
+            <Label>Recommended max (UI cap)</Label>
+            <Input type="number" value={settings.maxSize} readOnly disabled className="mt-1 bg-muted" />
           </div>
           <div>
-            <Label>Discount {previewSettings.minSize}–9 (%)</Label>
-            <Input type="number" min={0} max={100} value={tier59} onChange={(e) => setTier59(e.target.value)} className="mt-1" />
+            <Label>Discount {settings.minSize}–9 (%)</Label>
+            <Input type="number" value={settings.tier5to9Percent} readOnly disabled className="mt-1 bg-muted" />
           </div>
           <div>
             <Label>Discount 10+ (%)</Label>
-            <Input type="number" min={0} max={100} value={tier10} onChange={(e) => setTier10(e.target.value)} className="mt-1" />
+            <Input type="number" value={settings.tier10PlusPercent} readOnly disabled className="mt-1 bg-muted" />
           </div>
         </div>
 
-        <Button onClick={save} className="gradient-blue text-accent-foreground">
-          <Save className="h-4 w-4 mr-1" /> Save discount settings
-        </Button>
+        <p className="text-xs text-muted-foreground border-t pt-4">
+          Backend reference: <code className="text-[10px]">registrations.constants.ts</code> · Applied on{" "}
+          <code className="text-[10px]">POST /registrations/group</code>,{" "}
+          <code className="text-[10px]">POST /registrations/admin/group</code>, and{" "}
+          <code className="text-[10px]">POST /registrations/desk/group</code>.
+        </p>
       </div>
 
-      {enabled && (
+      {settings.enabled && (
         <GroupDiscountTiersCard
-          settings={previewSettings}
+          settings={settings}
           examplePriceUsd={examplePlan?.usd ?? 150}
           exchangeRate={store.platformSettings.exchangeRate}
           compact

@@ -4,3 +4,20 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+/** True when the value is safe to use as an img src (absolute URL, site-root path, or data URI). */
+export function isUsableImageSrc(url?: string | null): boolean {
+  if (!url?.trim()) return false;
+  return /^(https?:\/\/|\/|data:image)/i.test(url.trim());
+}
+
+export function speakerPhotoSrc(photoUrl?: string | null): string | null {
+  return isUsableImageSrc(photoUrl) ? photoUrl!.trim() : null;
+}
+
+export function speakerInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts[parts.length - 1][0] ?? ""}`.toUpperCase();
+}
