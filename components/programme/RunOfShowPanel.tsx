@@ -38,6 +38,8 @@ type Props = {
   showDayFilter?: boolean;
   showGoLive?: boolean;
   dataSource?: RunOfShowDataSource;
+  /** Hide add/edit/delete/reorder (e.g. moderator portal — API writes need sessions.manage). */
+  readOnly?: boolean;
 };
 
 export function RunOfShowPanel({
@@ -46,6 +48,7 @@ export function RunOfShowPanel({
   showDayFilter = true,
   showGoLive = false,
   dataSource = "store",
+  readOnly = false,
 }: Props) {
   const isApi = dataSource === "api";
   const store = useStore();
@@ -156,9 +159,11 @@ export function RunOfShowPanel({
             </Select>
           </div>
         )}
-        <Button className="gradient-blue text-accent-foreground ml-auto" onClick={() => openDialog("add", defaultAddDay)}>
-          <Plus className="h-4 w-4 mr-1" /> Add activity
-        </Button>
+        {!readOnly && (
+          <Button className="gradient-blue text-accent-foreground ml-auto" onClick={() => openDialog("add", defaultAddDay)}>
+            <Plus className="h-4 w-4 mr-1" /> Add activity
+          </Button>
+        )}
       </div>
 
       {isApi && isLoading && <p className="text-sm text-muted-foreground">Loading run of show…</p>}
@@ -166,7 +171,9 @@ export function RunOfShowPanel({
 
       {!isLoading && grouped.every((g) => g.items.length === 0) && (
         <p className="text-sm text-muted-foreground rounded-md border border-dashed p-8 text-center">
-          No activities yet. Add a programme session or a break.
+          {readOnly
+            ? "No activities on the timeline yet. Items added in Admin → Programme → Run of show will appear here."
+            : "No activities yet. Add a programme session or a break."}
         </p>
       )}
 
@@ -254,20 +261,24 @@ export function RunOfShowPanel({
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <Button size="icon" variant="ghost" onClick={() => move(day, items, item.id, -1)} disabled={i === 0 || reorderRos.isPending}>
-                      <ChevronUp className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={() => move(day, items, item.id, 1)} disabled={i === items.length - 1 || reorderRos.isPending}>
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
+                    {!readOnly && (
+                      <>
+                        <Button size="icon" variant="ghost" onClick={() => move(day, items, item.id, -1)} disabled={i === 0 || reorderRos.isPending}>
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => move(day, items, item.id, 1)} disabled={i === items.length - 1 || reorderRos.isPending}>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => openDialog("edit", day, item)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setDeleteTarget(item)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => openDialog("view", day, item)}>
                       <Eye className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => openDialog("edit", day, item)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setDeleteTarget(item)}>
-                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>

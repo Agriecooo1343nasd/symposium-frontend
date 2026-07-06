@@ -146,7 +146,7 @@ export default function Page() {
               </div>
               <Button
                 size="sm"
-                className="gradient-blue text-accent-foreground"
+                className="gradient-green text-accent-foreground"
                 disabled={w.status === "promoted" || promote.isPending}
                 onClick={() => promoteEntry(w.id)}
               >
@@ -211,7 +211,7 @@ export default function Page() {
               <X className="h-4 w-4 mr-1" /> Reject
             </Button>
             {review && ACTIONABLE.includes(review.status) && (
-              <Button onClick={() => act("approved")} disabled={updateRefund.isPending} className="gradient-blue text-accent-foreground">
+              <Button onClick={() => act("approved")} disabled={updateRefund.isPending} className="gradient-green text-accent-foreground">
                 <Check className="h-4 w-4 mr-1" /> Approve
               </Button>
             )}
