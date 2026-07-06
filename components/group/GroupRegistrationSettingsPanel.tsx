@@ -28,10 +28,7 @@ export function GroupRegistrationSettingsPanel() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground shrink-0">
-            <Server className="h-3.5 w-3.5" />
-            Server policy (read-only)
-          </div>
+          
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">

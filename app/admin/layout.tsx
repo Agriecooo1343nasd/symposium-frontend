@@ -79,7 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border border-gray-300 border-t-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border border-gray-300 border-t-green-600 mx-auto mb-4"></div>
           <p className="text-sm text-gray-600">Loading...</p>
         </div>
       </div>
@@ -95,7 +95,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <p className="mt-2 text-sm">You do not have permission to access the admin portal.</p>
           <div className="mt-4 flex gap-2">
             <button
-              className="px-3 py-1 rounded bg-blue-600 text-white"
+              className="px-3 py-1 rounded bg-green-600 text-white"
               onClick={() => router.replace("/login")}
             >
               Back to Login

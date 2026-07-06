@@ -13,8 +13,8 @@ export default function ModeratorRunOfShowPage() {
         <div>
           <h1 className="font-serif text-3xl font-bold">Run of show</h1>
           <p className="text-muted-foreground max-w-2xl">
-            Build the live timeline with full programme session detail (capacity, sub-themes, learning objectives,
-            speakers). Control whether each session is public or subscribers-only on the programme.
+            Live programme timeline synced from Admin → Programme. Use this view during the event to follow session
+            order, times, and linked programme details.
           </p>
         </div>
         <ProgrammeDayFilter value={dayFilter} onChange={setDayFilter} />
@@ -24,6 +24,9 @@ export default function ModeratorRunOfShowPage() {
         dayFilter={dayFilter as RunOfShowDayFilter}
         onDayFilterChange={(d) => setDayFilter(d)}
         showDayFilter={false}
+        dataSource="api"
+        readOnly
+        showGoLive
       />
     </div>
   );
