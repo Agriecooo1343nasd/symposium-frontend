@@ -38,7 +38,7 @@ type Props = {
   showDayFilter?: boolean;
   showGoLive?: boolean;
   dataSource?: RunOfShowDataSource;
-  /** Hide add/edit/delete/reorder (e.g. moderator portal — API writes need sessions.manage). */
+  /** Hide add/edit/delete/reorder when the viewer must not mutate (optional). */
   readOnly?: boolean;
 };
 
