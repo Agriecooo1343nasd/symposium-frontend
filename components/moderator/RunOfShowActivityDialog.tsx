@@ -25,6 +25,7 @@ import { apiSessionToForm } from "@/lib/session-admin-bridge";
 import { useAdminSessions } from "@/hooks/api/useAdmin";
 import { useCreateRunOfShowItem, useUpdateRunOfShowItem } from "@/hooks/api/useProgramme";
 import { useSymposiumId } from "@/hooks/api/useSymposium";
+import { releaseStuckRadixLayerLocks } from "@/lib/radix-layer-fix";
 import { toast } from "sonner";
 
 export type RunOfShowDialogMode = "add" | "edit" | "view";
@@ -249,7 +250,13 @@ export function RunOfShowActivityDialog({
     mode === "view" ? "View activity" : mode === "edit" ? "Edit run-of-show activity" : "Add run-of-show activity";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        onOpenChange(next);
+        if (!next) releaseStuckRadixLayerLocks();
+      }}
+    >
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
