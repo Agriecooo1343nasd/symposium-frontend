@@ -10,12 +10,15 @@ import {
 import { registrationStatusLabel } from "@/lib/api/mappers/registration-helpers";
 import { getAccessToken } from "@/lib/api/client";
 import type {
+  AdminCreateGroupRegistrationDto,
+  DeskCashPaymentDto,
   ManualCheckInDto,
   QrCheckInDto,
   RegistrationStatus,
   SubmissionDecisionDto,
   VerifyChecklistDto,
 } from "@/lib/api/dto";
+import { paymentsService } from "@/lib/api/services";
 import { useSymposiumId } from "./useSymposium";
 
 const enabled = () => typeof window !== "undefined" && Boolean(getAccessToken());
@@ -138,6 +141,28 @@ export function useSubmissionDecision() {
       submissionsService.recordDecision(id, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["submissions"] });
+    },
+  });
+}
+
+export function useDeskCreateGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: AdminCreateGroupRegistrationDto) => registrationsService.deskCreateGroup(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups", "admin"] });
+      queryClient.invalidateQueries({ queryKey: ["registrations"] });
+    },
+  });
+}
+
+export function useDeskCashPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: DeskCashPaymentDto) => paymentsService.recordDeskCash(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["registrations"] });
+      queryClient.invalidateQueries({ queryKey: ["finance"] });
     },
   });
 }

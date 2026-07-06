@@ -28,3 +28,5 @@ export { networkingService } from "./networking";
 export { engagementService } from "./engagement";
 export { resourcesService } from "./resources";
 export { waitlistService } from "./waitlist";
+export { programmeService } from "./programme";
+export { boothsService } from "./booths";

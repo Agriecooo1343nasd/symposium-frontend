@@ -74,6 +74,17 @@ export function usePublicSpeakers() {
   };
 }
 
+export function usePublicCommittee() {
+  const { symposiumId } = useSymposium();
+  const query = useQuery({
+    queryKey: queryKeys.committee.public(symposiumId ?? "none"),
+    queryFn: () => cmsService.listCommitteePublic(symposiumId as string),
+    enabled: Boolean(symposiumId),
+    staleTime: LONG_STALE,
+  });
+  return { ...query, members: query.data ?? [] };
+}
+
 export function usePublicSponsors() {
   const { symposiumId } = useSymposium();
   return useQuery({

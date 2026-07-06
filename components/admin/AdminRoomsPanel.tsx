@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,22 +12,38 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useStore } from "@/hooks/use-store";
-import { patchStore, uid, type VenueRoom } from "@/lib/store";
+import {
+  useRooms,
+  useCreateRoom,
+  useUpdateRoom,
+  useDeleteRoom,
+} from "@/hooks/api/useProgramme";
+import { useSymposiumId } from "@/hooks/api/useSymposium";
+import type { VenueRoomDto } from "@/lib/api/dto";
+import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "sonner";
 
-const emptyRoom = (): Omit<VenueRoom, "id"> => ({
+type RoomForm = { name: string; capacity: number; floor: string; avSetup: string };
+
+const emptyRoom = (): RoomForm => ({
   name: "",
   capacity: 100,
   floor: "Ground floor",
-  av: "",
+  avSetup: "",
 });
 
 export function AdminRoomsPanel() {
-  const store = useStore();
+  const symposiumId = useSymposiumId();
+  const { rooms, isLoading } = useRooms();
+  const createRoom = useCreateRoom();
+  const updateRoom = useUpdateRoom();
+  const deleteRoom = useDeleteRoom();
+
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<VenueRoom | null>(null);
-  const [form, setForm] = useState(emptyRoom());
+  const [editing, setEditing] = useState<VenueRoomDto | null>(null);
+  const [form, setForm] = useState<RoomForm>(emptyRoom());
+
+  const saving = createRoom.isPending || updateRoom.isPending;
 
   const openCreate = () => {
     setEditing(null);
@@ -35,56 +51,71 @@ export function AdminRoomsPanel() {
     setOpen(true);
   };
 
-  const openEdit = (room: VenueRoom) => {
+  const openEdit = (room: VenueRoomDto) => {
     setEditing(room);
-    setForm({ name: room.name, capacity: room.capacity, floor: room.floor, av: room.av });
+    setForm({
+      name: room.name,
+      capacity: room.capacity ?? 0,
+      floor: room.floor ?? "",
+      avSetup: room.avSetup ?? "",
+    });
     setOpen(true);
   };
 
-  const save = (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     if (!form.name.trim()) return toast.error("Room name is required");
     if (!form.capacity || form.capacity < 1) return toast.error("Capacity must be at least 1");
 
-    patchStore((s) => {
-      if (editing) {
-        return {
-          ...s,
-          rooms: s.rooms.map((r) =>
-            r.id === editing.id
-              ? { ...r, name: form.name.trim(), capacity: Number(form.capacity), floor: form.floor.trim(), av: form.av.trim() }
-              : r,
-          ),
-        };
-      }
-      return {
-        ...s,
-        rooms: [...s.rooms, { id: uid("rm"), name: form.name.trim(), capacity: Number(form.capacity), floor: form.floor.trim(), av: form.av.trim() }],
-      };
-    });
+    const payload = {
+      name: form.name.trim(),
+      capacity: Number(form.capacity),
+      floor: form.floor.trim() || undefined,
+      avSetup: form.avSetup.trim() || undefined,
+    };
 
-    toast.success(editing ? "Room updated" : "Room added");
-    setOpen(false);
+    try {
+      if (editing) {
+        await updateRoom.mutateAsync({ id: editing.id, dto: payload });
+        toast.success("Room updated");
+      } else {
+        if (!symposiumId) return toast.error("Symposium not loaded yet");
+        await createRoom.mutateAsync({ symposiumId, ...payload });
+        toast.success("Room added");
+      }
+      setOpen(false);
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
   };
 
-  const remove = (room: VenueRoom) => {
+  const remove = async (room: VenueRoomDto) => {
     if (!confirm(`Remove "${room.name}"? Sessions using this room keep the name as text.`)) return;
-    patchStore((s) => ({ ...s, rooms: s.rooms.filter((r) => r.id !== room.id) }));
-    toast.success("Room removed");
+    try {
+      await deleteRoom.mutateAsync(room.id);
+      toast.success("Room removed");
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
   };
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground max-w-xl">
-          Venue rooms for session assignment and run-of-show. Stored locally until a backend rooms API exists.
+          Venue rooms for session assignment and run-of-show.
         </p>
         <Button size="sm" className="gradient-blue text-accent-foreground" onClick={openCreate}>
           <Plus className="h-3.5 w-3.5 mr-1" /> Add room
         </Button>
       </div>
 
-      {store.rooms.length === 0 ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center rounded-xl border border-dashed p-8 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading rooms…
+        </div>
+      ) : rooms.length === 0 ? (
         <p className="text-sm text-muted-foreground rounded-xl border border-dashed p-8 text-center">
           No rooms configured yet. Add your first venue space.
         </p>
@@ -101,12 +132,12 @@ export function AdminRoomsPanel() {
               </tr>
             </thead>
             <tbody>
-              {store.rooms.map((r) => (
+              {rooms.map((r) => (
                 <tr key={r.id} className="border-t hover:bg-secondary/20">
                   <td className="px-4 py-3 font-medium">{r.name}</td>
-                  <td className="px-4 py-3">{r.capacity}</td>
-                  <td className="px-4 py-3">{r.floor}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{r.av || "—"}</td>
+                  <td className="px-4 py-3">{r.capacity ?? "—"}</td>
+                  <td className="px-4 py-3">{r.floor || "—"}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{r.avSetup || "—"}</td>
                   <td className="px-4 py-3 text-right space-x-1">
                     <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
                       <Pencil className="h-3.5 w-3.5" />
@@ -162,18 +193,18 @@ export function AdminRoomsPanel() {
             <div>
               <Label>AV & equipment</Label>
               <Input
-                value={form.av}
-                onChange={(e) => setForm({ ...form, av: e.target.value })}
+                value={form.avSetup}
+                onChange={(e) => setForm({ ...form, avSetup: e.target.value })}
                 className="mt-1"
                 placeholder="e.g. Projector, PA, 4× wireless mics, HDMI"
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>
                 Cancel
               </Button>
-              <Button type="submit" className="gradient-blue text-accent-foreground">
-                {editing ? "Save changes" : "Add room"}
+              <Button type="submit" className="gradient-blue text-accent-foreground" disabled={saving}>
+                {saving ? "Saving…" : editing ? "Save changes" : "Add room"}
               </Button>
             </DialogFooter>
           </form>

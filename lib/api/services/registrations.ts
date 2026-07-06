@@ -1,18 +1,20 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type {
+  AdminCreateGroupRegistrationDto,
   AdminUpdateRegistrationDto,
   CreateGroupRegistrationDto,
   CreateRegistrationDto,
   DeskWalkInDto,
   FaceVerificationDto,
+  GroupRegistrationAdminDto,
   RegistrationDto,
   RegistrationReceiptDto,
   RegistrationStatus,
   SetFacePhotoDto,
   UpdateRegistrationCategoryDto,
 } from "../dto";
-import { type PaginationParams, fetchPaginatedList, toPaginationQuery, unwrapPaginated } from "../helpers";
+import { type PaginationParams, fetchPaginatedList, toPaginationQuery, toQueryParams, unwrapPaginated } from "../helpers";
 
 export const registrationsService = {
   create(dto: CreateRegistrationDto) {
@@ -80,5 +82,31 @@ export const registrationsService = {
   },
   walkIn(dto: DeskWalkInDto) {
     return apiClient.post<ApiResponse<RegistrationDto>>("/registrations/desk/walk-in", dto).then(unwrapApi);
+  },
+  adminCreateGroup(dto: AdminCreateGroupRegistrationDto) {
+    return apiClient
+      .post<ApiResponse<GroupRegistrationAdminDto>>("/registrations/admin/group", dto)
+      .then(unwrapApi);
+  },
+  deskCreateGroup(dto: AdminCreateGroupRegistrationDto) {
+    return apiClient
+      .post<ApiResponse<GroupRegistrationAdminDto>>("/registrations/desk/group", dto)
+      .then(unwrapApi);
+  },
+  listAdminGroups(params: { symposiumId: string; search?: string; page?: number; limit?: number }) {
+    return fetchPaginatedList(
+      (pg) =>
+        apiClient
+          .get<ApiResponse<GroupRegistrationAdminDto[]>>("/registrations/admin/groups", {
+            params: toQueryParams({
+              symposiumId: params.symposiumId,
+              search: pg.search,
+              page: pg.page,
+              limit: pg.limit,
+            }),
+          })
+          .then(unwrapPaginated),
+      { pagination: { page: params.page, limit: params.limit ?? 100, search: params.search } },
+    );
   },
 };

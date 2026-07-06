@@ -2,16 +2,20 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Search, Eye } from "lucide-react";
+import { Search, Eye, UserPlus, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GroupRegistrationsManager } from "@/components/group/GroupRegistrationsManager";
+import { ManualRegistrationDialog } from "@/components/admin/ManualRegistrationDialog";
+import { ManualGroupRegistrationDialog } from "@/components/admin/ManualGroupRegistrationDialog";
 import { useDeskRegistrations, registrationStatusLabel } from "@/hooks/api/useDesk";
 import { registrationCategoryLabel } from "@/lib/api/mappers/registration-helpers";
 
 export default function DeskRegistrationsPage() {
   const [q, setQ] = useState("");
+  const [walkInOpen, setWalkInOpen] = useState(false);
+  const [groupOpen, setGroupOpen] = useState(false);
   const { registrations, isLoading, isError } = useDeskRegistrations({ limit: 100 });
 
   const regs = useMemo(() => {
@@ -27,19 +31,26 @@ export default function DeskRegistrationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-3xl font-bold">Registrations</h1>
-        <p className="text-muted-foreground">Delegate registrations from the hosted API.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-serif text-3xl font-bold">Registrations</h1>
+          <p className="text-muted-foreground">Delegate registrations from the hosted API.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => setGroupOpen(true)}>
+            <Users className="h-3.5 w-3.5 mr-1" /> New group
+          </Button>
+          <Button size="sm" className="gradient-blue text-accent-foreground" onClick={() => setWalkInOpen(true)}>
+            <UserPlus className="h-3.5 w-3.5 mr-1" /> New walk-in
+          </Button>
+        </div>
       </div>
       <Tabs defaultValue="individual">
         <TabsList>
           <TabsTrigger value="individual">Individual</TabsTrigger>
-          <TabsTrigger value="groups">Groups (local)</TabsTrigger>
+          <TabsTrigger value="groups">Groups</TabsTrigger>
         </TabsList>
         <TabsContent value="groups" className="mt-6">
-          <p className="text-sm text-muted-foreground mb-4">
-            Group registration list has no admin API endpoint yet — showing local mock data.
-          </p>
           <GroupRegistrationsManager basePath="/desk/registrations" />
         </TabsContent>
         <TabsContent value="individual" className="mt-6 space-y-4">
@@ -97,6 +108,9 @@ export default function DeskRegistrationsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <ManualRegistrationDialog open={walkInOpen} onOpenChange={setWalkInOpen} enableCashPayment />
+      <ManualGroupRegistrationDialog open={groupOpen} onOpenChange={setGroupOpen} desk />
     </div>
   );
 }

@@ -58,6 +58,13 @@ export const cmsService = {
   deleteFaq(id: string) {
     return apiClient.delete(`/cms/admin/faqs/${id}`);
   },
+  listCommitteePublic(symposiumId?: string) {
+    return apiClient
+      .get<ApiResponse<CommitteeMemberDto[]>>("/cms/committee-members", {
+        params: symposiumId ? { symposiumId } : {},
+      })
+      .then(unwrapApi);
+  },
   listCommittee(symposiumId: string) {
     return apiClient
       .get<ApiResponse<CommitteeMemberDto[]>>("/cms/admin/committee-members", { params: { symposiumId } })

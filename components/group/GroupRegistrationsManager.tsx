@@ -1,35 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Search, Users, Eye } from "lucide-react";
+import { Search, Users, Eye, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useStore } from "@/hooks/use-store";
-import { getGroupCheckInSummary } from "@/lib/group-registration";
+import { useAdminGroups } from "@/hooks/api/useAdmin";
 import { cn } from "@/lib/utils";
 
 type Props = {
   basePath: "/admin/registrations" | "/desk/registrations";
 };
 
+const paymentStatusLabel: Record<string, string> = {
+  comp: "Complimentary",
+  paid: "Paid",
+  pending: "Pending payment",
+};
+
 export function GroupRegistrationsManager({ basePath }: Props) {
-  const store = useStore();
   const [q, setQ] = useState("");
+  const { groups, isLoading } = useAdminGroups({ search: q || undefined });
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const groups = useMemo(() => {
-    return store.groupRegistrations.filter((g) => {
-      if (!q) return true;
-      const hay = [g.code, g.orgName, g.representativeName, g.representativeEmail, g.categoryName]
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q.toLowerCase());
-    });
-  }, [store.groupRegistrations, q]);
-
   const selected = groups.find((g) => g.id === selectedId) ?? groups[0];
-  const summary = selected ? getGroupCheckInSummary(selected.id) : null;
 
   return (
     <div className="space-y-6">
@@ -56,74 +50,75 @@ export function GroupRegistrationsManager({ basePath }: Props) {
               </tr>
             </thead>
             <tbody>
-              {groups.map((g) => {
-                const s = getGroupCheckInSummary(g.id);
-                return (
-                  <tr
-                    key={g.id}
-                    className={cn(
-                      "border-t cursor-pointer hover:bg-secondary/40",
-                      selected?.id === g.id && "bg-accent/10",
+              {groups.map((g) => (
+                <tr
+                  key={g.id}
+                  className={cn(
+                    "border-t cursor-pointer hover:bg-secondary/40",
+                    selected?.id === g.id && "bg-accent/10",
+                  )}
+                  onClick={() => setSelectedId(g.id)}
+                >
+                  <td className="px-4 py-3">
+                    <div className="font-mono font-bold text-xs">{g.groupCode}</div>
+                    <div className="font-medium">{g.organizationName}</div>
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    <div>{g.representativeName}</div>
+                    <div className="text-muted-foreground">{g.representativeEmail}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {g.seatCount}
+                    {g.discountPercent > 0 && (
+                      <div className="text-[10px] text-green">−{g.discountPercent}%</div>
                     )}
-                    onClick={() => setSelectedId(g.id)}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="font-mono font-bold text-xs">{g.code}</div>
-                      <div className="font-medium">{g.orgName}</div>
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      <div>{g.representativeName}</div>
-                      <div className="text-muted-foreground">{g.representativeEmail}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {g.memberCount}
-                      {g.discountPercent > 0 && (
-                        <div className="text-[10px] text-green">−{g.discountPercent}%</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono">${g.totalUsd.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-xs">
-                      {s.checkedIn}/{s.total}
-                    </td>
-                  </tr>
-                );
-              })}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">${g.totalUsd.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {g.checkedInCount}/{g.seatCount}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
-          {groups.length === 0 && (
+          {isLoading ? (
+            <p className="p-8 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading group registrations…
+            </p>
+          ) : groups.length === 0 ? (
             <p className="p-8 text-center text-sm text-muted-foreground">No group registrations yet.</p>
-          )}
+          ) : null}
         </div>
 
-        {selected && summary && (
+        {selected && (
           <div className="rounded-2xl border bg-card p-5 space-y-4 lg:sticky lg:top-4">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-accent" />
-              <h3 className="font-serif font-bold">{selected.code}</h3>
+              <h3 className="font-serif font-bold">{selected.groupCode}</h3>
             </div>
             <dl className="grid grid-cols-2 gap-2 text-xs">
               <div>
                 <dt className="text-muted-foreground">Subtotal</dt>
-                <dd className="font-mono">${selected.subtotalUsd}</dd>
+                <dd className="font-mono">${selected.subtotalUsd.toLocaleString()}</dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">Discount</dt>
-                <dd className="font-mono text-green">−${selected.discountUsd}</dd>
+                <dd className="font-mono text-green">−${(selected.subtotalUsd - selected.totalUsd).toLocaleString()}</dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">Paid total</dt>
-                <dd className="font-mono font-bold">${selected.totalUsd}</dd>
+                <dd className="font-mono font-bold">${selected.totalUsd.toLocaleString()}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Status</dt>
-                <dd className="capitalize">{selected.status}</dd>
+                <dt className="text-muted-foreground">Payment</dt>
+                <dd className="capitalize">{paymentStatusLabel[selected.paymentStatus] ?? selected.paymentStatus}</dd>
               </div>
             </dl>
             <ul className="space-y-2 max-h-[320px] overflow-y-auto">
-              {summary.members.map((m) => (
-                <li key={m.id} className="flex justify-between gap-2 text-sm border-b pb-2 last:border-0">
+              {selected.members.map((m) => (
+                <li key={m.registrationId} className="flex justify-between gap-2 text-sm border-b pb-2 last:border-0">
                   <div className="min-w-0">
-                    <div className="font-medium truncate">{m.name}</div>
+                    <div className="font-medium truncate">{m.fullName}</div>
                     <div className="text-xs text-muted-foreground truncate">{m.email}</div>
                   </div>
                   <div className="text-right shrink-0">
@@ -132,7 +127,7 @@ export function GroupRegistrationsManager({ basePath }: Props) {
                     </div>
                     {basePath === "/desk/registrations" && (
                       <Button asChild variant="ghost" size="sm" className="h-6 px-1 mt-1">
-                        <Link href={`${basePath}/${m.id}`}>
+                        <Link href={`${basePath}/${m.registrationId}`}>
                           <Eye className="h-3 w-3" />
                         </Link>
                       </Button>

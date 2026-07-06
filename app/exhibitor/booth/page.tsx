@@ -44,7 +44,15 @@ export default function Page() {
   }
 
   if (isError || !profile) {
-    return <p className="text-sm text-muted-foreground">Exhibitor profile not found.</p>;
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm max-w-xl">
+        <p className="font-semibold text-amber-950">No booth profile yet</p>
+        <p className="mt-2 text-amber-900">
+          Your exhibitor booth hasn&apos;t been provisioned yet. If you recently applied, the secretariat will set it up
+          shortly. Otherwise, please reach out to the secretariat for assistance.
+        </p>
+      </div>
+    );
   }
 
   return (

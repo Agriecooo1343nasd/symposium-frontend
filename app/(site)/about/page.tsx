@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Target, Sprout, Trophy, Images } from "lucide-react";
-import { getCommitteeMembers, getEventConfig, getGalleryImages, getPreviousPresentations } from "@/lib/platform-settings";
-import { PreviousSymposiumGallery } from "@/components/about/PreviousSymposiumGallery";
+import { Target, Sprout, Trophy } from "lucide-react";
+import { getEventConfig } from "@/lib/platform-settings";
+import { PublicArchiveSection } from "@/components/about/PublicArchiveSection";
+import { PublicCommitteeSection } from "@/components/about/PublicCommitteeSection";
 
 export const metadata: Metadata = {
   title: "About — NAS 2026",
@@ -10,9 +11,6 @@ export const metadata: Metadata = {
 
 export default function About() {
   const event = getEventConfig();
-  const committee = getCommitteeMembers();
-  const galleryImages = getGalleryImages();
-  const presentations = getPreviousPresentations();
 
   return (
     <>
@@ -73,10 +71,7 @@ export default function About() {
             </div>
           </div>
 
-          <PreviousSymposiumGallery
-            images={galleryImages}
-            presentations={presentations}
-          />
+          <PublicArchiveSection />
         </div>
       </section>
 
@@ -86,19 +81,7 @@ export default function About() {
           <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight mb-10">
             The people behind {event.shortName}
           </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {committee.map((p) => (
-              <div key={p.id} className="rounded-2xl bg-card border border-border p-6 hover-lift">
-                <img src={p.photo} alt={p.name} className="h-12 w-12 rounded-full object-cover mb-3" />
-                <div className="font-serif font-bold text-base">{p.name}</div>
-                <div className="text-sm text-accent font-medium">{p.role}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{p.org}</div>
-                {"bio" in p && p.bio ? (
-                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed line-clamp-3">{p.bio}</p>
-                ) : null}
-              </div>
-            ))}
-          </div>
+          <PublicCommitteeSection />
         </div>
       </section>
     </>

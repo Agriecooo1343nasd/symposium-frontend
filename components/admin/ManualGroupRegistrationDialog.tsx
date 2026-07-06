@@ -8,28 +8,43 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useStore } from "@/hooks/use-store";
 import { getCountries } from "@/lib/platform-settings";
-import { getSession } from "@/lib/auth";
-import { createGroupRegistration, type GroupMemberInput } from "@/lib/group-registration";
+import { useAdminTicketCategories, useAdminCreateGroup } from "@/hooks/api/useAdmin";
+import { useDeskCreateGroup } from "@/hooks/api/useDesk";
+import { useSymposiumId } from "@/hooks/api/useSymposium";
 import { GroupMembersFields } from "@/components/group/GroupMembersFields";
 import { GroupPricingSummary } from "@/components/group/GroupPricingSummary";
-import type { TicketPlan } from "@/lib/store";
+import type { GroupMemberInput } from "@/lib/group-registration";
+import type { AdminGroupDelegateDto, TicketCategoryDto } from "@/lib/api/dto";
+import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "sonner";
 import { DEFAULT_GROUP_REGISTRATION_SETTINGS } from "@/lib/store";
+
+const MIN_GROUP_TOTAL = 5;
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Use the desk endpoint instead of admin (same shape, different RBAC path). */
+  desk?: boolean;
 };
 
-export function ManualGroupRegistrationDialog({ open, onOpenChange }: Props) {
+export function ManualGroupRegistrationDialog({ open, onOpenChange, desk = false }: Props) {
   const store = useStore();
+  const symposiumId = useSymposiumId();
   const countries = getCountries();
+  const { categories } = useAdminTicketCategories();
+  const adminCreate = useAdminCreateGroup();
+  const deskCreate = useDeskCreateGroup();
+  const createGroup = desk ? deskCreate : adminCreate;
+
   const groupSettings = {
     ...DEFAULT_GROUP_REGISTRATION_SETTINGS,
     ...store.platformSettings.groupRegistration,
   };
-  const [picked, setPicked] = useState<TicketPlan | null>(null);
-  const [groupSize, setGroupSize] = useState(groupSettings.minSize);
+  const minSize = Math.max(MIN_GROUP_TOTAL, groupSettings.minSize);
+
+  const [picked, setPicked] = useState<TicketCategoryDto | null>(null);
+  const [groupSize, setGroupSize] = useState(minSize);
   const [groupMembers, setGroupMembers] = useState<GroupMemberInput[]>([]);
   const [status, setStatus] = useState<"comp" | "paid" | "pending">("comp");
   const [form, setForm] = useState({
@@ -43,11 +58,11 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    setGroupSize(groupSettings.minSize);
+    setGroupSize(minSize);
     setGroupMembers(
-      Array.from({ length: groupSettings.minSize - 1 }, () => ({ name: "", email: "", title: "", phone: "" })),
+      Array.from({ length: minSize - 1 }, () => ({ name: "", email: "", title: "", phone: "" })),
     );
-  }, [open, groupSettings.minSize]);
+  }, [open, minSize]);
 
   const reset = () => {
     setPicked(null);
@@ -55,37 +70,55 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange }: Props) {
     setStatus("comp");
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (createGroup.isPending) return;
+    if (!symposiumId) return toast.error("Symposium not loaded yet");
     if (!picked) return toast.error("Select a pass category");
     if (!form.fullName.trim() || !form.email.trim() || !form.org.trim()) {
       return toast.error("Representative name, email, and organization required");
     }
 
-    const admin = getSession()?.name ?? "Admin";
-    const result = createGroupRegistration({
-      plan: picked,
-      representative: {
-        name: form.fullName,
-        email: form.email,
-        title: form.title,
-        org: form.org,
+    const delegates: AdminGroupDelegateDto[] = groupMembers
+      .slice(0, groupSize - 1)
+      .map((m) => ({
+        fullName: m.name.trim(),
+        email: m.email.trim(),
+        jobTitle: m.title?.trim() || undefined,
+        phone: m.phone?.trim() || undefined,
+      }));
+
+    if (delegates.some((d) => !d.fullName || !d.email)) {
+      return toast.error("Every delegate needs a name and email");
+    }
+
+    // Representative counts as a seat; backend requires >= 5 total.
+    if (delegates.length + 1 < MIN_GROUP_TOTAL) {
+      return toast.error(`Group registration requires at least ${MIN_GROUP_TOTAL} delegates (including the representative)`);
+    }
+
+    try {
+      const group = await createGroup.mutateAsync({
+        symposiumId,
+        ticketCategoryId: picked.id,
+        currency: "USD",
+        organizationName: form.org.trim(),
         country: form.country,
-        phone: form.phone,
-        hear: "Admin manual group entry",
-      },
-      additionalMembers: groupMembers.slice(0, groupSize - 1),
-      paymentMethod: status === "comp" ? "manual-comp" : "manual",
-      status,
-      actorName: admin,
-    });
-
-    if (!result.ok) return toast.error(result.error);
-
-    toast.success(`Group ${result.group.code} created · ${result.group.memberCount} seats`);
-    onOpenChange(false);
-    reset();
+        representativeName: form.fullName.trim(),
+        representativeEmail: form.email.trim(),
+        representativePhone: form.phone.trim() || undefined,
+        paymentStatus: status,
+        delegates,
+      });
+      toast.success(`Group ${group.groupCode} created · ${group.seatCount} seats`);
+      onOpenChange(false);
+      reset();
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
   };
+
+  const activeCategories = categories.filter((t) => t.isActive);
 
   return (
     <Dialog
@@ -109,19 +142,17 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange }: Props) {
               <Label>Pass category *</Label>
               <Select
                 value={picked?.id ?? ""}
-                onValueChange={(id) => setPicked(store.ticketPlans.find((t) => t.id === id && !t.isMediaAccreditation) ?? null)}
+                onValueChange={(id) => setPicked(activeCategories.find((t) => t.id === id) ?? null)}
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Select category for all members" />
                 </SelectTrigger>
                 <SelectContent>
-                  {store.ticketPlans
-                    .filter((t) => !t.isMediaAccreditation)
-                    .map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name} — ${t.usd}
-                      </SelectItem>
-                    ))}
+                  {activeCategories.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} — ${t.priceUsd}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -205,7 +236,7 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange }: Props) {
               </div>
               <GroupPricingSummary
                 memberCount={groupSize}
-                pricePerSeatUsd={picked.usd}
+                pricePerSeatUsd={picked.priceUsd}
                 currency="USD"
                 exchangeRate={store.platformSettings.exchangeRate}
               />
@@ -213,11 +244,11 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange }: Props) {
           )}
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={createGroup.isPending}>
               Cancel
             </Button>
-            <Button type="submit" className="gradient-blue text-accent-foreground">
-              Create group registration
+            <Button type="submit" className="gradient-blue text-accent-foreground" disabled={createGroup.isPending}>
+              {createGroup.isPending ? "Creating…" : "Create group registration"}
             </Button>
           </DialogFooter>
         </form>

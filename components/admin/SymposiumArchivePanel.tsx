@@ -1,18 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2, ExternalLink, ImageIcon, FileText, Upload } from "lucide-react";
+import { Plus, Trash2, ExternalLink, ImageIcon, FileText, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useStore } from "@/hooks/use-store";
-import { patchStore, uid, type GalleryImage, type PreviousPresentation, type SymposiumArchiveKind } from "@/lib/store";
 import Link from "next/link";
 import { toast } from "sonner";
 import { FileViewLink } from "@/components/file-viewer";
+import {
+  useAdminArchive,
+  useCreateArchiveItem,
+  useUpdateArchiveItem,
+  useDeleteArchiveItem,
+} from "@/hooks/api/useArchive";
+import { useUploadFile } from "@/hooks/api/useFiles";
+import { useSymposiumId } from "@/hooks/api/useSymposium";
+import {
+  galleryToUpsert,
+  docToUpsert,
+  type ArchiveKind,
+  type GalleryPhoto,
+  type ArchiveDoc,
+} from "@/lib/archive-mapping";
+import { apiErrorMessage } from "@/lib/api/client";
 
-const ARCHIVE_KINDS: { value: SymposiumArchiveKind; label: string }[] = [
+const ARCHIVE_KINDS: { value: ArchiveKind; label: string }[] = [
   { value: "slides", label: "Presentation slides" },
   { value: "overview", label: "Symposium overview" },
   { value: "report", label: "Event report" },
@@ -36,7 +50,7 @@ type DocDraft = {
   fileUrl: string;
   event: string;
   year: number;
-  kind: SymposiumArchiveKind;
+  kind: ArchiveKind;
   order: number;
 };
 
@@ -61,21 +75,23 @@ const emptyDoc = (): DocDraft => ({
   order: 1,
 });
 
-function readFile(file: File, onLoad: (dataUrl: string) => void) {
-  const reader = new FileReader();
-  reader.onload = () => onLoad(reader.result as string);
-  reader.readAsDataURL(file);
-}
-
 export function SymposiumArchivePanel() {
-  const store = useStore();
+  const symposiumId = useSymposiumId();
+  const { photos, documents, isLoading } = useAdminArchive();
+  const createItem = useCreateArchiveItem();
+  const updateItem = useUpdateArchiveItem();
+  const deleteItem = useDeleteArchiveItem();
+  const uploadFile = useUploadFile();
+
   const [galleryDraft, setGalleryDraft] = useState<GalleryDraft>(emptyGallery);
   const [docDraft, setDocDraft] = useState<DocDraft>(emptyDoc);
 
-  const gallerySorted = [...store.galleryImages].sort((a, b) => a.order - b.order);
-  const docsSorted = [...store.previousPresentations].sort((a, b) => a.order - b.order);
+  const gallerySorted = [...photos].sort((a, b) => a.order - b.order);
+  const docsSorted = [...documents].sort((a, b) => a.order - b.order);
 
-  const selectGallery = (img: GalleryImage) => {
+  const savingGallery = createItem.isPending || updateItem.isPending || uploadFile.isPending;
+
+  const selectGallery = (img: GalleryPhoto) => {
     setGalleryDraft({
       editingId: img.id,
       src: img.src,
@@ -86,7 +102,7 @@ export function SymposiumArchivePanel() {
     });
   };
 
-  const selectDoc = (doc: PreviousPresentation) => {
+  const selectDoc = (doc: ArchiveDoc) => {
     setDocDraft({
       editingId: doc.id,
       title: doc.title,
@@ -100,39 +116,62 @@ export function SymposiumArchivePanel() {
     });
   };
 
-  const saveGallery = () => {
+  const uploadAsset = async (file: File): Promise<string | null> => {
+    try {
+      const res = await uploadFile.mutateAsync({ file, type: "symposium_asset" });
+      return res.url;
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+      return null;
+    }
+  };
+
+  const saveGallery = async () => {
     if (!galleryDraft.caption.trim()) return toast.error("Caption required");
     if (!galleryDraft.src.trim()) return toast.error("Image required — upload or paste a URL");
-    const item: GalleryImage = {
-      id: galleryDraft.editingId ?? uid("gal"),
+
+    const upsert = galleryToUpsert(symposiumId ?? "", {
       src: galleryDraft.src.trim(),
       caption: galleryDraft.caption.trim(),
       event: galleryDraft.event.trim() || "2nd National Agroecology Symposium",
       year: galleryDraft.year,
       order: galleryDraft.order,
-    };
-    patchStore((s) => {
-      const without = s.galleryImages.filter((g) => g.id !== galleryDraft.editingId && g.id !== item.id);
-      return { ...s, galleryImages: [...without, item].sort((a, b) => a.order - b.order) };
     });
-    toast.success(galleryDraft.editingId ? "Photo updated" : "Photo added to public gallery");
-    setGalleryDraft(emptyGallery());
+
+    try {
+      if (galleryDraft.editingId) {
+        const { symposiumId: _omit, ...dto } = upsert;
+        await updateItem.mutateAsync({ id: galleryDraft.editingId, dto });
+        toast.success("Photo updated");
+      } else {
+        if (!symposiumId) return toast.error("Symposium not loaded yet");
+        await createItem.mutateAsync(upsert);
+        toast.success("Photo added to public gallery");
+      }
+      setGalleryDraft(emptyGallery());
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
   };
 
-  const removeGallery = (id: string) => {
-    patchStore((s) => ({ ...s, galleryImages: s.galleryImages.filter((g) => g.id !== id) }));
-    if (galleryDraft.editingId === id) setGalleryDraft(emptyGallery());
-    toast.info("Photo removed");
+  const removeGallery = async (id: string) => {
+    try {
+      await deleteItem.mutateAsync(id);
+      if (galleryDraft.editingId === id) setGalleryDraft(emptyGallery());
+      toast.info("Photo removed");
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
   };
 
-  const saveDoc = () => {
+  const saveDoc = async () => {
     if (!docDraft.title.trim()) return toast.error("Title required");
     if (!docDraft.fileName.trim()) return toast.error("File name required");
     if (!docDraft.fileUrl.trim() || docDraft.fileUrl === "#") {
       return toast.error("Upload a file or provide a document URL");
     }
-    const item: PreviousPresentation = {
-      id: docDraft.editingId ?? uid("pres"),
+
+    const upsert = docToUpsert(symposiumId ?? "", {
       title: docDraft.title.trim(),
       presenter: docDraft.presenter.trim() || "NAS Secretariat",
       fileName: docDraft.fileName.trim(),
@@ -141,30 +180,49 @@ export function SymposiumArchivePanel() {
       year: docDraft.year,
       kind: docDraft.kind,
       order: docDraft.order,
-    };
-    patchStore((s) => {
-      const without = s.previousPresentations.filter((d) => d.id !== docDraft.editingId && d.id !== item.id);
-      return { ...s, previousPresentations: [...without, item].sort((a, b) => a.order - b.order) };
     });
-    toast.success(docDraft.editingId ? "Document updated" : "Document published on /about");
-    setDocDraft(emptyDoc());
+
+    try {
+      if (docDraft.editingId) {
+        const { symposiumId: _omit, ...dto } = upsert;
+        await updateItem.mutateAsync({ id: docDraft.editingId, dto });
+        toast.success("Document updated");
+      } else {
+        if (!symposiumId) return toast.error("Symposium not loaded yet");
+        await createItem.mutateAsync(upsert);
+        toast.success("Document published on /about");
+      }
+      setDocDraft(emptyDoc());
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
   };
 
-  const removeDoc = (id: string) => {
-    patchStore((s) => ({ ...s, previousPresentations: s.previousPresentations.filter((d) => d.id !== id) }));
-    if (docDraft.editingId === id) setDocDraft(emptyDoc());
-    toast.info("Document removed");
+  const removeDoc = async (id: string) => {
+    try {
+      await deleteItem.mutateAsync(id);
+      if (docDraft.editingId === id) setDocDraft(emptyDoc());
+      toast.info("Document removed");
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
   };
 
-  const onDocFile = (file: File) => {
-    readFile(file, (dataUrl) => {
+  const onGalleryFile = async (file: File) => {
+    const url = await uploadAsset(file);
+    if (url) setGalleryDraft((d) => ({ ...d, src: url }));
+  };
+
+  const onDocFile = async (file: File) => {
+    const url = await uploadAsset(file);
+    if (url) {
       setDocDraft((d) => ({
         ...d,
         fileName: file.name,
-        fileUrl: dataUrl,
+        fileUrl: url,
         title: d.title || file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "),
       }));
-    });
+    }
   };
 
   return (
@@ -186,6 +244,12 @@ export function SymposiumArchivePanel() {
           </Link>
         </Button>
       </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center rounded-2xl border border-dashed p-8 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading archive…
+        </div>
+      )}
 
       {/* Gallery photos */}
       <section className="rounded-2xl border bg-card p-4 sm:p-6 space-y-4">
@@ -277,7 +341,8 @@ export function SymposiumArchivePanel() {
                   type="file"
                   accept="image/*"
                   className="max-w-xs"
-                  onChange={(e) => e.target.files?.[0] && readFile(e.target.files[0], (src) => setGalleryDraft((d) => ({ ...d, src })))}
+                  disabled={uploadFile.isPending}
+                  onChange={(e) => e.target.files?.[0] && onGalleryFile(e.target.files[0])}
                 />
                 <Input
                   value={galleryDraft.src.startsWith("data:") ? "" : galleryDraft.src}
@@ -286,13 +351,18 @@ export function SymposiumArchivePanel() {
                   className="flex-1 min-w-[200px]"
                 />
               </div>
+              {uploadFile.isPending && (
+                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Uploading…
+                </p>
+              )}
               {galleryDraft.src && (
                 <img src={galleryDraft.src} alt="Preview" className="mt-3 h-32 w-auto max-w-full object-cover rounded-xl border" />
               )}
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={saveGallery} className="gradient-blue text-accent-foreground">
-                {galleryDraft.editingId ? "Update photo" : "Add photo"}
+              <Button onClick={saveGallery} disabled={savingGallery} className="gradient-blue text-accent-foreground">
+                {savingGallery ? "Saving…" : galleryDraft.editingId ? "Update photo" : "Add photo"}
               </Button>
               {galleryDraft.editingId && (
                 <Button variant="ghost" onClick={() => setGalleryDraft(emptyGallery())}>
@@ -382,7 +452,7 @@ export function SymposiumArchivePanel() {
               </div>
               <div>
                 <Label>Document type</Label>
-                <Select value={docDraft.kind} onValueChange={(v) => setDocDraft({ ...docDraft, kind: v as SymposiumArchiveKind })}>
+                <Select value={docDraft.kind} onValueChange={(v) => setDocDraft({ ...docDraft, kind: v as ArchiveKind })}>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
@@ -424,7 +494,7 @@ export function SymposiumArchivePanel() {
             <div>
               <Label>File *</Label>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Button type="button" variant="outline" size="sm" asChild>
+                <Button type="button" variant="outline" size="sm" asChild disabled={uploadFile.isPending}>
                   <label className="cursor-pointer">
                     <Upload className="h-3.5 w-3.5 mr-1" /> Upload PDF / slides
                     <input
@@ -442,6 +512,11 @@ export function SymposiumArchivePanel() {
                   className="flex-1 min-w-[200px]"
                 />
               </div>
+              {uploadFile.isPending && (
+                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Uploading…
+                </p>
+              )}
               {docDraft.fileName && (
                 <p className="text-xs text-muted-foreground mt-2 font-mono truncate">
                   {docDraft.fileName}
@@ -450,7 +525,7 @@ export function SymposiumArchivePanel() {
               )}
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={saveDoc} className="gradient-blue text-accent-foreground">
+              <Button onClick={saveDoc} disabled={savingGallery} className="gradient-blue text-accent-foreground">
                 {docDraft.editingId ? "Update document" : "Publish document"}
               </Button>
               {docDraft.editingId && (
