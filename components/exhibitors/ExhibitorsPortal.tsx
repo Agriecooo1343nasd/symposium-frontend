@@ -10,8 +10,9 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { getInvoicesForApplication } from "@/lib/sponsorship-invoices";
 import { SponsorshipRecordsList } from "@/components/admin/SponsorshipRecordsList";
 import { SponsorshipApplicationsAdmin } from "@/components/admin/SponsorshipApplicationsAdmin";
-import type { OrganizationApplication, ParticipationType } from "@/lib/store";
+import type { OrganizationApplication } from "@/lib/store";
 import { BoothMapManager } from "@/components/admin/BoothMapManager";
+import { ExhibitorPackagesPanel } from "@/components/admin/ExhibitorPackagesPanel";
 import { SponsorshipTierEditor } from "@/components/admin/SponsorshipTierEditor";
 import { ListToolbar } from "@/components/exhibitors/ListToolbar";
 import { ExhibitorsDirectoryPanel } from "@/components/exhibitors/ExhibitorsDirectoryPanel";
@@ -20,6 +21,7 @@ import {
   isSponsorParticipation,
   type ExhibitorPortalTab,
 } from "@/components/exhibitors/exhibitor-portal-config";
+import type { ApplyParticipationType } from "@/lib/exhibitor-sponsor-apply";
 import { cn } from "@/lib/utils";
 import { CreateOrganizationDialog } from "@/components/exhibitors/CreateOrganizationDialog";
 import { EditOrganizationDialog } from "@/components/exhibitors/EditOrganizationDialog";
@@ -61,15 +63,15 @@ export function ExhibitorsPortal({ basePath, activeTab, onTabChange, variant, ta
   const isAdmin = variant === "admin";
   const searchParams = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
-  const [createRole, setCreateRole] = useState<ParticipationType>("exhibitor");
+  const [createRole, setCreateRole] = useState<ApplyParticipationType>("exhibitor");
   const [editAppId, setEditAppId] = useState<string | null>(null);
   const [exhibitorTotal, setExhibitorTotal] = useState(0);
   const actorLabel = isAdmin ? "Admin" : "Registration desk";
 
-  const openCreateDialog = (role?: ParticipationType) => {
+  const openCreateDialog = (role?: ApplyParticipationType) => {
     const fromUrl = searchParams.get("role");
     const resolved =
-      role ?? (fromUrl === "exhibitor" || fromUrl === "sponsor" || fromUrl === "both" ? fromUrl : "exhibitor");
+      role ?? (fromUrl === "exhibitor" || fromUrl === "sponsor" ? fromUrl : "exhibitor");
     setCreateRole(resolved);
     setCreateOpen(true);
   };
@@ -231,6 +233,9 @@ export function ExhibitorsPortal({ basePath, activeTab, onTabChange, variant, ta
 
         {isAdmin && (
           <>
+            <TabsContent value="packages" className="mt-6">
+              <ExhibitorPackagesPanel />
+            </TabsContent>
             <TabsContent value="tiers" className="mt-6">
               <SponsorshipTierEditor />
             </TabsContent>

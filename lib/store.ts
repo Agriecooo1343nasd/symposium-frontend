@@ -341,6 +341,8 @@ export type OrganizationApplication = {
   contactPhone: string;
   participation: ParticipationType;
   sponsorshipTier?: SponsorshipTier;
+  /** Exhibitor booth package from admin catalog (exhibitor path) */
+  packageId?: string;
   boothPreference?: string;
   logoFileName?: string;
   staffCount?: number;

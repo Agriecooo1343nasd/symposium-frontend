@@ -9,9 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useStore } from "@/hooks/use-store";
+import { useSymposium } from "@/hooks/api/useSymposium";
+import { usePublicExhibitorPackages, useSponsorshipTierPricing } from "@/hooks/api/useExhibitor";
 import { getSession } from "@/lib/auth";
 import { updateOrganizationOnboarding } from "@/lib/update-onboarding";
-import type { OrganizationApplication, OrgType, ParticipationType, SponsorshipTier } from "@/lib/store";
+import type { ApplyParticipationType } from "@/lib/exhibitor-sponsor-apply";
+import type { OrganizationApplication, OrgType, SponsorshipTier } from "@/lib/store";
 import { toast } from "sonner";
 
 type Props = {
@@ -23,6 +26,10 @@ type Props = {
 
 export function EditOrganizationDialog({ applicationId, open, onOpenChange, onSaved }: Props) {
   const store = useStore();
+  const { symposiumId } = useSymposium();
+  const { packages } = usePublicExhibitorPackages(symposiumId || undefined);
+  const { pricing: tierPricing } = useSponsorshipTierPricing(symposiumId || undefined);
+  const activePackages = packages.filter((p) => p.isActive);
   const app = applicationId
     ? store.organizationApplications.find((a) => a.id === applicationId)
     : undefined;
@@ -60,8 +67,9 @@ export function EditOrganizationDialog({ applicationId, open, onOpenChange, onSa
         contactName: draft.contactName,
         contactEmail: draft.contactEmail,
         contactPhone: draft.contactPhone,
-        participation: draft.participation,
+        participation: draft.participation === "both" ? "exhibitor" : draft.participation,
         sponsorshipTier: draft.sponsorshipTier,
+        packageId: draft.packageId,
         staffCount: draft.staffCount,
         staffEmails,
         boothAssignment: draft.boothAssignment,
@@ -94,7 +102,8 @@ export function EditOrganizationDialog({ applicationId, open, onOpenChange, onSa
     );
   }
 
-  const isSponsor = draft.participation === "sponsor" || draft.participation === "both";
+  const isSponsor = draft.participation === "sponsor";
+  const isExhibitor = draft.participation === "exhibitor";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -115,19 +124,38 @@ export function EditOrganizationDialog({ applicationId, open, onOpenChange, onSa
             <div>
               <Label>Participation</Label>
               <Select
-                value={draft.participation}
-                onValueChange={(v) => setDraft({ ...draft, participation: v as ParticipationType })}
+                value={draft.participation === "both" ? "exhibitor" : draft.participation}
+                onValueChange={(v) => setDraft({ ...draft, participation: v as ApplyParticipationType })}
               >
                 <SelectTrigger className="mt-1">
-                  <SelectValue />
+                  <SelectValue placeholder="Exhibitor or sponsor" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="exhibitor">Exhibitor</SelectItem>
                   <SelectItem value="sponsor">Sponsor</SelectItem>
-                  <SelectItem value="both">Both</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {isExhibitor && (
+              <div>
+                <Label>Booth package</Label>
+                <Select
+                  value={draft.packageId ?? ""}
+                  onValueChange={(v) => setDraft({ ...draft, packageId: v })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select package" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activePackages.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {isSponsor && (
               <div>
                 <Label>Tier</Label>
@@ -136,14 +164,20 @@ export function EditOrganizationDialog({ applicationId, open, onOpenChange, onSa
                   onValueChange={(v) => setDraft({ ...draft, sponsorshipTier: v as SponsorshipTier })}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue />
+                    <SelectValue placeholder="Select tier" />
                   </SelectTrigger>
                   <SelectContent>
-                    {store.sponsorshipTiers.map((t) => (
-                      <SelectItem key={t.tier} value={t.tier}>
-                        {t.tier}
-                      </SelectItem>
-                    ))}
+                    {(tierPricing.length
+                      ? tierPricing.map((t) => (
+                          <SelectItem key={t.tier} value={t.tier.charAt(0).toUpperCase() + t.tier.slice(1)}>
+                            {t.tier}
+                          </SelectItem>
+                        ))
+                      : store.sponsorshipTiers.map((t) => (
+                          <SelectItem key={t.tier} value={t.tier}>
+                            {t.tier}
+                          </SelectItem>
+                        )))}
                   </SelectContent>
                 </Select>
               </div>
@@ -153,6 +187,7 @@ export function EditOrganizationDialog({ applicationId, open, onOpenChange, onSa
             <Label>Description</Label>
             <Textarea
               rows={3}
+              placeholder="Organisation showcase description…"
               value={draft.description}
               onChange={(e) => setDraft({ ...draft, description: e.target.value })}
               className="mt-1"
@@ -162,6 +197,7 @@ export function EditOrganizationDialog({ applicationId, open, onOpenChange, onSa
             <div>
               <Label>Contact</Label>
               <Input
+                placeholder="Contact name"
                 value={draft.contactName}
                 onChange={(e) => setDraft({ ...draft, contactName: e.target.value })}
                 className="mt-1"
@@ -171,6 +207,7 @@ export function EditOrganizationDialog({ applicationId, open, onOpenChange, onSa
               <Label>Email</Label>
               <Input
                 type="email"
+                placeholder="contact@company.rw"
                 value={draft.contactEmail}
                 onChange={(e) => setDraft({ ...draft, contactEmail: e.target.value })}
                 className="mt-1"
@@ -180,6 +217,7 @@ export function EditOrganizationDialog({ applicationId, open, onOpenChange, onSa
           <div>
             <Label>Booth</Label>
             <Input
+              placeholder="e.g. A-12"
               value={draft.boothAssignment ?? ""}
               onChange={(e) => setDraft({ ...draft, boothAssignment: e.target.value })}
               className="mt-1"

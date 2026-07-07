@@ -1,13 +1,12 @@
 import { Users, DollarSign, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { EVENT } from "@/lib/mock-data";
 import type { ExhibitorPackageDto, SponsorshipTierPricingDto } from "@/lib/api/dto";
-import { calculateOrgPackageFee, type AppStore, type ParticipationType, type SponsorshipTier } from "@/lib/store";
+import { calculatePackageEstimate, type ApplyParticipationType } from "@/lib/exhibitor-sponsor-apply";
+import type { SponsorshipTier } from "@/lib/store";
 
 type Props = {
-  store: AppStore;
-  participation: ParticipationType;
+  participation: ApplyParticipationType;
   tier?: SponsorshipTier;
   staffCount: number;
   onStaffCountChange: (n: number) => void;
@@ -17,7 +16,6 @@ type Props = {
 };
 
 export function ExhibitorPackageEstimator({
-  store,
   participation,
   tier,
   staffCount,
@@ -27,19 +25,15 @@ export function ExhibitorPackageEstimator({
   selectedPackageId,
 }: Props) {
   const selectedPackage = packages.find((p) => p.id === selectedPackageId) ?? packages[0];
-  const tierPrice = tierPricing.find((t) => t.tier.toLowerCase() === tier?.toLowerCase());
-  const mockQuote = calculateOrgPackageFee(participation, tier, staffCount, store);
-
-  let feeUsd = mockQuote.feeUsd;
-  if (selectedPackage && (participation === "exhibitor" || participation === "both")) {
-    feeUsd = selectedPackage.priceUsd;
-  }
-  if (tierPrice && (participation === "sponsor" || participation === "both")) {
-    feeUsd = participation === "both" ? feeUsd + tierPrice.amountUsd : tierPrice.amountUsd;
-  }
-
-  const includedStaff = selectedPackage?.staffPassQuota ?? mockQuote.includedStaff;
-  const rwf = tierPrice?.amountRwf ?? Math.round(feeUsd * EVENT.exchangeRate);
+  const quote = calculatePackageEstimate({
+    participation,
+    tier,
+    staffCount,
+    packages,
+    tierPricing,
+    selectedPackageId,
+  });
+  const { feeUsd, feeRwf, includedStaff } = quote;
 
   return (
     <div className="rounded-xl border border-accent/30 bg-gradient-to-br from-accent/5 to-secondary/40 p-5 space-y-4">
@@ -51,15 +45,21 @@ export function ExhibitorPackageEstimator({
           <h3 className="font-serif font-bold">Package estimate</h3>
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
             Fees from the live exhibitor package catalog and sponsorship tier pricing when available.
-            Staff passes are bundled with booth packages.
+            Sponsorship tiers include a booth on the floor; staff passes are bundled per tier or package.
           </p>
         </div>
       </div>
 
-      {selectedPackage && (
+      {participation === "exhibitor" && selectedPackage && (
         <p className="text-xs text-muted-foreground">
           Selected package: <strong>{selectedPackage.name}</strong>
           {selectedPackage.boothSize ? ` · ${selectedPackage.boothSize}` : ""}
+        </p>
+      )}
+
+      {participation === "sponsor" && quote.tierLabel && (
+        <p className="text-xs text-muted-foreground">
+          Selected tier: <strong className="capitalize">{quote.tierLabel}</strong> (booth included)
         </p>
       )}
 
@@ -85,7 +85,7 @@ export function ExhibitorPackageEstimator({
         <div>
           <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Estimated total</div>
           <div className="font-serif text-3xl font-bold text-accent">${feeUsd.toLocaleString()}</div>
-          <div className="text-sm text-muted-foreground">≈ RWF {rwf.toLocaleString()}</div>
+          <div className="text-sm text-muted-foreground">≈ RWF {feeRwf.toLocaleString()}</div>
         </div>
         <div className="text-xs text-muted-foreground max-w-xs flex gap-2">
           <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />

@@ -574,6 +574,39 @@ export type SponsorshipApplicationStatsDto = {
   total: number;
 };
 
+export type ExhibitorApplicationDto = {
+  id: string;
+  symposiumId: string;
+  organizationName: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: string | null;
+  packageId: string;
+  message?: string | null;
+  preferredBoothId?: string | null;
+  staffCount?: number | null;
+  quotedFeeUsd?: number | null;
+  status: "pending" | "approved" | "rejected" | "invoiced" | string;
+  adminNotes?: string | null;
+  exhibitorId?: string | null;
+  contactUserId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateExhibitorApplicationDto = {
+  symposiumId: string;
+  organizationName: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: string;
+  packageId: string;
+  message?: string;
+  preferredBoothId?: string;
+  staffCount?: number;
+  quotedFeeUsd?: number;
+};
+
 export type SponsorshipInvoiceDto = {
   id: string;
   sponsorshipApplicationId: string;
@@ -595,6 +628,28 @@ export type SponsorshipTierPricingDto = {
   amountUsd: number;
   amountRwf: number;
   defaultCurrency?: string;
+};
+
+export type CreateExhibitorPackageDto = {
+  symposiumId: string;
+  name: string;
+  slug?: string;
+  description?: string;
+  staffPassQuota?: number;
+  boothSize?: string;
+  priceUsd?: number;
+  isActive?: boolean;
+  sortOrder?: number;
+};
+
+export type UpdateExhibitorPackageDto = {
+  name?: string;
+  description?: string;
+  staffPassQuota?: number;
+  boothSize?: string;
+  priceUsd?: number;
+  isActive?: boolean;
+  sortOrder?: number;
 };
 
 export type ExhibitorPackageDto = {

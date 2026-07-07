@@ -5,10 +5,13 @@ import { queryKeys } from "@/lib/api/query-keys";
 import { exhibitorsService, filesService, sponsorsService } from "@/lib/api/services";
 import { getAccessToken } from "@/lib/api/client";
 import type {
+  CreateExhibitorApplicationDto,
   CreateExhibitorMaterialDto,
+  CreateExhibitorPackageDto,
   CreateExhibitorStaffPassDto,
   ScanExhibitorLeadDto,
   UpdateExhibitorProfileDto,
+  UpdateExhibitorPackageDto,
 } from "@/lib/api/dto";
 import { deriveExhibitorParticipation } from "@/lib/exhibitor/participation";
 import { useSymposiumId } from "./useSymposium";
@@ -164,6 +167,16 @@ export function useCreateSponsorshipApplication() {
   });
 }
 
+export function useCreateExhibitorApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: CreateExhibitorApplicationDto) => exhibitorsService.createApplication(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-applications"] });
+    },
+  });
+}
+
 export function useMySponsorProfile() {
   const query = useQuery({
     queryKey: ["sponsors-me"],
@@ -293,6 +306,50 @@ export function usePublicExhibitorPackages(symposiumId: string | undefined) {
     staleTime: 10 * 60_000,
   });
   return { ...query, packages: query.data ?? [] };
+}
+
+export function useAdminExhibitorPackages(symposiumId: string | undefined) {
+  const query = useQuery({
+    queryKey: ["exhibitor-packages-admin", symposiumId],
+    queryFn: () => exhibitorsService.listPackagesAdmin(symposiumId!),
+    enabled: enabled() && Boolean(symposiumId),
+    staleTime: 30_000,
+  });
+  return { ...query, packages: query.data ?? [] };
+}
+
+export function useCreateExhibitorPackage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: CreateExhibitorPackageDto) => exhibitorsService.createPackage(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-packages-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-packages-public"] });
+    },
+  });
+}
+
+export function useUpdateExhibitorPackage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { id: string; dto: UpdateExhibitorPackageDto }) =>
+      exhibitorsService.updatePackage(params.id, params.dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-packages-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-packages-public"] });
+    },
+  });
+}
+
+export function useRemoveExhibitorPackage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => exhibitorsService.removePackage(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-packages-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-packages-public"] });
+    },
+  });
 }
 
 export type SponsorshipInvoiceRow = {

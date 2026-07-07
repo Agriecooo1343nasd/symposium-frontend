@@ -1,9 +1,12 @@
 import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type {
+  CreateExhibitorApplicationDto,
   CreateExhibitorDto,
   CreateExhibitorMaterialDto,
+  CreateExhibitorPackageDto,
   CreateExhibitorStaffPassDto,
+  ExhibitorApplicationDto,
   ExhibitorAdminDto,
   ExhibitorLeadDto,
   ExhibitorMaterialDto,
@@ -12,6 +15,7 @@ import type {
   ExhibitorStaffPassDto,
   ScanExhibitorLeadDto,
   UpdateExhibitorDto,
+  UpdateExhibitorPackageDto,
   UpdateExhibitorProfileDto,
 } from "../dto";
 import { type PaginationParams, fetchPaginatedList, toQueryParams, unwrapPaginated } from "../helpers";
@@ -95,12 +99,33 @@ export const exhibitorsService = {
       .get<ApiResponse<ExhibitorPackageDto[]>>(`/symposiums/${symposiumId}/exhibitor-packages`)
       .then(unwrapApi);
   },
+  listPackagesAdmin(symposiumId: string) {
+    return apiClient
+      .get<ApiResponse<ExhibitorPackageDto[]>>("/exhibitors/packages", {
+        params: { symposiumId },
+      })
+      .then(unwrapApi);
+  },
+  createPackage(dto: CreateExhibitorPackageDto) {
+    return apiClient.post<ApiResponse<ExhibitorPackageDto>>("/exhibitors/packages", dto).then(unwrapApi);
+  },
+  updatePackage(id: string, dto: UpdateExhibitorPackageDto) {
+    return apiClient.patch<ApiResponse<ExhibitorPackageDto>>(`/exhibitors/packages/${id}`, dto).then(unwrapApi);
+  },
+  removePackage(id: string) {
+    return apiClient.delete(`/exhibitors/packages/${id}`);
+  },
   getPackage(id: string) {
     return apiClient.get<ApiResponse<ExhibitorPackageDto>>(`/exhibitors/packages/${id}`).then(unwrapApi);
   },
   listMyLeads() {
     return apiClient
       .get<ApiResponse<ExhibitorLeadDto[]>>("/exhibitors/me/leads")
+      .then(unwrapApi);
+  },
+  createApplication(dto: CreateExhibitorApplicationDto) {
+    return apiClient
+      .post<ApiResponse<ExhibitorApplicationDto>>("/exhibitor-applications", dto)
       .then(unwrapApi);
   },
 };

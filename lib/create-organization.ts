@@ -1,19 +1,19 @@
 import {
   appendAudit,
-  calculateOrgPackageFee,
   patchStore,
   uid,
   upgradeUserToExhibitor,
   type OrgType,
-  type ParticipationType,
   type SponsorshipTier,
-  type TicketPlan,
 } from "./store";
 import { loadStore } from "./store";
 import { issueSponsorshipInvoice } from "./sponsorship-invoices";
+import type { ApplyParticipationType } from "./exhibitor-sponsor-apply";
 
 export type CreateOrganizationInput = {
   ticketPlanId: string;
+  ticketPlanName: string;
+  ticketRequiresVerification?: boolean;
   contactName: string;
   contactEmail: string;
   contactPhone: string;
@@ -23,14 +23,16 @@ export type CreateOrganizationInput = {
   orgType: OrgType;
   website: string;
   description: string;
-  participation: ParticipationType;
+  participation: ApplyParticipationType;
   sponsorshipTier?: SponsorshipTier;
+  packageId?: string;
   staffCount: number;
   staffEmails: string[];
   boothPreference?: string;
   preferredBoothId?: string;
   boothAssignment?: string;
   logoFileName?: string;
+  quotedFeeUsd?: number;
   /** When true (default for staff onboarding), creates approved org + portal access */
   approveImmediately?: boolean;
 };
@@ -48,21 +50,18 @@ function staffDisplayName(email: string) {
     .join(" ");
 }
 
-export function validateCreateOrganizationInput(
-  input: CreateOrganizationInput,
-  plan: TicketPlan | undefined,
-): string | null {
-  if (!plan) return "Select a pass category for the primary contact";
+export function validateCreateOrganizationInput(input: CreateOrganizationInput): string | null {
+  if (!input.ticketPlanId.trim()) return "Select a pass category for the primary contact";
   if (!input.companyName.trim()) return "Company name is required";
   if (!input.contactName.trim()) return "Contact name is required";
   if (!input.contactEmail.trim()) return "Contact email is required";
   if (!input.contactPhone.trim()) return "Contact phone is required";
   if (!input.description.trim()) return "Showcase description is required";
   if (input.staffCount < 1) return "Staff count must be at least 1";
-  if (
-    (input.participation === "sponsor" || input.participation === "both") &&
-    !input.sponsorshipTier
-  ) {
+  if (input.participation === "exhibitor" && !input.packageId) {
+    return "Select an exhibitor booth package";
+  }
+  if (input.participation === "sponsor" && !input.sponsorshipTier) {
     return "Select a sponsorship tier";
   }
   const contact = input.contactEmail.trim().toLowerCase();
@@ -80,8 +79,7 @@ export function createOrganizationManually(
   actorName: string,
 ): { ok: true; applicationId: string } | { ok: false; error: string } {
   const store = loadStore();
-  const plan = store.ticketPlans.find((t) => t.id === input.ticketPlanId);
-  const err = validateCreateOrganizationInput(input, plan);
+  const err = validateCreateOrganizationInput(input);
   if (err) return { ok: false, error: err };
 
   const approve = input.approveImmediately !== false;
@@ -92,30 +90,26 @@ export function createOrganizationManually(
   const regId = uid("r");
   const now = new Date().toISOString().slice(0, 10);
   const staffEmails = normalizeEmails(input.staffEmails).filter((e) => e !== email);
-  const quote = calculateOrgPackageFee(
-    input.participation,
-    input.sponsorshipTier,
-    input.staffCount,
-    store,
-  );
+  const quotedFeeUsd = input.quotedFeeUsd ?? 0;
   const preferred = input.preferredBoothId
     ? store.booths.find((b) => b.id === input.preferredBoothId)
     : null;
   const booth =
     input.boothAssignment?.trim() ||
     preferred?.code ||
+    input.boothPreference?.trim() ||
     `B-${Math.floor(Math.random() * 20) + 1}`;
-  const isSponsor = input.participation === "sponsor" || input.participation === "both";
+  const isSponsor = input.participation === "sponsor";
+  const needsVerify = Boolean(input.ticketRequiresVerification);
 
   patchStore((s) => {
-    const needsVerify = plan!.requiresVerification;
     const reg = {
       id: regId,
       name,
       email,
       country: input.country.trim(),
-      category: plan!.name,
-      categoryId: plan!.id,
+      category: input.ticketPlanName,
+      categoryId: input.ticketPlanId,
       amountUsd: 0,
       status: "comp" as const,
       verificationStatus: needsVerify ? ("pending" as const) : ("none" as const),
@@ -145,7 +139,7 @@ export function createOrganizationManually(
           registrationId: regId,
           registrantName: name,
           registrantEmail: email,
-          type: plan!.requiresVerification!,
+          type: "student" as const,
           fileName: "pending-upload",
           status: "pending" as const,
           submittedAt: now,
@@ -164,12 +158,13 @@ export function createOrganizationManually(
       contactPhone: input.contactPhone.trim(),
       participation: input.participation,
       sponsorshipTier: input.sponsorshipTier,
+      packageId: input.packageId,
       boothPreference: input.boothPreference?.trim(),
       preferredBoothId: input.preferredBoothId || undefined,
       logoFileName: input.logoFileName,
       staffCount: input.staffCount,
       staffMemberEmails: staffEmails,
-      quotedFeeUsd: quote.feeUsd,
+      quotedFeeUsd,
       status: (approve ? "approved" : "pending") as "approved" | "pending",
       paymentStatus: (isSponsor ? "unpaid" : "comp") as "unpaid" | "comp",
       boothAssignment: approve ? booth : undefined,
