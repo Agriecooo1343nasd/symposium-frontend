@@ -75,6 +75,12 @@ const emptyDoc = (): DocDraft => ({
   order: 1,
 });
 
+function stripSymposiumId<T extends { symposiumId: string }>(payload: T): Omit<T, "symposiumId"> {
+  const { symposiumId, ...rest } = payload;
+  void symposiumId;
+  return rest;
+}
+
 export function SymposiumArchivePanel() {
   const symposiumId = useSymposiumId();
   const { photos, documents, isLoading } = useAdminArchive();
@@ -142,7 +148,7 @@ export function SymposiumArchivePanel() {
 
     try {
       if (galleryDraft.editingId) {
-        const { symposiumId: _omit, ...dto } = upsert;
+        const dto = stripSymposiumId(upsert);
         await updateItem.mutateAsync({ id: galleryDraft.editingId, dto });
         toast.success("Photo updated");
       } else {
@@ -186,7 +192,7 @@ export function SymposiumArchivePanel() {
 
     try {
       if (docDraft.editingId) {
-        const { symposiumId: _omit, ...dto } = upsert;
+        const dto = stripSymposiumId(upsert);
         await updateItem.mutateAsync({ id: docDraft.editingId, dto });
         toast.success("Document updated");
       } else {
