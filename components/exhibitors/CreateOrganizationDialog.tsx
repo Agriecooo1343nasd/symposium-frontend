@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Store, X, Award } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Store, X, Award, CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,26 +9,39 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExhibitorPackageEstimator } from "@/components/apply/ExhibitorPackageEstimator";
+import { BoothMapPicker, type PickerBooth } from "@/components/shared/BoothMapPicker";
 import { useStore } from "@/hooks/use-store";
+import { useAdminTicketCategories } from "@/hooks/api/useAdmin";
+import { useSymposium } from "@/hooks/api/useSymposium";
+import {
+  usePublicExhibitorPackages,
+  useSponsorshipTierPricing,
+} from "@/hooks/api/useExhibitor";
+import { useBooths } from "@/hooks/api/useBooths";
 import { getSession } from "@/lib/auth";
 import {
   createOrganizationManually,
   type CreateOrganizationInput,
 } from "@/lib/create-organization";
-import type { OrgType, ParticipationType, SponsorshipTier, TicketPlan } from "@/lib/store";
+import {
+  calculatePackageEstimate,
+  defaultTierFromPricing,
+  type ApplyParticipationType,
+} from "@/lib/exhibitor-sponsor-apply";
+import type { OrgType, SponsorshipTier } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultParticipation?: ParticipationType;
+  defaultParticipation?: ApplyParticipationType;
   actorLabel?: string;
   onCreated?: (applicationId: string) => void;
 };
 
 const PARTICIPATION_OPTIONS: {
-  value: ParticipationType;
+  value: ApplyParticipationType;
   label: string;
   short: string;
   description: string;
@@ -36,29 +49,24 @@ const PARTICIPATION_OPTIONS: {
 }[] = [
   {
     value: "exhibitor",
-    label: "Exhibitor booth",
+    label: "Exhibitor",
     short: "Exhibitor",
-    description: "Floor booth, staff passes, and exhibitor portal — no sponsorship tier.",
+    description: "Booth package on the floor, staff passes, and exhibitor portal.",
     icon: Store,
   },
   {
     value: "sponsor",
-    label: "Sponsorship only",
+    label: "Sponsor",
     short: "Sponsor",
-    description: "Branding package and sponsorship invoice — no booth assignment.",
+    description: "Platinum / Gold / Silver tier with booth included, branding, and sponsorship invoice.",
     icon: Award,
-  },
-  {
-    value: "both",
-    label: "Exhibitor + sponsor",
-    short: "Both",
-    description: "Combined booth and sponsorship tier with full deliverables.",
-    icon: Store,
   },
 ];
 
-const empty = (participation: ParticipationType): CreateOrganizationInput => ({
+const empty = (participation: ApplyParticipationType): CreateOrganizationInput => ({
   ticketPlanId: "",
+  ticketPlanName: "",
+  ticketRequiresVerification: false,
   contactName: "",
   contactEmail: "",
   contactPhone: "",
@@ -70,6 +78,7 @@ const empty = (participation: ParticipationType): CreateOrganizationInput => ({
   description: "",
   participation,
   sponsorshipTier: "Silver",
+  packageId: "",
   staffCount: 2,
   staffEmails: [],
   boothPreference: "",
@@ -77,7 +86,7 @@ const empty = (participation: ParticipationType): CreateOrganizationInput => ({
   boothAssignment: "",
 });
 
-function participationMeta(p: ParticipationType) {
+function participationMeta(p: ApplyParticipationType) {
   return PARTICIPATION_OPTIONS.find((o) => o.value === p) ?? PARTICIPATION_OPTIONS[0];
 }
 
@@ -90,17 +99,49 @@ export function CreateOrganizationDialog({
 }: Props) {
   const store = useStore();
   const countries = store.platformSettings.countries;
-  const [picked, setPicked] = useState<TicketPlan | null>(null);
+  const { symposiumId } = useSymposium();
+  const { categories: ticketPlans, isLoading: plansLoading } = useAdminTicketCategories();
+  const { packages, isLoading: packagesLoading } = usePublicExhibitorPackages(symposiumId || undefined);
+  const { pricing: tierPricing } = useSponsorshipTierPricing(symposiumId || undefined);
+  const { booths } = useBooths(symposiumId);
+
   const [form, setForm] = useState<CreateOrganizationInput>(() => empty(defaultParticipation));
   const [staffEmail, setStaffEmail] = useState("");
-  const availableBooths = store.booths.filter((b) => b.status === "available");
+  const [pickedBooth, setPickedBooth] = useState<PickerBooth | null>(null);
+
+  const activePackages = useMemo(() => packages.filter((p) => p.isActive), [packages]);
+  const resolvedPackageId = form.packageId || activePackages[0]?.id || "";
+  const isExhibitor = form.participation === "exhibitor";
+  const isSponsor = form.participation === "sponsor";
 
   useEffect(() => {
     if (!open) return;
     setForm(empty(defaultParticipation));
-    setPicked(null);
     setStaffEmail("");
+    setPickedBooth(null);
   }, [open, defaultParticipation]);
+
+  useEffect(() => {
+    if (!tierPricing.length) return;
+    setForm((prev) => ({
+      ...prev,
+      sponsorshipTier: defaultTierFromPricing(tierPricing, prev.sponsorshipTier),
+    }));
+  }, [tierPricing, open]);
+
+  useEffect(() => {
+    if (!activePackages.length) return;
+    setForm((prev) => (prev.packageId ? prev : { ...prev, packageId: activePackages[0].id }));
+  }, [activePackages, open]);
+
+  const quote = calculatePackageEstimate({
+    participation: form.participation,
+    tier: form.sponsorshipTier,
+    staffCount: form.staffCount,
+    packages: activePackages,
+    tierPricing,
+    selectedPackageId: resolvedPackageId,
+  });
 
   const addStaffEmail = () => {
     const e = staffEmail.trim().toLowerCase();
@@ -110,11 +151,27 @@ export function CreateOrganizationDialog({
     setStaffEmail("");
   };
 
+  const handleBoothPick = (b: PickerBooth) => {
+    setPickedBooth(b);
+    setForm((f) => ({
+      ...f,
+      preferredBoothId: b.id,
+      boothPreference: b.code,
+      boothAssignment: b.code,
+    }));
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const selectedPlan = ticketPlans.find((t) => t.id === form.ticketPlanId);
     const payload: CreateOrganizationInput = {
       ...form,
-      ticketPlanId: picked?.id ?? form.ticketPlanId,
+      packageId: isExhibitor ? resolvedPackageId : undefined,
+      ticketPlanName: selectedPlan?.name ?? form.ticketPlanName,
+      ticketRequiresVerification: selectedPlan?.requiresVerification ?? false,
+      preferredBoothId: pickedBooth?.id ?? form.preferredBoothId,
+      boothAssignment: pickedBooth?.code ?? form.boothAssignment,
+      quotedFeeUsd: quote.feeUsd,
       approveImmediately: true,
     };
     const actor = actorLabel ?? getSession()?.name ?? "Staff";
@@ -126,8 +183,6 @@ export function CreateOrganizationDialog({
   };
 
   const meta = participationMeta(form.participation);
-  const isSponsor = form.participation === "sponsor" || form.participation === "both";
-  const isExhibitor = form.participation === "exhibitor" || form.participation === "both";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -135,20 +190,18 @@ export function CreateOrganizationDialog({
         <DialogHeader>
           <DialogTitle>Add organization — {meta.label.toLowerCase()}</DialogTitle>
           <p className="text-sm text-muted-foreground font-normal">
-            {form.participation === "sponsor"
-              ? "Creates comp registration, approved sponsorship application, sponsorship invoice, and portal access."
-              : form.participation === "exhibitor"
-                ? "Creates comp registration, approved booth application, booth assignment, staff invites, and exhibitor portal access."
-                : "Creates comp registration, booth + sponsorship package, invoice, staff invites, and full portal access."}
+            {isSponsor
+              ? "Creates comp registration, approved sponsorship application, sponsorship invoice, booth assignment, and portal access."
+              : "Creates comp registration, approved exhibitor application, booth assignment, staff invites, and exhibitor portal access."}
           </p>
         </DialogHeader>
 
         <form onSubmit={submit} className="space-y-8">
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
-              Step 1 — Choose package type
+              Step 1 — Application type
             </h3>
-            <div className="grid sm:grid-cols-3 gap-3">
+            <div className="grid sm:grid-cols-2 gap-3">
               {PARTICIPATION_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 const selected = form.participation === opt.value;
@@ -181,18 +234,22 @@ export function CreateOrganizationDialog({
               <div className="sm:col-span-2">
                 <Label>Pass category *</Label>
                 <Select
-                  value={picked?.id ?? ""}
+                  value={form.ticketPlanId || ""}
                   onValueChange={(id) => {
-                    const plan = store.ticketPlans.find((t) => t.id === id) ?? null;
-                    setPicked(plan);
-                    setForm((f) => ({ ...f, ticketPlanId: id }));
+                    const plan = ticketPlans.find((t) => t.id === id);
+                    setForm((f) => ({
+                      ...f,
+                      ticketPlanId: id,
+                      ticketPlanName: plan?.name ?? "",
+                      ticketRequiresVerification: plan?.requiresVerification ?? false,
+                    }));
                   }}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Delegate pass for contact" />
+                    <SelectValue placeholder={plansLoading ? "Loading pass categories…" : "Select delegate pass for contact"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {store.ticketPlans.map((t) => (
+                    {ticketPlans.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name}
                       </SelectItem>
@@ -204,6 +261,7 @@ export function CreateOrganizationDialog({
                 <Label>Contact name *</Label>
                 <Input
                   required
+                  placeholder="e.g. Jane Uwimana"
                   value={form.contactName}
                   onChange={(e) => setForm({ ...form, contactName: e.target.value })}
                   className="mt-1"
@@ -214,6 +272,7 @@ export function CreateOrganizationDialog({
                 <Input
                   required
                   type="email"
+                  placeholder="e.g. contact@company.rw"
                   value={form.contactEmail}
                   onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
                   className="mt-1"
@@ -223,6 +282,7 @@ export function CreateOrganizationDialog({
                 <Label>Phone *</Label>
                 <Input
                   required
+                  placeholder="e.g. +250 788 000 000"
                   value={form.contactPhone}
                   onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
                   className="mt-1"
@@ -232,7 +292,7 @@ export function CreateOrganizationDialog({
                 <Label>Country</Label>
                 <Select value={form.country} onValueChange={(v) => setForm({ ...form, country: v })}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue />
+                    <SelectValue placeholder="Select country" />
                   </SelectTrigger>
                   <SelectContent>
                     {countries.map((c) => (
@@ -246,6 +306,7 @@ export function CreateOrganizationDialog({
               <div className="sm:col-span-2">
                 <Label>Job title</Label>
                 <Input
+                  placeholder="e.g. Head of Partnerships"
                   value={form.jobTitle}
                   onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
                   className="mt-1"
@@ -256,40 +317,76 @@ export function CreateOrganizationDialog({
 
           <section className="space-y-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
-              Step 3 — {isSponsor && isExhibitor ? "Booth & sponsorship" : isSponsor ? "Sponsorship details" : "Booth details"}
+              Step 3 — {isSponsor ? "Sponsorship & organisation" : "Booth package & organisation"}
             </h3>
             <ExhibitorPackageEstimator
-              store={store}
               participation={form.participation}
               tier={form.sponsorshipTier}
               staffCount={form.staffCount}
               onStaffCountChange={(n) => setForm({ ...form, staffCount: n })}
+              packages={activePackages}
+              tierPricing={tierPricing}
+              selectedPackageId={resolvedPackageId}
             />
-            {isSponsor && (
+
+            {isExhibitor && (
               <div>
-                <Label>Sponsorship tier *</Label>
+                <Label>Exhibitor booth package *</Label>
                 <Select
-                  value={form.sponsorshipTier ?? "Silver"}
-                  onValueChange={(v) => setForm({ ...form, sponsorshipTier: v as SponsorshipTier })}
+                  value={resolvedPackageId}
+                  onValueChange={(v) => setForm({ ...form, packageId: v })}
+                  disabled={packagesLoading || !activePackages.length}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue />
+                    <SelectValue
+                      placeholder={
+                        packagesLoading
+                          ? "Loading packages…"
+                          : activePackages.length
+                            ? "Select a booth package"
+                            : "No packages — add under Exhibitors → Booth packages"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {store.sponsorshipTiers.map((t) => (
-                      <SelectItem key={t.tier} value={t.tier}>
-                        {t.tier}
+                    {activePackages.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} — ${Number(p.priceUsd).toLocaleString()} · {p.staffPassQuota} staff passes
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
+
+            {isSponsor && (
+              <div>
+                <Label>Sponsorship tier *</Label>
+                <Select
+                  value={form.sponsorshipTier ?? "Silver"}
+                  onValueChange={(v) => setForm({ ...form, sponsorshipTier: v as SponsorshipTier })}
+                  disabled={!tierPricing.length}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder={tierPricing.length ? "Select Platinum, Gold, or Silver" : "Tier pricing not configured"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tierPricing.map((t) => (
+                      <SelectItem key={t.tier} value={t.tier.charAt(0).toUpperCase() + t.tier.slice(1)}>
+                        {t.tier} — ${t.amountUsd.toLocaleString()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <Label>Company name *</Label>
                 <Input
                   required
+                  placeholder="e.g. Green Harvest Ltd"
                   value={form.companyName}
                   onChange={(e) => setForm({ ...form, companyName: e.target.value })}
                   className="mt-1"
@@ -299,7 +396,7 @@ export function CreateOrganizationDialog({
                 <Label>Organization type</Label>
                 <Select value={form.orgType} onValueChange={(v) => setForm({ ...form, orgType: v as OrgType })}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue />
+                    <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
                     {(["startup", "ngo", "university", "research", "company"] as const).map((t) => (
@@ -313,6 +410,7 @@ export function CreateOrganizationDialog({
               <div>
                 <Label>Website</Label>
                 <Input
+                  placeholder="https://company.rw"
                   value={form.website}
                   onChange={(e) => setForm({ ...form, website: e.target.value })}
                   className="mt-1"
@@ -324,93 +422,84 @@ export function CreateOrganizationDialog({
               <Textarea
                 required
                 rows={3}
+                placeholder="Products, innovations, or sponsorship goals for NAS 2026…"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="mt-1"
               />
             </div>
-            {isExhibitor && (
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Booth to assign</Label>
-                  <Input
-                    value={form.boothAssignment ?? ""}
-                    onChange={(e) => setForm({ ...form, boothAssignment: e.target.value })}
-                    placeholder="A-01"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label>Or pick available booth</Label>
-                  <Select
-                    value={form.preferredBoothId || "_none"}
-                    onValueChange={(v) => {
-                      const booth = store.booths.find((b) => b.id === v);
-                      setForm({
-                        ...form,
-                        preferredBoothId: v === "_none" ? "" : v,
-                        boothAssignment: booth?.code ?? form.boothAssignment,
-                      });
-                    }}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Optional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_none">—</SelectItem>
-                      {availableBooths.map((b) => (
-                        <SelectItem key={b.id} value={b.id}>
-                          {b.code}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
           </section>
 
-          {isExhibitor && (
-            <section className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
-                Step 4 — Booth staff emails
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Invited colleagues receive comp check-in passes (not the primary contact email).
-              </p>
-              <div className="flex gap-2">
+          <section className="space-y-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
+              Step 4 — Booth assignment
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {isSponsor
+                ? "Sponsorship tiers include a booth — assign or pick from the floor map."
+                : "Assign a booth code or pick from the available floor map."}
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <Label>Booth code</Label>
                 <Input
-                  type="email"
-                  placeholder="staff@company.com"
-                  value={staffEmail}
-                  onChange={(e) => setStaffEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addStaffEmail())}
+                  value={form.boothAssignment ?? ""}
+                  onChange={(e) => setForm({ ...form, boothAssignment: e.target.value })}
+                  placeholder="e.g. A-12"
+                  className="mt-1"
                 />
-                <Button type="button" variant="outline" onClick={addStaffEmail}>
-                  <Plus className="h-4 w-4" />
-                </Button>
               </div>
-              {form.staffEmails.length > 0 && (
-                <ul className="flex flex-wrap gap-2">
-                  {form.staffEmails.map((e) => (
-                    <li
-                      key={e}
-                      className="text-xs flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-mono"
+            </div>
+            <BoothMapPicker booths={booths} mode="pick" selectedId={pickedBooth?.id} onSelect={handleBoothPick} />
+            {pickedBooth ? (
+              <div className="flex items-center gap-2 rounded-xl bg-accent/10 border border-accent/30 px-4 py-3 text-sm">
+                <CheckCircle2 className="h-4 w-4 text-accent flex-shrink-0" />
+                <span>
+                  Selected: <strong className="font-mono">{pickedBooth.code}</strong>
+                </span>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2">
+              Step 5 — Booth staff emails
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Invited colleagues receive comp check-in passes (not the primary contact email).
+            </p>
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="staff@company.com"
+                value={staffEmail}
+                onChange={(e) => setStaffEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addStaffEmail())}
+              />
+              <Button type="button" variant="outline" onClick={addStaffEmail}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {form.staffEmails.length > 0 && (
+              <ul className="flex flex-wrap gap-2">
+                {form.staffEmails.map((e) => (
+                  <li
+                    key={e}
+                    className="text-xs flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-mono"
+                  >
+                    {e}
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => setForm((f) => ({ ...f, staffEmails: f.staffEmails.filter((x) => x !== e) }))}
                     >
-                      {e}
-                      <button
-                        type="button"
-                        className="text-muted-foreground hover:text-foreground"
-                        onClick={() => setForm((f) => ({ ...f, staffEmails: f.staffEmails.filter((x) => x !== e) }))}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
+                      <X className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

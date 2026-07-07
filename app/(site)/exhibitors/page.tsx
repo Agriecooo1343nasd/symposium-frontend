@@ -36,12 +36,12 @@ export default function Exhibitors() {
           </p>
           <div className="flex flex-wrap gap-3 mt-8">
             <Button asChild className="bg-gold hover:bg-gold/90 text-navy font-semibold">
-              <Link href="/register">
+              <Link href="/dashboard/apply-exhibit">
                 Apply to exhibit <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
             <Button asChild variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white">
-              <Link href="/dashboard/apply">
+              <Link href="/dashboard/apply-exhibit">
                 Become a sponsor
               </Link>
             </Button>
@@ -118,7 +118,7 @@ export default function Exhibitors() {
           </p>
           <div className="flex flex-wrap gap-3 justify-center mt-8">
             <Button asChild size="lg" className="bg-gold hover:bg-gold/90 text-navy font-semibold">
-              <Link href="/dashboard/apply">
+              <Link href="/dashboard/apply-exhibit">
                 Become a sponsor
               </Link>
             </Button>

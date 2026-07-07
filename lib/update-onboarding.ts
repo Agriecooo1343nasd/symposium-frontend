@@ -111,6 +111,7 @@ export type UpdateOrganizationInput = {
   contactPhone?: string;
   participation?: OrganizationApplication["participation"];
   sponsorshipTier?: OrganizationApplication["sponsorshipTier"];
+  packageId?: string;
   staffCount?: number;
   staffEmails?: string[];
   boothAssignment?: string;
@@ -153,6 +154,7 @@ export function updateOrganizationOnboarding(
       contactPhone: input.contactPhone?.trim() ?? app.contactPhone,
       participation,
       sponsorshipTier: tier,
+      packageId: input.packageId ?? app.packageId,
       staffCount,
       staffMemberEmails: staffEmails,
       quotedFeeUsd: quote.feeUsd,

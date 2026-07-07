@@ -15,6 +15,7 @@ import {
   Mic,
   Radio,
   RotateCcw,
+  Store,
   Vote,
 } from "lucide-react";
 import { PortalShell, type PortalNavItem } from "@/components/layout/PortalShell";
@@ -32,6 +33,7 @@ const BASE_NAV: readonly PortalNavItem[] = [
   { to: "/dashboard/refunds", label: "Refunds & transfer", icon: RotateCcw, exact: false },
   { to: "/dashboard/schedule", label: "My Schedule", icon: Calendar, exact: false },
   { to: "/dashboard/apply", label: "Apply to speak", icon: Mic, exact: false },
+  { to: "/dashboard/apply-exhibit", label: "Exhibit / sponsor", icon: Store, exact: false },
   { to: "/dashboard/networking", label: "Networking", icon: Users, exact: false },
   { to: "/dashboard/materials", label: "Materials", icon: FileText, exact: false },
   { to: "/dashboard/notifications", label: "Notifications", icon: Bell, exact: false },
