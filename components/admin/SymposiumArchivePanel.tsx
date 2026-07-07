@@ -118,7 +118,9 @@ export function SymposiumArchivePanel() {
 
   const uploadAsset = async (file: File): Promise<string | null> => {
     try {
-      const res = await uploadFile.mutateAsync({ file, type: "symposium_asset" });
+      const uploadType =
+        file.type.startsWith("image/") ? "symposium_asset" : "exhibitor_material";
+      const res = await uploadFile.mutateAsync({ file, type: uploadType });
       return res.url;
     } catch (err) {
       toast.error(apiErrorMessage(err));
@@ -500,7 +502,7 @@ export function SymposiumArchivePanel() {
                     <input
                       type="file"
                       className="sr-only"
-                      accept=".pdf,.ppt,.pptx,.doc,.docx,application/pdf"
+                      accept=".pdf,.ppt,.pptx,application/pdf,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
                       onChange={(e) => e.target.files?.[0] && onDocFile(e.target.files[0])}
                     />
                   </label>

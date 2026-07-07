@@ -34,12 +34,7 @@ export default function ModeratorRunOfShowPage() {
         <ProgrammeDayFilter value={dayFilter} onChange={setDayFilter} />
       </div>
 
-      {ready && !canManageSessions && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          Saves will fail until the backend grants <strong>sessions.manage</strong> on the moderator role (see{" "}
-          <code className="text-xs">ai/reports.txt</code>). Viewing the API timeline still works.
-        </div>
-      )}
+    
 
       <Tabs
         value={activeTab}

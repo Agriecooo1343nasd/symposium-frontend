@@ -248,8 +248,8 @@ export function NewsCmsPanel({ title, subtitle }: Props) {
 
       <Tabs defaultValue="articles">
         <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="articles">News articles (API)</TabsTrigger>
-          <TabsTrigger value="archive">Symposium archive (local mock)</TabsTrigger>
+          <TabsTrigger value="articles">News articles</TabsTrigger>
+          <TabsTrigger value="archive">Symposium archive</TabsTrigger>
         </TabsList>
 
         <TabsContent value="articles" className="mt-6">
