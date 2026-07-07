@@ -97,6 +97,12 @@ export default function Page() {
   const save = () => {
     if (!editing || !symposiumId) return;
     if (!editing.name.trim()) return toast.error("Plan name is required");
+    const current = editing.id ? categories.find((c) => c.id === editing.id) : null;
+    const soldCount = current?.soldCount ?? 0;
+    const capacity = editing.capacity > 0 ? editing.capacity : undefined;
+    if (capacity !== undefined && soldCount > capacity) {
+      return toast.error(`Capacity cannot be lower than sold seats (${soldCount})`);
+    }
     const dto = {
       symposiumId,
       name: editing.name.trim(),
@@ -105,8 +111,9 @@ export default function Page() {
       priceUsd: editing.usd,
       priceRwf: Math.round(editing.usd * rate),
       requiresVerification: editing.requiresVerification,
-      capacity: editing.capacity,
+      capacity,
       isActive: editing.isActive,
+      isSoldOut: capacity !== undefined ? soldCount >= capacity : false,
       sortOrder: editing.sortOrder,
       benefits: toBenefits(editing.featuresText),
     };

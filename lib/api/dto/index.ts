@@ -1153,6 +1153,11 @@ export type SymposiumSettingsDto = {
     enableWaitlist?: boolean;
     allowTicketTransfer?: boolean;
     allowRefundRequests?: boolean;
+    groupDiscountTiers?: Array<{
+      minMembers: number;
+      maxMembers?: number | null;
+      percent: number;
+    }>;
   };
   payments: {
     enableMomo?: boolean;
