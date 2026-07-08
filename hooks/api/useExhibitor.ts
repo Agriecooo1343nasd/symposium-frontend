@@ -160,9 +160,80 @@ export function useCreateSponsorshipApplication() {
       desiredTier: "platinum" | "gold" | "silver";
       message?: string;
       wantsExhibitorBooth: boolean;
+      preferredBoothId?: string;
+      staffCount?: number;
     }) => sponsorsService.createSponsorshipApplication(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sponsorship-applications"] });
+    },
+  });
+}
+
+export function useMyExhibitorApplications() {
+  const query = useQuery({
+    queryKey: ["exhibitor-applications-me"],
+    queryFn: () => exhibitorsService.listMyApplications(),
+    enabled: enabled(),
+    staleTime: 30_000,
+  });
+  return { ...query, applications: query.data ?? [] };
+}
+
+export function useListExhibitorApplications(symposiumId?: string, status?: string) {
+  const query = useQuery({
+    queryKey: ["exhibitor-applications-admin", symposiumId, status],
+    queryFn: () => exhibitorsService.listApplicationsAdmin({ symposiumId, status, limit: 100 }),
+    enabled: enabled(),
+    staleTime: 30_000,
+  });
+  const applications = query.data?.items ?? [];
+  return { ...query, applications, data: applications };
+}
+
+export function useExhibitorApplicationStats(symposiumId?: string) {
+  const query = useQuery({
+    queryKey: ["exhibitor-applications-stats", symposiumId],
+    queryFn: () => exhibitorsService.getApplicationStats(symposiumId),
+    enabled: enabled(),
+    staleTime: 60_000,
+  });
+  return { ...query, stats: query.data ?? null };
+}
+
+export function useApproveExhibitorApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      id: string;
+      dto?: { packageId?: string; boothId?: string; boothNumber?: string; adminNotes?: string };
+    }) => exhibitorsService.approveApplication(params.id, params.dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-applications-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-applications-stats"] });
+    },
+  });
+}
+
+export function useRejectExhibitorApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { id: string; adminNotes?: string }) =>
+      exhibitorsService.rejectApplication(params.id, { adminNotes: params.adminNotes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-applications-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-applications-stats"] });
+    },
+  });
+}
+
+export function useMarkExhibitorInvoicePaid() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { id: string; notes?: string }) =>
+      exhibitorsService.markInvoicePaid(params.id, { notes: params.notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-applications-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-applications-stats"] });
     },
   });
 }
@@ -173,6 +244,7 @@ export function useCreateExhibitorApplication() {
     mutationFn: (dto: CreateExhibitorApplicationDto) => exhibitorsService.createApplication(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exhibitor-applications"] });
+      queryClient.invalidateQueries({ queryKey: ["exhibitor-applications-me"] });
     },
   });
 }

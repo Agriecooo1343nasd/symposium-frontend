@@ -10,7 +10,9 @@ export default function DeskExhibitorsTabPage() {
   const raw = typeof params.tab === "string" ? params.tab.toLowerCase() : "exhibitors";
   const activeTab: DeskExhibitorTab = DESK_EXHIBITOR_TABS.includes(raw as DeskExhibitorTab)
     ? (raw as DeskExhibitorTab)
-    : "exhibitors";
+    : raw === "applications"
+      ? "exhibitors"
+      : "exhibitors";
 
   return (
     <ExhibitorsPortal

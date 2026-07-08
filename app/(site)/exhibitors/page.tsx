@@ -1,13 +1,18 @@
 "use client";
 
 import { usePublicExhibitors, usePublicSponsors } from "@/hooks/api/usePublicData";
+import { useSponsorshipTierPricing } from "@/hooks/api/useExhibitor";
+import { useSymposium } from "@/hooks/api/useSymposium";
 import Link from "next/link";
 import { ArrowRight, Store, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { mergeTierPricingRows, pricingRowToTierConfig, tierSlugToLabel } from "@/lib/sponsorship-tier-api";
 
 export default function Exhibitors() {
+  const { symposiumId } = useSymposium();
   const { data: sponsors, isLoading: sponsorsLoading } = usePublicSponsors();
   const { exhibitors, isLoading: exhibitorsLoading } = usePublicExhibitors();
+  const { pricing: tierPricing } = useSponsorshipTierPricing(symposiumId || undefined);
 
   const sponsorCards = (sponsors ?? []).map((s) => ({
     id: s.id,
@@ -19,6 +24,15 @@ export default function Exhibitors() {
 
   const tierColor = (t: string) =>
     t === "Platinum" ? "bg-slate-200 text-slate-900" : t === "Gold" ? "bg-amber-100 text-amber-900" : "bg-zinc-200 text-zinc-900";
+  const tierCards = mergeTierPricingRows(tierPricing).map((row) => {
+    const cfg = pricingRowToTierConfig(row);
+    const tier = tierSlugToLabel(row.tier);
+    return {
+      tier,
+      amountUsd: row.amountUsd,
+      perks: cfg.benefits,
+    };
+  });
 
   return (
     <>
@@ -94,7 +108,7 @@ export default function Exhibitors() {
           {exhibitors.map((e) => (
             <div key={e.id} className="rounded-2xl bg-card border border-border p-6 hover-lift flex flex-col">
               <div className="h-14 w-14 rounded-xl gradient-navy text-white flex items-center justify-center font-serif font-bold text-lg mb-3">
-                {(e.companyName ?? "Exhibitor").split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                {(e.companyName ?? "Exhibitor").split(" ").map((w: string) => w[0]).slice(0, 2).join("")}
               </div>
               <h3 className="font-serif font-bold text-lg">{e.companyName ?? "Exhibitor"}</h3>
               {e.boothNumber && (
@@ -127,17 +141,13 @@ export default function Exhibitors() {
             </Button>
           </div>
           <div className="grid sm:grid-cols-3 gap-4 mt-12 text-left">
-            {[
-              { tier: "Platinum", fee: "From $15,000", perks: ["Homepage carousel · top tier", "5 brochure uploads", "10 staff passes", "Lead capture", "Speaking slot"] },
-              { tier: "Gold", fee: "From $8,000", perks: ["Homepage carousel · mid tier", "3 brochure uploads", "6 staff passes", "Lead capture", "Newsletter feature"] },
-              { tier: "Silver", fee: "From $3,000", perks: ["Exhibitors page logo", "1 brochure upload", "3 staff passes", "Standard listing"] },
-            ].map((t) => (
+            {tierCards.map((t) => (
               <div key={t.tier} className={`rounded-2xl border p-5 bg-card ${t.tier === "Gold" ? "border-accent shadow-md ring-1 ring-accent/20" : "border-border"}`}>
                 <div className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full w-fit mb-3 ${t.tier === "Platinum" ? "bg-slate-200 text-slate-900" : t.tier === "Gold" ? "bg-amber-100 text-amber-900" : "bg-zinc-200 text-zinc-900"}`}>
                   {t.tier}
                 </div>
                 <div className="font-serif text-xl font-bold mb-1">{t.tier}</div>
-                <div className="text-sm text-accent font-semibold mb-3">{t.fee}</div>
+                <div className="text-sm text-accent font-semibold mb-3">From ${t.amountUsd.toLocaleString()}</div>
                 <ul className="space-y-1.5 text-sm">
                   {t.perks.map((p) => (
                     <li key={p} className="flex items-center gap-2 text-muted-foreground">

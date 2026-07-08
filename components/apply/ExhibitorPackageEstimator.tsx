@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ExhibitorPackageDto, SponsorshipTierPricingDto } from "@/lib/api/dto";
 import { calculatePackageEstimate, type ApplyParticipationType } from "@/lib/exhibitor-sponsor-apply";
+import { pricingRowToTierConfig } from "@/lib/sponsorship-tier-api";
 import type { SponsorshipTier } from "@/lib/store";
 
 type Props = {
@@ -58,9 +59,24 @@ export function ExhibitorPackageEstimator({
       )}
 
       {participation === "sponsor" && quote.tierLabel && (
-        <p className="text-xs text-muted-foreground">
-          Selected tier: <strong className="capitalize">{quote.tierLabel}</strong> (booth included)
-        </p>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Selected tier: <strong className="capitalize">{quote.tierLabel}</strong> (booth included)
+          </p>
+          {(() => {
+            const row = tierPricing.find((t) => t.tier.toLowerCase() === quote.tierLabel?.toLowerCase());
+            if (!row?.benefits) return null;
+            const benefits = pricingRowToTierConfig(row).benefits;
+            if (!benefits.length) return null;
+            return (
+              <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
+                {benefits.slice(0, 6).map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            );
+          })()}
+        </div>
       )}
 
       <div>

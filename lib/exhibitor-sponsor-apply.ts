@@ -93,7 +93,7 @@ export function calculatePackageEstimate(input: {
     if (tierPrice) {
       feeUsd = tierPrice.amountUsd;
       feeRwf = tierPrice.amountRwf;
-      includedStaff = 2;
+      includedStaff = tierPrice.benefits?.staffPasses ?? 2;
     }
   }
 

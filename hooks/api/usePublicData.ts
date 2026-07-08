@@ -96,7 +96,6 @@ export function usePublicSponsors() {
   });
 }
 
-/** Approved exhibitor booths — requires auth (admin/exhibitor manager). Public visitors see empty until backend adds a public list endpoint. */
 export function usePublicExhibitors() {
   const { symposiumId } = useSymposium();
   const query = useQuery({

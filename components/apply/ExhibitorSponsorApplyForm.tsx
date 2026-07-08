@@ -20,13 +20,13 @@ import { useBooths } from "@/hooks/api/useBooths";
 import { ExhibitorPackageEstimator } from "@/components/apply/ExhibitorPackageEstimator";
 import { BoothMapPicker, type PickerBooth } from "@/components/shared/BoothMapPicker";
 import {
-  buildApplicationMessage,
   calculatePackageEstimate,
   defaultTierFromPricing,
   sponsorshipWantsBooth,
   tierToApi,
   type ApplyParticipationType,
 } from "@/lib/exhibitor-sponsor-apply";
+import { pricingRowToTierConfig } from "@/lib/sponsorship-tier-api";
 import type { SponsorshipTier } from "@/lib/store";
 import { apiErrorMessage } from "@/lib/api/client";
 import { toast } from "sonner";
@@ -97,19 +97,6 @@ export function ExhibitorSponsorApplyForm() {
       return toast.error("Sponsorship tier pricing is not configured yet.");
     }
 
-    const selectedPackage = activePackages.find((p) => p.id === resolvedPackageId);
-    const meta = {
-      participationType: org.participation,
-      packageId: isExhibitor ? resolvedPackageId : undefined,
-      packageName: isExhibitor ? selectedPackage?.name : undefined,
-      preferredBoothId: pickedBooth?.id,
-      preferredBoothCode: pickedBooth?.code,
-      staffCount,
-      quotedFeeUsd: quote.feeUsd,
-      quotedFeeRwf: quote.feeRwf,
-    };
-    const message = buildApplicationMessage(org.description.trim(), meta);
-
     try {
       setSubmitting(true);
 
@@ -121,7 +108,7 @@ export function ExhibitorSponsorApplyForm() {
           contactEmail: org.contactEmail.trim(),
           contactPhone: org.contactPhone.trim() || undefined,
           packageId: resolvedPackageId,
-          message,
+          message: org.description.trim() || undefined,
           preferredBoothId: pickedBooth?.id,
           staffCount,
           quotedFeeUsd: quote.feeUsd,
@@ -135,20 +122,17 @@ export function ExhibitorSponsorApplyForm() {
           contactEmail: org.contactEmail.trim(),
           contactPhone: org.contactPhone.trim(),
           desiredTier: tierToApi(org.sponsorshipTier),
-          message,
+          message: org.description.trim() || undefined,
           wantsExhibitorBooth: sponsorshipWantsBooth(org.participation),
+          preferredBoothId: pickedBooth?.id,
+          staffCount,
         });
         toast.success("Sponsorship application submitted");
       }
 
       router.push("/dashboard");
     } catch (err) {
-      const msg = apiErrorMessage(err);
-      if (isExhibitor && (msg.includes("404") || msg.toLowerCase().includes("not found"))) {
-        toast.error("Exhibitor apply API is not live yet — ask the backend team to ship POST /exhibitor-applications.");
-      } else {
-        toast.error(msg);
-      }
+      toast.error(apiErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -236,6 +220,21 @@ export function ExhibitorSponsorApplyForm() {
                 ))}
               </SelectContent>
             </Select>
+            {(() => {
+              const row = tierPricing.find(
+                (t) => t.tier.toLowerCase() === org.sponsorshipTier.toLowerCase(),
+              );
+              if (!row?.benefits) return null;
+              const benefits = pricingRowToTierConfig(row).benefits;
+              if (!benefits.length) return null;
+              return (
+                <ul className="mt-2 text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+                  {benefits.map((b) => (
+                    <li key={b}>{b}</li>
+                  ))}
+                </ul>
+              );
+            })()}
           </div>
         )}
       </div>
