@@ -93,11 +93,6 @@ export function ExhibitorsDirectoryPanel({ onTotalChange }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Approved exhibitor booth profiles from the hosted API. Search matches company name and booth number; sorting and
-        pagination are server-side.
-      </p>
-
       <ListToolbar
         query={q}
         onQueryChange={setQ}

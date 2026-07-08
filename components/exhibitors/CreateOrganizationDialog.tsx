@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Store, X, Award, CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,19 +13,16 @@ import { ExhibitorPackageEstimator } from "@/components/apply/ExhibitorPackageEs
 import { BoothMapPicker, type PickerBooth } from "@/components/shared/BoothMapPicker";
 import { useStore } from "@/hooks/use-store";
 import { useAdminTicketCategories } from "@/hooks/api/useAdmin";
+import { useCreateExhibitor } from "@/hooks/api/useAdmin";
 import { useSymposium } from "@/hooks/api/useSymposium";
 import {
   usePublicExhibitorPackages,
   useSponsorshipTierPricing,
 } from "@/hooks/api/useExhibitor";
-import { useBooths } from "@/hooks/api/useBooths";
-import { getSession } from "@/lib/auth";
+import { useBooths, useUpdateBooth } from "@/hooks/api/useBooths";
+import { sponsorsService, usersService } from "@/lib/api/services";
+import { apiErrorMessage } from "@/lib/api/client";
 import {
-  createOrganizationManually,
-  type CreateOrganizationInput,
-} from "@/lib/create-organization";
-import {
-  calculatePackageEstimate,
   defaultTierFromPricing,
   type ApplyParticipationType,
 } from "@/lib/exhibitor-sponsor-apply";
@@ -63,10 +61,29 @@ const PARTICIPATION_OPTIONS: {
   },
 ];
 
-const empty = (participation: ApplyParticipationType): CreateOrganizationInput => ({
+type OrganizationFormState = {
+  ticketPlanId: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  country: string;
+  jobTitle: string;
+  companyName: string;
+  orgType: OrgType;
+  website: string;
+  description: string;
+  participation: ApplyParticipationType;
+  sponsorshipTier: SponsorshipTier;
+  packageId: string;
+  staffCount: number;
+  staffEmails: string[];
+  boothPreference: string;
+  preferredBoothId: string;
+  boothAssignment: string;
+};
+
+const empty = (participation: ApplyParticipationType): OrganizationFormState => ({
   ticketPlanId: "",
-  ticketPlanName: "",
-  ticketRequiresVerification: false,
   contactName: "",
   contactEmail: "",
   contactPhone: "",
@@ -94,20 +111,35 @@ export function CreateOrganizationDialog({
   open,
   onOpenChange,
   defaultParticipation = "exhibitor",
-  actorLabel,
   onCreated,
 }: Props) {
   const store = useStore();
   const countries = store.platformSettings.countries;
   const { symposiumId } = useSymposium();
+  const queryClient = useQueryClient();
   const { categories: ticketPlans, isLoading: plansLoading } = useAdminTicketCategories();
+  const createExhibitor = useCreateExhibitor();
   const { packages, isLoading: packagesLoading } = usePublicExhibitorPackages(symposiumId || undefined);
   const { pricing: tierPricing } = useSponsorshipTierPricing(symposiumId || undefined);
   const { booths } = useBooths(symposiumId);
+  const updateBooth = useUpdateBooth();
 
-  const [form, setForm] = useState<CreateOrganizationInput>(() => empty(defaultParticipation));
+  const [form, setForm] = useState<OrganizationFormState>(() => empty(defaultParticipation));
   const [staffEmail, setStaffEmail] = useState("");
   const [pickedBooth, setPickedBooth] = useState<PickerBooth | null>(null);
+
+  const createSponsor = useMutation({
+    mutationFn: (dto: {
+      symposiumId: string;
+      name: string;
+      tier: "platinum" | "gold" | "silver";
+      websiteUrl?: string;
+      description?: string;
+    }) => sponsorsService.create(dto),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["sponsors"] });
+    },
+  });
 
   const activePackages = useMemo(() => packages.filter((p) => p.isActive), [packages]);
   const resolvedPackageId = form.packageId || activePackages[0]?.id || "";
@@ -134,15 +166,6 @@ export function CreateOrganizationDialog({
     setForm((prev) => (prev.packageId ? prev : { ...prev, packageId: activePackages[0].id }));
   }, [activePackages, open]);
 
-  const quote = calculatePackageEstimate({
-    participation: form.participation,
-    tier: form.sponsorshipTier,
-    staffCount: form.staffCount,
-    packages: activePackages,
-    tierPricing,
-    selectedPackageId: resolvedPackageId,
-  });
-
   const addStaffEmail = () => {
     const e = staffEmail.trim().toLowerCase();
     if (!e) return;
@@ -161,25 +184,107 @@ export function CreateOrganizationDialog({
     }));
   };
 
-  const submit = (e: React.FormEvent) => {
+  function splitNameParts(fullName: string) {
+    const clean = fullName.trim().replace(/\s+/g, " ");
+    if (!clean) return { firstName: "Contact", lastName: "User" };
+    const [firstName, ...rest] = clean.split(" ");
+    return { firstName, lastName: rest.join(" ") || "User" };
+  }
+
+  function randomTempPassword() {
+    return `Temp!${Math.random().toString(36).slice(-8)}A1`;
+  }
+
+  function resolveBoothId(): string | undefined {
+    if (pickedBooth?.id) return pickedBooth.id;
+    const code = form.boothAssignment.trim();
+    if (!code) return undefined;
+    return booths.find((b) => b.code.toLowerCase() === code.toLowerCase())?.id;
+  }
+
+  async function markBoothOccupied(boothId: string | undefined) {
+    if (!boothId) return;
+    const booth = booths.find((b) => b.id === boothId);
+    if (booth?.status === "occupied") return;
+    try {
+      await updateBooth.mutateAsync({ id: boothId, dto: { status: "occupied" } });
+    } catch {
+      toast.warning("Organization saved, but the booth map status couldn't be synced automatically.");
+    }
+  }
+
+  async function ensureContactUserId(email: string, contactName: string) {
+    const normalized = email.trim().toLowerCase();
+    const listed = await usersService.list({ search: normalized, limit: 50 });
+    const existing = listed.items.find((u) => u.email?.toLowerCase() === normalized);
+    if (existing) return existing.id;
+
+    const { firstName, lastName } = splitNameParts(contactName);
+    const created = await usersService.createAdmin({
+      email: normalized,
+      password: randomTempPassword(),
+      firstName,
+      lastName,
+    });
+    return created.id;
+  }
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedPlan = ticketPlans.find((t) => t.id === form.ticketPlanId);
-    const payload: CreateOrganizationInput = {
-      ...form,
-      packageId: isExhibitor ? resolvedPackageId : undefined,
-      ticketPlanName: selectedPlan?.name ?? form.ticketPlanName,
-      ticketRequiresVerification: selectedPlan?.requiresVerification ?? false,
-      preferredBoothId: pickedBooth?.id ?? form.preferredBoothId,
-      boothAssignment: pickedBooth?.code ?? form.boothAssignment,
-      quotedFeeUsd: quote.feeUsd,
-      approveImmediately: true,
-    };
-    const actor = actorLabel ?? getSession()?.name ?? "Staff";
-    const result = createOrganizationManually(payload, actor);
-    if (!result.ok) return toast.error(result.error);
-    toast.success(`${payload.companyName} onboarded as ${participationMeta(payload.participation).short}`);
-    onOpenChange(false);
-    onCreated?.(result.applicationId);
+    if (!symposiumId) return toast.error("Symposium not loaded yet.");
+    if (!form.contactName.trim()) return toast.error("Contact name is required.");
+    if (!form.contactEmail.trim()) return toast.error("Contact email is required.");
+    if (!form.contactPhone.trim()) return toast.error("Contact phone is required.");
+    if (!form.companyName.trim()) return toast.error("Company name is required.");
+    if (!form.description.trim()) return toast.error("Description is required.");
+    if (isExhibitor && !resolvedPackageId) return toast.error("Select an exhibitor booth package.");
+    if (isSponsor && !tierPricing.length) return toast.error("Sponsorship tier pricing is not configured.");
+
+    try {
+      const boothId = resolveBoothId();
+
+      if (isExhibitor) {
+        const contactUserId = await ensureContactUserId(form.contactEmail, form.contactName);
+        await createExhibitor.mutateAsync({
+          symposiumId,
+          contactUserId,
+          packageId: resolvedPackageId || undefined,
+          companyName: form.companyName.trim(),
+          boothNumber: (pickedBooth?.code ?? form.boothAssignment ?? "").trim() || undefined,
+          staffPassQuota: form.staffCount,
+        });
+        await markBoothOccupied(boothId);
+      } else {
+        const sponsor = await createSponsor.mutateAsync({
+          symposiumId,
+          name: form.companyName.trim(),
+          tier: form.sponsorshipTier.toLowerCase() as "platinum" | "gold" | "silver",
+          websiteUrl: form.website.trim() || undefined,
+          description: form.description.trim() || undefined,
+        });
+
+        // Sponsorship tiers include a booth — mirror the approved-application flow by
+        // creating the linked exhibitor/booth record when a booth was assigned.
+        if (boothId || form.boothAssignment.trim()) {
+          const contactUserId = await ensureContactUserId(form.contactEmail, form.contactName);
+          await createExhibitor.mutateAsync({
+            symposiumId,
+            contactUserId,
+            sponsorId: sponsor.id,
+            companyName: form.companyName.trim(),
+            boothNumber: (pickedBooth?.code ?? form.boothAssignment ?? "").trim() || undefined,
+            staffPassQuota: form.staffCount,
+          });
+          await markBoothOccupied(boothId);
+        }
+      }
+
+      toast.success(`${form.companyName.trim()} created as ${participationMeta(form.participation).short}`);
+      onOpenChange(false);
+      onCreated?.("created");
+    } catch (error) {
+      toast.error(apiErrorMessage(error));
+    }
   };
 
   const meta = participationMeta(form.participation);
@@ -191,8 +296,8 @@ export function CreateOrganizationDialog({
           <DialogTitle>Add organization — {meta.label.toLowerCase()}</DialogTitle>
           <p className="text-sm text-muted-foreground font-normal">
             {isSponsor
-              ? "Creates comp registration, approved sponsorship application, sponsorship invoice, booth assignment, and portal access."
-              : "Creates comp registration, approved exhibitor application, booth assignment, staff invites, and exhibitor portal access."}
+              ? "Creates a sponsor record in the backend sponsor directory."
+              : "Creates an exhibitor record in the backend exhibitor directory."}
           </p>
         </DialogHeader>
 
@@ -466,7 +571,7 @@ export function CreateOrganizationDialog({
               Step 5 — Booth staff emails
             </h3>
             <p className="text-xs text-muted-foreground">
-              Invited colleagues receive comp check-in passes (not the primary contact email).
+              Kept in the form for future staff-invite backend support.
             </p>
             <div className="flex gap-2">
               <Input
@@ -505,7 +610,11 @@ export function CreateOrganizationDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="gradient-blue text-accent-foreground">
+            <Button
+              type="submit"
+              className="gradient-blue text-accent-foreground"
+              disabled={createExhibitor.isPending || createSponsor.isPending}
+            >
               Create & approve {meta.short.toLowerCase()}
             </Button>
           </DialogFooter>

@@ -93,7 +93,7 @@ export function ManualRegistrationDialog({ open, onOpenChange, enableCashPayment
             <Label>Currency</Label>
             <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
               <SelectTrigger className="mt-1">
-                <SelectValue />
+                <SelectValue placeholder="Select currency" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="USD">USD</SelectItem>
@@ -103,21 +103,42 @@ export function ManualRegistrationDialog({ open, onOpenChange, enableCashPayment
           </div>
           <div>
             <Label>Email *</Label>
-            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1" />
+            <Input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="e.g. attendee@company.rw"
+              className="mt-1"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>First name</Label>
-              <Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="mt-1" />
+              <Input
+                value={form.firstName}
+                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                placeholder="e.g. Jean"
+                className="mt-1"
+              />
             </div>
             <div>
               <Label>Last name</Label>
-              <Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="mt-1" />
+              <Input
+                value={form.lastName}
+                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                placeholder="e.g. Mukamana"
+                className="mt-1"
+              />
             </div>
           </div>
           <div>
             <Label>Phone</Label>
-            <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1" />
+            <Input
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              placeholder="e.g. +250 788 000 000"
+              className="mt-1"
+            />
           </div>
           {enableCashPayment && (
             <label className="flex items-center gap-2 text-sm rounded-lg border bg-secondary/40 px-3 py-2 cursor-pointer">

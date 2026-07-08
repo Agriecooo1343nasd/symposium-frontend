@@ -66,6 +66,7 @@ export function GroupMembersFields({
           max={settings.maxSize}
           value={groupSize}
           onChange={(e) => setSize(parseInt(e.target.value, 10) || settings.minSize)}
+          placeholder={`e.g. ${settings.minSize}`}
           className="mt-1 max-w-[120px]"
         />
       </div>
@@ -84,7 +85,7 @@ export function GroupMembersFields({
                   value={members[i]?.name ?? ""}
                   onChange={(e) => updateMember(i, { name: e.target.value })}
                   className="mt-1"
-                  placeholder="Delegate name"
+                  placeholder="e.g. Pierre Ndayisaba"
                 />
               </div>
               <div>
@@ -103,6 +104,7 @@ export function GroupMembersFields({
                 <Input
                   value={members[i]?.title ?? ""}
                   onChange={(e) => updateMember(i, { title: e.target.value })}
+                  placeholder="e.g. Programme Director"
                   className="mt-1"
                 />
               </div>
@@ -111,6 +113,7 @@ export function GroupMembersFields({
                 <Input
                   value={members[i]?.phone ?? ""}
                   onChange={(e) => updateMember(i, { phone: e.target.value })}
+                  placeholder="e.g. +250 788 000 000"
                   className="mt-1"
                 />
               </div>

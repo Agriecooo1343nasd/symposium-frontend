@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { apiErrorMessage } from "@/lib/api/client";
+import { useAdminSponsors } from "@/hooks/api/useAdmin";
 import {
   useAdminSponsorshipInvoiceRows,
   useMarkSponsorshipInvoicePaid,
@@ -18,25 +18,14 @@ type Props = {
 };
 
 export function SponsorshipFinancePanel({ readOnly = false, showSponsorCards = true }: Props) {
+  const { sponsors, isLoading: sponsorsLoading, isError: sponsorsError } = useAdminSponsors({ limit: 200 });
   const { rows, isLoading, isError } = useAdminSponsorshipInvoiceRows();
   const markPaid = useMarkSponsorshipInvoicePaid();
 
-  const sponsorCount = rows.length;
+  const sponsorCount = sponsors.length;
   const sponsorshipGross = rows
     .filter((r) => r.invoice.status === "paid")
     .reduce((sum, r) => sum + (r.invoice.currency === "USD" ? r.invoice.amount : 0), 0);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center gap-2 text-muted-foreground py-8">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading sponsorship records…
-      </div>
-    );
-  }
-
-  if (isError) {
-    return <p className="text-sm text-muted-foreground py-6">Could not load sponsorship invoices from the API.</p>;
-  }
 
   return (
     <div className="space-y-10">
@@ -44,39 +33,38 @@ export function SponsorshipFinancePanel({ readOnly = false, showSponsorCards = t
         <section>
           <h2 className="font-serif font-bold text-lg mb-1">Approved sponsors</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            From sponsorship applications approved on the API (FR-5.1).
+            Live sponsor records from the backend directory.
           </p>
-          {sponsorCount === 0 ? (
+          {sponsorsLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground py-8">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading sponsors…
+            </div>
+          ) : sponsorsError ? (
             <p className="text-center py-12 text-muted-foreground text-sm border border-dashed rounded-2xl">
-              No approved sponsors yet. Review pending applications in the Exhibitors → Sponsorship applications tab.
+              Could not load sponsors from the API. Try refreshing the page.
+            </p>
+          ) : sponsorCount === 0 ? (
+            <p className="text-center py-12 text-muted-foreground text-sm border border-dashed rounded-2xl">
+              No sponsors found in the backend directory yet.
             </p>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {rows.map(({ application, invoice }) => (
-                <div key={application.id} className="rounded-2xl bg-card border border-border p-5 hover-lift flex flex-col">
+              {sponsors.map((sponsor) => (
+                <div key={sponsor.id} className="rounded-2xl bg-card border border-border p-5 hover-lift flex flex-col">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <span
-                      className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${tierColor(application.desiredTier)}`}
+                      className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${tierColor(sponsor.tier)}`}
                     >
-                      {application.desiredTier}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-[10px] uppercase font-bold px-2 py-0.5 rounded-full",
-                        invoice.status === "paid" ? "bg-green/15 text-green" : "bg-amber-100 text-amber-800",
-                      )}
-                    >
-                      {invoice.status}
+                      {sponsor.tier}
                     </span>
                   </div>
-                  <div className="font-serif font-bold">{application.organizationName}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{application.contactEmail}</div>
-                  <div className="text-xs text-muted-foreground mt-2 capitalize">
-                    {application.wantsExhibitorBooth ? "Sponsor + booth" : "Sponsor only"}
+                  <div className="font-serif font-bold">{sponsor.name}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {sponsor.websiteUrl || "No website"}
                   </div>
-                  <Button asChild size="sm" variant="outline" className="mt-4 w-full">
-                    <Link href="/admin/exhibitors?tab=sponsorship-applications">View applications</Link>
-                  </Button>
+                  <div className="text-xs text-muted-foreground mt-2 capitalize line-clamp-2">
+                    {sponsor.description || "No description"}
+                  </div>
                 </div>
               ))}
             </div>
@@ -94,7 +82,15 @@ export function SponsorshipFinancePanel({ readOnly = false, showSponsorCards = t
             </p>
           </div>
         </div>
-        {rows.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-muted-foreground py-8">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading sponsorship invoices…
+          </div>
+        ) : isError ? (
+          <p className="text-sm text-muted-foreground border border-dashed rounded-xl p-6 text-center">
+            Could not load sponsorship invoices from the API.
+          </p>
+        ) : rows.length === 0 ? (
           <p className="text-sm text-muted-foreground border border-dashed rounded-xl p-6 text-center">
             No invoices issued yet.
           </p>

@@ -157,7 +157,7 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange, desk = false
               <Label>Payment status</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
                 <SelectTrigger className="mt-1">
-                  <SelectValue />
+                  <SelectValue placeholder="Select payment status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="comp">Comp (no payment)</SelectItem>
@@ -175,6 +175,7 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange, desk = false
                 required
                 value={form.fullName}
                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                placeholder="e.g. Jean Mukamana"
                 className="mt-1"
               />
             </div>
@@ -185,6 +186,7 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange, desk = false
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="e.g. contact@organization.rw"
                 className="mt-1"
               />
             </div>
@@ -194,6 +196,7 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange, desk = false
                 required
                 value={form.org}
                 onChange={(e) => setForm({ ...form, org: e.target.value })}
+                placeholder="e.g. Green Harvest Ltd"
                 className="mt-1"
               />
             </div>
@@ -214,7 +217,12 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange, desk = false
             </div>
             <div>
               <Label>Phone</Label>
-              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1" />
+              <Input
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="e.g. +250 788 000 000"
+                className="mt-1"
+              />
             </div>
           </div>
 
