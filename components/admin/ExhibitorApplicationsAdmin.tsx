@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, Eye, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +21,10 @@ import { useBooths } from "@/hooks/api/useBooths";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { ListToolbar } from "@/components/exhibitors/ListToolbar";
 import { apiErrorMessage } from "@/lib/api/client";
+import { exhibitorsService, usersService } from "@/lib/api/services";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import type { ExhibitorApplicationDto } from "@/lib/api/dto";
+import type { ExhibitionBoothDto, ExhibitorApplicationDto, ExhibitorPackageDto } from "@/lib/api/dto";
 
 export function ExhibitorApplicationsAdmin() {
   const symposiumId = useSymposiumId();
@@ -36,6 +38,8 @@ export function ExhibitorApplicationsAdmin() {
 
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewApp, setViewApp] = useState<ExhibitorApplicationDto | null>(null);
   const [selectedApp, setSelectedApp] = useState<ExhibitorApplicationDto | null>(null);
   const [approveForm, setApproveForm] = useState({
     packageId: "",
@@ -46,6 +50,11 @@ export function ExhibitorApplicationsAdmin() {
   const [rejectNotes, setRejectNotes] = useState("");
 
   const list = usePagedList({ items: applications, pageSize: 10 });
+
+  const openView = (app: ExhibitorApplicationDto) => {
+    setViewApp(app);
+    setViewDialogOpen(true);
+  };
 
   const openApprove = (app: ExhibitorApplicationDto) => {
     setSelectedApp(app);
@@ -198,6 +207,9 @@ export function ExhibitorApplicationsAdmin() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right space-x-2">
+                  <Button size="sm" variant="ghost" onClick={() => openView(app)}>
+                    <Eye className="h-3.5 w-3.5 mr-1" /> View
+                  </Button>
                   {app.status === "pending" && (
                     <>
                       <Button size="sm" variant="ghost" onClick={() => openApprove(app)}>
@@ -346,6 +358,171 @@ export function ExhibitorApplicationsAdmin() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ViewApplicationDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        app={viewApp}
+        packages={packages}
+        booths={booths}
+      />
     </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-1.5 text-sm border-b border-border/60 last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium text-right">{value ?? "—"}</span>
+    </div>
+  );
+}
+
+function ViewApplicationDialog({
+  open,
+  onOpenChange,
+  app,
+  packages,
+  booths,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  app: ExhibitorApplicationDto | null;
+  packages: ExhibitorPackageDto[];
+  booths: ExhibitionBoothDto[];
+}) {
+  const contactUserQuery = useQuery({
+    queryKey: ["users", "detail", app?.contactUserId],
+    queryFn: () => usersService.getById(app!.contactUserId!),
+    enabled: open && Boolean(app?.contactUserId),
+  });
+
+  const exhibitorQuery = useQuery({
+    queryKey: ["exhibitors", "admin", "detail", app?.exhibitorId],
+    queryFn: () => exhibitorsService.getAdmin(app!.exhibitorId!),
+    enabled: open && Boolean(app?.exhibitorId),
+  });
+
+  if (!app) return null;
+
+  const pkg = packages.find((p) => p.id === app.packageId);
+  const booth = booths.find((b) => b.id === app.preferredBoothId);
+  const contactUser = contactUserQuery.data;
+  const exhibitor = exhibitorQuery.data;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{app.organizationName}</DialogTitle>
+          <span
+            className={cn(
+              "inline-block w-fit text-[10px] uppercase font-bold px-2 py-0.5 rounded-full",
+              app.status === "approved" || app.status === "invoiced"
+                ? "bg-green/15 text-green"
+                : app.status === "rejected"
+                  ? "bg-red-100 text-red-700"
+                  : "bg-amber-100 text-amber-800",
+            )}
+          >
+            {app.status}
+          </span>
+        </DialogHeader>
+
+        <div className="space-y-5">
+          <section>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+              Contact
+            </h4>
+            <div className="space-y-0">
+              <DetailRow label="Name" value={app.contactName} />
+              <DetailRow label="Email" value={app.contactEmail} />
+              <DetailRow label="Phone" value={app.contactPhone} />
+              <DetailRow
+                label="Linked account"
+                value={
+                  !app.contactUserId
+                    ? "Not linked yet"
+                    : contactUserQuery.isLoading
+                      ? "Loading…"
+                      : contactUserQuery.isError
+                        ? "Could not load user"
+                        : contactUser
+                          ? `${contactUser.firstName} ${contactUser.lastName}${
+                              contactUser.roles?.length ? ` · ${contactUser.roles.join(", ")}` : ""
+                            }`
+                          : "—"
+                }
+              />
+            </div>
+          </section>
+
+          <section>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+              Application
+            </h4>
+            <div className="space-y-0">
+              <DetailRow label="Package requested" value={pkg?.name} />
+              <DetailRow
+                label="Quoted fee"
+                value={app.quotedFeeUsd != null ? `$${Number(app.quotedFeeUsd).toLocaleString()}` : undefined}
+              />
+              <DetailRow label="Staff count" value={app.staffCount} />
+              <DetailRow
+                label="Preferred booth"
+                value={booth ? `${booth.code} (${booth.status})` : app.preferredBoothId ? "Booth no longer on map" : "None"}
+              />
+              <DetailRow label="Submitted" value={new Date(app.createdAt).toLocaleString()} />
+              <DetailRow label="Last updated" value={new Date(app.updatedAt).toLocaleString()} />
+            </div>
+          </section>
+
+          {app.message && (
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                Pitch / message
+              </h4>
+              <p className="text-sm rounded-lg bg-secondary/40 p-3 whitespace-pre-wrap">{app.message}</p>
+            </section>
+          )}
+
+          {app.adminNotes && (
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                Admin notes
+              </h4>
+              <p className="text-sm rounded-lg bg-secondary/40 p-3 whitespace-pre-wrap">{app.adminNotes}</p>
+            </section>
+          )}
+
+          {app.exhibitorId && (
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                Resulting exhibitor record
+              </h4>
+              <div className="space-y-0">
+                {exhibitorQuery.isLoading ? (
+                  <p className="text-sm text-muted-foreground py-2">Loading exhibitor record…</p>
+                ) : exhibitorQuery.isError ? (
+                  <p className="text-sm text-muted-foreground py-2">Could not load exhibitor record.</p>
+                ) : exhibitor ? (
+                  <>
+                    <DetailRow label="Booth assigned" value={exhibitor.boothNumber} />
+                    <DetailRow label="Staff pass quota" value={exhibitor.staffPassQuota} />
+                  </>
+                ) : null}
+              </div>
+            </section>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

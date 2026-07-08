@@ -26,12 +26,26 @@ export function useExhibitorProfile() {
     staleTime: 60_000,
     retry: false,
   });
+  // A user can become a sponsor (via an approved sponsorship application) without
+  // their pre-existing exhibitor record ever getting `sponsorId` back-filled by the
+  // backend — GET /sponsors/me is the source of truth for "am I also a sponsor".
+  const sponsorQuery = useQuery({
+    queryKey: ["sponsors-me"],
+    queryFn: () => sponsorsService.getMySponsorProfile(),
+    enabled: enabled(),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
   const profile = query.data ?? null;
+  const linkedSponsor = sponsorQuery.data ?? null;
+  const isSponsor = Boolean(profile?.sponsorId) || Boolean(linkedSponsor);
   return {
     ...query,
     profile,
-    participation: deriveExhibitorParticipation(profile),
-    isSponsor: Boolean(profile?.sponsorId),
+    participation: deriveExhibitorParticipation(profile, Boolean(linkedSponsor)),
+    isSponsor,
+    sponsor: linkedSponsor,
+    sponsorLoading: sponsorQuery.isLoading,
   };
 }
 

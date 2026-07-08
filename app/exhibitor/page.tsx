@@ -85,8 +85,9 @@ function HeroBanner({
 
 export default function Page() {
   const { symposium } = useSymposium();
-  const { profile, participation, isSponsor, isLoading, isError } = useExhibitorProfile();
-  const { sponsor } = useLinkedSponsor(profile?.sponsorId);
+  const { profile, participation, isSponsor, sponsor: mySponsor, isLoading, isError } = useExhibitorProfile();
+  const { sponsor: linkedSponsor } = useLinkedSponsor(profile?.sponsorId);
+  const sponsor = linkedSponsor ?? mySponsor;
   const { materials } = useExhibitorMaterials();
   const { passes } = useExhibitorStaffPasses();
 
@@ -138,7 +139,7 @@ export default function Page() {
     { label: "Booth number assigned", done: Boolean(profile.boothNumber) },
     { label: "Brochures uploaded", done: materials.length > 0 },
     { label: `Staff passes (${passes.length}/${quota})`, done: passes.length > 0 },
-    ...(isSponsor ? [{ label: "Sponsor linked", done: Boolean(profile.sponsorId) }] : []),
+    ...(isSponsor ? [{ label: "Sponsor linked", done: Boolean(profile.sponsorId) || Boolean(mySponsor) }] : []),
   ];
   const done = checklist.filter((c) => c.done).length;
 

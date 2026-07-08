@@ -4,10 +4,11 @@ export type ExhibitorParticipation = "exhibitor" | "sponsor" | "both";
 
 export function deriveExhibitorParticipation(
   profile: ExhibitorProfileDto | null | undefined,
+  hasLinkedSponsor?: boolean,
 ): ExhibitorParticipation {
-  if (!profile) return "exhibitor";
+  if (!profile) return hasLinkedSponsor ? "sponsor" : "exhibitor";
   const hasBooth = Boolean(profile.boothNumber || profile.packageId || profile.package);
-  const hasSponsor = Boolean(profile.sponsorId);
+  const hasSponsor = Boolean(profile.sponsorId) || Boolean(hasLinkedSponsor);
   if (hasSponsor && hasBooth) return "both";
   if (hasSponsor) return "sponsor";
   return "exhibitor";

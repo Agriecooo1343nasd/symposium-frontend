@@ -14,6 +14,7 @@ import {
   rolesService,
   sessionsService,
   speakersService,
+  sponsorsService,
   ticketCategoriesService,
   usersService,
 } from "@/lib/api/services";
@@ -42,6 +43,7 @@ import type {
   UpdateSpeakerDto,
   UpdateTicketCategoryDto,
   UpdateTrackDto,
+  SponsorDto,
 } from "@/lib/api/dto";
 import { useSymposiumId } from "./useSymposium";
 
@@ -443,6 +445,60 @@ export function useAdminSubmissions(params?: { page?: number; limit?: number; st
     staleTime: 30_000,
   });
   return { ...query, submissions: query.data?.items ?? [] };
+}
+
+export function useAdminSponsors(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sort?: string;
+}) {
+  const symposiumId = useSymposiumId();
+  const query = useQuery({
+    queryKey: queryKeys.sponsors.admin({ ...params, symposiumId }),
+    queryFn: async () => {
+      if (!symposiumId) return { items: [], meta: undefined };
+
+      // Always fetch the public feed (no auth required, known to work) and merge
+      // in the admin list when it's reachable. This guarantees the admin portal
+      // never shows fewer sponsors than the public /exhibitors page does.
+      const [publicResult, adminResult] = await Promise.allSettled([
+        sponsorsService.listBySymposium(symposiumId),
+        enabled()
+          ? sponsorsService.listAdmin({
+              symposiumId,
+              page: params?.page ?? 1,
+              limit: params?.limit ?? 100,
+              search: params?.search || undefined,
+              sort: params?.sort,
+            })
+          : Promise.resolve(undefined),
+      ]);
+
+      const byId = new Map<string, SponsorDto>();
+      if (publicResult.status === "fulfilled") {
+        for (const sponsor of publicResult.value) byId.set(sponsor.id, sponsor);
+      }
+      let meta: { total: number; page: number; limit: number; totalPages?: number } | undefined;
+      if (adminResult.status === "fulfilled" && adminResult.value) {
+        for (const sponsor of adminResult.value.items) byId.set(sponsor.id, sponsor);
+        meta = adminResult.value.meta;
+      }
+
+      if (byId.size === 0 && publicResult.status === "rejected") {
+        throw publicResult.reason;
+      }
+
+      return { items: [...byId.values()], meta };
+    },
+    enabled: Boolean(symposiumId),
+    staleTime: 60_000,
+  });
+  return {
+    ...query,
+    sponsors: query.data?.items ?? [],
+    meta: query.data?.meta,
+  };
 }
 
 export function useSubmissionDetail(id: string) {

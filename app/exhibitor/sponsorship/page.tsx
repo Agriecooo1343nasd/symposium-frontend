@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   useExhibitorProfile,
   useLinkedSponsor,
-  useMySponsorProfile,
   useMySponsorInvoice,
   useSponsorshipTierPricing,
 } from "@/hooks/api/useExhibitor";
@@ -18,17 +17,17 @@ import { BecomeSponsorDialog } from "@/components/exhibitor/BecomeSponsorDialog"
 
 export default function Page() {
   const { symposiumId } = useSymposium();
-  const { profile, participation, isLoading } = useExhibitorProfile();
+  const { profile, participation, isSponsor, sponsor: mySponsor, sponsorLoading: mySponsorLoading, isLoading } = useExhibitorProfile();
   const { sponsor: linkedSponsor, isLoading: linkedSponsorLoading } = useLinkedSponsor(profile?.sponsorId);
-  const { sponsor: mySponsor, isLoading: mySponsorLoading } = useMySponsorProfile();
   const { invoice, isLoading: invoiceLoading } = useMySponsorInvoice();
   const { pricing } = useSponsorshipTierPricing(symposiumId || undefined);
   const [applyOpen, setApplyOpen] = useState(false);
   const [applied, setApplied] = useState(false);
-  const isSponsor = participation === "sponsor" || participation === "both";
-  
-  // Use the sponsor profile from the new API if available, otherwise fall back to linked sponsor
-  const sponsor = mySponsor || linkedSponsor;
+
+  // Prefer the sponsor record resolved via the exhibitor's own sponsorId link (public
+  // list, richest data) and fall back to the direct GET /sponsors/me lookup — this
+  // covers users who became a sponsor without their exhibitor row being back-linked.
+  const sponsor = linkedSponsor ?? mySponsor;
   const sponsorLoading = mySponsorLoading || linkedSponsorLoading;
 
   if (isLoading) {
