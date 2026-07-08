@@ -1,0 +1,351 @@
+"use client";
+
+import { useState } from "react";
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  useListExhibitorApplications,
+  useExhibitorApplicationStats,
+  useApproveExhibitorApplication,
+  useRejectExhibitorApplication,
+  useAdminExhibitorPackages,
+} from "@/hooks/api/useExhibitor";
+import { useSymposiumId } from "@/hooks/api/useSymposium";
+import { useBooths } from "@/hooks/api/useBooths";
+import { usePagedList } from "@/hooks/use-paged-list";
+import { ListToolbar } from "@/components/exhibitors/ListToolbar";
+import { apiErrorMessage } from "@/lib/api/client";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import type { ExhibitorApplicationDto } from "@/lib/api/dto";
+
+export function ExhibitorApplicationsAdmin() {
+  const symposiumId = useSymposiumId();
+  const [selectedStatus, setSelectedStatus] = useState<"" | "pending" | "approved" | "rejected" | "invoiced">("pending");
+  const { applications = [] } = useListExhibitorApplications(symposiumId || undefined, selectedStatus || undefined);
+  const { stats } = useExhibitorApplicationStats(symposiumId || undefined);
+  const { packages } = useAdminExhibitorPackages(symposiumId || undefined);
+  const { booths } = useBooths(symposiumId);
+  const approveMutation = useApproveExhibitorApplication();
+  const rejectMutation = useRejectExhibitorApplication();
+
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<ExhibitorApplicationDto | null>(null);
+  const [approveForm, setApproveForm] = useState({
+    packageId: "",
+    boothId: "",
+    boothNumber: "",
+    adminNotes: "",
+  });
+  const [rejectNotes, setRejectNotes] = useState("");
+
+  const list = usePagedList({ items: applications, pageSize: 10 });
+
+  const openApprove = (app: ExhibitorApplicationDto) => {
+    setSelectedApp(app);
+    const booth = booths.find((b) => b.id === app.preferredBoothId);
+    setApproveForm({
+      packageId: app.packageId ?? packages[0]?.id ?? "",
+      boothId: app.preferredBoothId ?? "",
+      boothNumber: booth?.code ?? "",
+      adminNotes: "",
+    });
+    setApproveDialogOpen(true);
+  };
+
+  const handleApprove = () => {
+    if (!selectedApp) return;
+    approveMutation.mutate(
+      {
+        id: selectedApp.id,
+        dto: {
+          packageId: approveForm.packageId || undefined,
+          boothId: approveForm.boothId || undefined,
+          boothNumber: approveForm.boothNumber || undefined,
+          adminNotes: approveForm.adminNotes || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Exhibitor application approved and invoice issued");
+          setApproveDialogOpen(false);
+          setSelectedApp(null);
+        },
+        onError: (err) => toast.error(apiErrorMessage(err)),
+      },
+    );
+  };
+
+  const handleReject = () => {
+    if (!selectedApp) return;
+    rejectMutation.mutate(
+      { id: selectedApp.id, adminNotes: rejectNotes },
+      {
+        onSuccess: () => {
+          toast.success("Application rejected");
+          setRejectDialogOpen(false);
+          setSelectedApp(null);
+          setRejectNotes("");
+        },
+        onError: (err) => toast.error(apiErrorMessage(err)),
+      },
+    );
+  };
+
+  const packageName = (id?: string | null) => packages.find((p) => p.id === id)?.name ?? "—";
+
+  return (
+    <div className="space-y-6">
+      {stats && (
+        <div className="grid sm:grid-cols-5 gap-4">
+          {(
+            [
+              ["pending", stats.pending, "text-amber-600"],
+              ["approved", stats.approved, "text-green"],
+              ["rejected", stats.rejected, "text-red-600"],
+              ["invoiced", stats.invoiced, "text-blue"],
+              ["total", stats.total, "text-foreground"],
+            ] as const
+          ).map(([label, value, color]) => (
+            <div key={label} className="rounded-2xl bg-card border p-4">
+              <div className={cn("text-2xl font-bold", color)}>{value}</div>
+              <div className="text-xs text-muted-foreground capitalize">{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-2 flex-wrap">
+        {(["", "pending", "approved", "rejected", "invoiced"] as const).map((status) => (
+          <Button
+            key={status || "all"}
+            variant={selectedStatus === status ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedStatus(status)}
+            className={status === "" ? "gradient-blue text-accent-foreground" : ""}
+          >
+            {status ? status.charAt(0).toUpperCase() + status.slice(1) : "All"}
+          </Button>
+        ))}
+      </div>
+
+      <ListToolbar
+        query={list.query}
+        onQueryChange={list.setQuery}
+        searchPlaceholder="Search by company, email, package…"
+        sortKey={list.sortKey}
+        sortDir={list.sortDir}
+        onSortKeyChange={(k) => list.setSort(k, list.sortDir)}
+        onSortDirChange={(d) => list.setSort(list.sortKey, d)}
+        sortOptions={[
+          { value: "organizationName", label: "Company" },
+          { value: "status", label: "Status" },
+          { value: "createdAt", label: "Submitted" },
+        ]}
+        page={list.page}
+        totalPages={list.totalPages}
+        total={list.total}
+        pageSize={list.pageSize}
+        onPageChange={list.setPage}
+        onPageSizeChange={list.setPageSize}
+      />
+
+      <div className="rounded-md border overflow-x-auto bg-card">
+        <table className="w-full text-sm min-w-[900px]">
+          <thead className="bg-secondary/60 text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="text-left px-4 py-3">Organization</th>
+              <th className="text-left px-4 py-3 hidden md:table-cell">Contact</th>
+              <th className="text-left px-4 py-3">Package</th>
+              <th className="text-left px-4 py-3">Staff</th>
+              <th className="text-left px-4 py-3">Status</th>
+              <th className="text-right px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.pageItems.map((app) => (
+              <tr key={app.id} className="border-t hover:bg-secondary/30">
+                <td className="px-4 py-3">
+                  <div className="font-medium">{app.organizationName}</div>
+                  {app.quotedFeeUsd != null ? (
+                    <div className="text-xs text-muted-foreground">Est. ${Number(app.quotedFeeUsd).toLocaleString()}</div>
+                  ) : null}
+                </td>
+                <td className="px-4 py-3 hidden md:table-cell text-xs">
+                  <div>{app.contactName}</div>
+                  <div className="text-muted-foreground">{app.contactEmail}</div>
+                </td>
+                <td className="px-4 py-3 text-xs">{packageName(app.packageId)}</td>
+                <td className="px-4 py-3 text-xs">{app.staffCount ?? "—"}</td>
+                <td className="px-4 py-3">
+                  <span
+                    className={cn(
+                      "text-[10px] uppercase font-bold px-2 py-0.5 rounded-full",
+                      app.status === "approved" || app.status === "invoiced"
+                        ? "bg-green/15 text-green"
+                        : app.status === "rejected"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-amber-100 text-amber-800",
+                    )}
+                  >
+                    {app.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-right space-x-2">
+                  {app.status === "pending" && (
+                    <>
+                      <Button size="sm" variant="ghost" onClick={() => openApprove(app)}>
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-green" /> Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedApp(app);
+                          setRejectDialogOpen(true);
+                        }}
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1 text-red-600" /> Reject
+                      </Button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {list.pageItems.length === 0 && (
+          <p className="p-6 text-sm text-muted-foreground text-center">
+            {selectedStatus ? `No ${selectedStatus} exhibitor applications` : "No exhibitor applications"}
+          </p>
+        )}
+      </div>
+
+      <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve exhibitor application</DialogTitle>
+          </DialogHeader>
+          {selectedApp && (
+            <div className="space-y-4">
+              <div>
+                <div className="text-sm font-semibold">{selectedApp.organizationName}</div>
+                <div className="text-xs text-muted-foreground">{selectedApp.contactEmail}</div>
+              </div>
+              <div>
+                <Label>Booth package</Label>
+                <Select
+                  value={approveForm.packageId}
+                  onValueChange={(v) => setApproveForm({ ...approveForm, packageId: v })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select package" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {packages.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} — ${Number(p.priceUsd).toLocaleString()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Assign booth</Label>
+                <Select
+                  value={approveForm.boothId || "_none"}
+                  onValueChange={(v) => {
+                    const booth = booths.find((b) => b.id === v);
+                    setApproveForm({
+                      ...approveForm,
+                      boothId: v === "_none" ? "" : v,
+                      boothNumber: booth?.code ?? approveForm.boothNumber,
+                    });
+                  }}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Preferred or pick booth" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">No map booth</SelectItem>
+                    {booths
+                      .filter((b) => b.status === "available" || b.id === selectedApp.preferredBoothId)
+                      .map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.code} ({b.status})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Booth code</Label>
+                <Input
+                  value={approveForm.boothNumber}
+                  onChange={(e) => setApproveForm({ ...approveForm, boothNumber: e.target.value })}
+                  placeholder="e.g. A-12"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Admin notes</Label>
+                <Textarea
+                  value={approveForm.adminNotes}
+                  onChange={(e) => setApproveForm({ ...approveForm, adminNotes: e.target.value })}
+                  className="mt-1"
+                  rows={2}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setApproveDialogOpen(false)} disabled={approveMutation.isPending}>
+                  Cancel
+                </Button>
+                <Button className="gradient-blue text-accent-foreground" onClick={handleApprove} disabled={approveMutation.isPending}>
+                  {approveMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Approving…
+                    </>
+                  ) : (
+                    "Approve & invoice"
+                  )}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject exhibitor application</DialogTitle>
+          </DialogHeader>
+          {selectedApp && (
+            <div className="space-y-4">
+              <Textarea
+                value={rejectNotes}
+                onChange={(e) => setRejectNotes(e.target.value)}
+                placeholder="Reason for rejection (optional)…"
+                rows={4}
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setRejectDialogOpen(false)} disabled={rejectMutation.isPending}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleReject} disabled={rejectMutation.isPending}>
+                  Reject
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

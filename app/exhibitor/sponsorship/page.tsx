@@ -13,6 +13,7 @@ import {
 } from "@/hooks/api/useExhibitor";
 import { useSymposium } from "@/hooks/api/useSymposium";
 import { exhibitorDisplayName } from "@/lib/exhibitor/participation";
+import { pricingRowToTierConfig } from "@/lib/sponsorship-tier-api";
 import { BecomeSponsorDialog } from "@/components/exhibitor/BecomeSponsorDialog";
 
 export default function Page() {
@@ -25,7 +26,6 @@ export default function Page() {
   const [applyOpen, setApplyOpen] = useState(false);
   const [applied, setApplied] = useState(false);
   const isSponsor = participation === "sponsor" || participation === "both";
-  const hasBooth = Boolean(profile?.boothNumber || profile?.packageId || profile?.package);
   
   // Use the sponsor profile from the new API if available, otherwise fall back to linked sponsor
   const sponsor = mySponsor || linkedSponsor;
@@ -78,7 +78,9 @@ export default function Page() {
 
             {pricing.length > 0 && (
               <div className="grid gap-3 sm:grid-cols-3">
-                {pricing.map((t) => (
+                {pricing.map((t) => {
+                  const benefits = pricingRowToTierConfig(t).benefits;
+                  return (
                   <div key={t.tier} className="rounded-xl border bg-secondary/30 p-4">
                     <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground capitalize">
                       {t.tier}
@@ -87,8 +89,16 @@ export default function Page() {
                     <div className="text-xs text-muted-foreground">
                       {t.amountRwf ? `≈ RWF ${t.amountRwf.toLocaleString()}` : "\u00A0"}
                     </div>
+                    {benefits.length > 0 && (
+                      <ul className="mt-2 text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
+                        {benefits.slice(0, 4).map((b) => (
+                          <li key={b}>{b}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -107,7 +117,6 @@ export default function Page() {
           open={applyOpen}
           onOpenChange={setApplyOpen}
           profile={profile}
-          hasBooth={hasBooth}
           onSubmitted={() => setApplied(true)}
         />
       </div>

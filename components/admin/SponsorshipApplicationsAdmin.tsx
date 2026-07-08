@@ -1,21 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { CheckCircle2, XCircle, Eye, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   useListSponsorshipApplications,
   useSponsorshipApplicationStats,
   useApproveSponsorshipApplication,
   useRejectSponsorshipApplication,
-  useSponsorshipApplication,
 } from "@/hooks/api/useExhibitor";
 import { useSymposiumId } from "@/hooks/api/useSymposium";
+import { useBooths } from "@/hooks/api/useBooths";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { ListToolbar } from "@/components/exhibitors/ListToolbar";
 import { apiErrorMessage } from "@/lib/api/client";
@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 
 export function SponsorshipApplicationsAdmin() {
   const symposiumId = useSymposiumId();
+  const { booths } = useBooths(symposiumId);
   const [selectedStatus, setSelectedStatus] = useState<"" | "pending" | "approved" | "rejected">("pending");
   const { applications = [] } = useListSponsorshipApplications(symposiumId || undefined, selectedStatus || undefined);
   const { data: stats } = useSponsorshipApplicationStats(symposiumId || undefined);
@@ -36,7 +37,8 @@ export function SponsorshipApplicationsAdmin() {
   const [approveForm, setApproveForm] = useState({
     tier: "",
     adminNotes: "",
-    createExhibitorBooth: false,
+    createExhibitorBooth: true,
+    boothId: "",
     boothNumber: "",
     markInvoiced: true,
   });
@@ -58,6 +60,7 @@ export function SponsorshipApplicationsAdmin() {
           tier: approveForm.tier || undefined,
           adminNotes: approveForm.adminNotes || undefined,
           createExhibitorBooth: approveForm.createExhibitorBooth,
+          boothId: approveForm.boothId || undefined,
           boothNumber: approveForm.boothNumber || undefined,
           markInvoiced: approveForm.markInvoiced,
         },
@@ -67,7 +70,7 @@ export function SponsorshipApplicationsAdmin() {
           toast.success("Application approved and invoice issued");
           setApproveDialogOpen(false);
           setSelectedAppId(null);
-          setApproveForm({ tier: "", adminNotes: "", createExhibitorBooth: false, boothNumber: "", markInvoiced: true });
+          setApproveForm({ tier: "", adminNotes: "", createExhibitorBooth: true, boothId: "", boothNumber: "", markInvoiced: true });
         },
         onError: (err) => toast.error(apiErrorMessage(err)),
       },
@@ -163,6 +166,7 @@ export function SponsorshipApplicationsAdmin() {
               <th className="text-left px-4 py-3">Organization</th>
               <th className="text-left px-4 py-3 hidden md:table-cell">Contact</th>
               <th className="text-left px-4 py-3">Tier</th>
+              <th className="text-left px-4 py-3 hidden lg:table-cell">Booth / staff</th>
               <th className="text-left px-4 py-3">Status</th>
               <th className="text-right px-4 py-3">Actions</th>
             </tr>
@@ -180,6 +184,10 @@ export function SponsorshipApplicationsAdmin() {
                 </td>
                 <td className="px-4 py-3">
                   <span className="capitalize text-xs font-semibold">{app.desiredTier}</span>
+                </td>
+                <td className="px-4 py-3 hidden lg:table-cell text-xs text-muted-foreground">
+                  {app.wantsExhibitorBooth ? "Booth requested" : "—"}
+                  {app.staffCount != null ? ` · ${app.staffCount} staff` : ""}
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -203,6 +211,15 @@ export function SponsorshipApplicationsAdmin() {
                         variant="ghost"
                         onClick={() => {
                           setSelectedAppId(app.id);
+                          const booth = booths.find((b) => b.id === app.preferredBoothId);
+                          setApproveForm({
+                            tier: "",
+                            adminNotes: "",
+                            createExhibitorBooth: app.wantsExhibitorBooth ?? true,
+                            boothId: app.preferredBoothId ?? "",
+                            boothNumber: booth?.code ?? "",
+                            markInvoiced: true,
+                          });
                           setApproveDialogOpen(true);
                         }}
                       >
@@ -280,15 +297,45 @@ export function SponsorshipApplicationsAdmin() {
                 </Label>
               </div>
               {approveForm.createExhibitorBooth && (
-                <div>
-                  <Label>Booth number</Label>
-                  <Input
-                    value={approveForm.boothNumber}
-                    onChange={(e) => setApproveForm({ ...approveForm, boothNumber: e.target.value })}
-                    placeholder="e.g., A-15"
-                    className="mt-1"
-                  />
-                </div>
+                <>
+                  <div>
+                    <Label>Booth from map</Label>
+                    <Select
+                      value={approveForm.boothId || "_none"}
+                      onValueChange={(v) => {
+                        const booth = booths.find((b) => b.id === v);
+                        setApproveForm({
+                          ...approveForm,
+                          boothId: v === "_none" ? "" : v,
+                          boothNumber: booth?.code ?? approveForm.boothNumber,
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select booth" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">—</SelectItem>
+                        {booths
+                          .filter((b) => b.status === "available" || b.id === approveForm.boothId)
+                          .map((b) => (
+                            <SelectItem key={b.id} value={b.id}>
+                              {b.code}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Booth number</Label>
+                    <Input
+                      value={approveForm.boothNumber}
+                      onChange={(e) => setApproveForm({ ...approveForm, boothNumber: e.target.value })}
+                      placeholder="e.g., A-15"
+                      className="mt-1"
+                    />
+                  </div>
+                </>
               )}
               <DialogFooter>
                 <Button

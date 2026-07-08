@@ -53,6 +53,8 @@ export const sponsorsService = {
     desiredTier: "platinum" | "gold" | "silver";
     message?: string;
     wantsExhibitorBooth: boolean;
+    preferredBoothId?: string;
+    staffCount?: number;
   }) {
     return apiClient
       .post<ApiResponse<SponsorshipApplicationDto>>("/sponsorship-applications", dto)
@@ -99,6 +101,7 @@ export const sponsorsService = {
       sortOrder?: number;
       createExhibitorBooth?: boolean;
       boothNumber?: string;
+      boothId?: string;
       packageId?: string;
       markInvoiced?: boolean;
     },

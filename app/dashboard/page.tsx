@@ -16,6 +16,7 @@ import {
   registrationStatusLabel,
 } from "@/lib/api/mappers/registration-helpers";
 import { userDisplayName } from "@/lib/api/mappers/user";
+import { MyOrganizationApplicationsCard } from "@/components/dashboard/MyOrganizationApplicationsCard";
 import { useCurrentUser } from "@/hooks/api/useAuthSession";
 
 export default function OverviewPage() {
@@ -67,6 +68,8 @@ export default function OverviewPage() {
         <StatTile label="Registration" value={reg ? "✓" : "—"} hint={statusLabel} />
         <StatTile label="Days to go" value={daysToGo} />
       </div>
+
+      <MyOrganizationApplicationsCard />
 
       <div className="grid lg:grid-cols-[1.7fr_1fr] gap-6">
         <div>

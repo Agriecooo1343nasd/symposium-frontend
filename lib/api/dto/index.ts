@@ -558,6 +558,8 @@ export type SponsorshipApplicationDto = {
   desiredTier: string;
   message?: string | null;
   wantsExhibitorBooth: boolean;
+  preferredBoothId?: string | null;
+  staffCount?: number | null;
   status: "pending" | "approved" | "rejected" | "invoiced" | string;
   adminNotes?: string | null;
   sponsorId?: string | null;
@@ -581,7 +583,7 @@ export type ExhibitorApplicationDto = {
   contactName: string;
   contactEmail: string;
   contactPhone?: string | null;
-  packageId: string;
+  packageId?: string | null;
   message?: string | null;
   preferredBoothId?: string | null;
   staffCount?: number | null;
@@ -594,8 +596,31 @@ export type ExhibitorApplicationDto = {
   updatedAt: string;
 };
 
-export type CreateExhibitorApplicationDto = {
+export type ExhibitorApplicationStatsDto = {
+  pending: number;
+  approved: number;
+  rejected: number;
+  invoiced: number;
+  total: number;
+};
+
+export type ExhibitorInvoiceDto = {
+  id: string;
+  exhibitorApplicationId: string;
+  exhibitorId?: string | null;
   symposiumId: string;
+  invoiceNumber: string;
+  amount: number;
+  currency: string;
+  status: string;
+  paymentInstructions?: string | null;
+  paidAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateExhibitorApplicationDto = {
+  symposiumId?: string;
   organizationName: string;
   contactName: string;
   contactEmail: string;
@@ -623,11 +648,32 @@ export type SponsorshipInvoiceDto = {
   updatedAt: string;
 };
 
+export type SponsorshipTierBenefitsDto = {
+  boothSize?: string | null;
+  staffPasses?: number;
+  extraStaffFeeUsd?: number;
+  brochureSlots?: number;
+  leadCapture?: boolean;
+  speakingSlot?: boolean;
+  homepageFeature?: boolean;
+  newsletterMention?: boolean;
+  boothListing?: boolean;
+  highlights?: string[];
+};
+
 export type SponsorshipTierPricingDto = {
   tier: string;
   amountUsd: number;
   amountRwf: number;
   defaultCurrency?: string;
+  benefits?: SponsorshipTierBenefitsDto;
+};
+
+export type SponsorTierPricingSettingsDto = {
+  tier: string;
+  amountUsd: number;
+  amountRwf: number;
+  benefits?: SponsorshipTierBenefitsDto;
 };
 
 export type CreateExhibitorPackageDto = {
@@ -1231,7 +1277,7 @@ export type SymposiumSettingsDto = {
   };
   sponsorship?: {
     enableApplications?: boolean;
-    tierPricing?: Array<{ tier: string; amountUsd: number; amountRwf: number }>;
+    tierPricing?: SponsorTierPricingSettingsDto[];
     bankTransferInstructions?: string;
     defaultInvoiceCurrency?: "USD" | "RWF";
   };

@@ -7,6 +7,8 @@ import type {
   CreateExhibitorPackageDto,
   CreateExhibitorStaffPassDto,
   ExhibitorApplicationDto,
+  ExhibitorApplicationStatsDto,
+  ExhibitorInvoiceDto,
   ExhibitorAdminDto,
   ExhibitorLeadDto,
   ExhibitorMaterialDto,
@@ -126,6 +128,65 @@ export const exhibitorsService = {
   createApplication(dto: CreateExhibitorApplicationDto) {
     return apiClient
       .post<ApiResponse<ExhibitorApplicationDto>>("/exhibitor-applications", dto)
+      .then(unwrapApi);
+  },
+  listMyApplications() {
+    return apiClient
+      .get<ApiResponse<ExhibitorApplicationDto[]>>("/exhibitor-applications/me")
+      .then(unwrapApi);
+  },
+  listApplicationsAdmin(params?: PaginationParams & { symposiumId?: string; status?: string }) {
+    const { symposiumId, status, ...pagination } = params ?? {};
+    return fetchPaginatedList(
+      (pg) =>
+        apiClient
+          .get<ApiResponse<ExhibitorApplicationDto[]>>("/exhibitor-applications/admin/list", {
+            params: toQueryParams({
+              symposiumId,
+              status,
+              page: pg.page,
+              limit: pg.limit,
+              sort: pg.sort,
+              search: pg.search,
+            }),
+          })
+          .then(unwrapPaginated),
+      { pagination },
+    );
+  },
+  getApplicationStats(symposiumId?: string) {
+    return apiClient
+      .get<ApiResponse<ExhibitorApplicationStatsDto>>("/exhibitor-applications/admin/stats", {
+        params: symposiumId ? { symposiumId } : undefined,
+      })
+      .then(unwrapApi);
+  },
+  getApplicationAdmin(id: string) {
+    return apiClient
+      .get<ApiResponse<ExhibitorApplicationDto>>(`/exhibitor-applications/admin/${id}`)
+      .then(unwrapApi);
+  },
+  approveApplication(
+    id: string,
+    dto?: { packageId?: string; boothId?: string; boothNumber?: string; adminNotes?: string },
+  ) {
+    return apiClient
+      .post<ApiResponse<ExhibitorApplicationDto>>(`/exhibitor-applications/admin/${id}/approve`, dto ?? {})
+      .then(unwrapApi);
+  },
+  rejectApplication(id: string, dto?: { adminNotes?: string }) {
+    return apiClient
+      .post<ApiResponse<ExhibitorApplicationDto>>(`/exhibitor-applications/admin/${id}/reject`, dto ?? {})
+      .then(unwrapApi);
+  },
+  getApplicationInvoice(id: string) {
+    return apiClient
+      .get<ApiResponse<ExhibitorInvoiceDto | null>>(`/exhibitor-applications/admin/${id}/invoice`)
+      .then(unwrapApi);
+  },
+  markInvoicePaid(id: string, dto?: { notes?: string }) {
+    return apiClient
+      .patch<ApiResponse<ExhibitorInvoiceDto>>(`/exhibitor-invoices/admin/${id}/paid`, dto ?? {})
       .then(unwrapApi);
   },
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ExhibitorsPortal } from "@/components/exhibitors/ExhibitorsPortal";
 import {
@@ -11,9 +12,18 @@ export default function AdminExhibitorsTabPage() {
   const params = useParams();
   const router = useRouter();
   const raw = typeof params.tab === "string" ? params.tab.toLowerCase() : "exhibitors";
+
+  useEffect(() => {
+    if (raw === "applications") {
+      router.replace("/admin/exhibitors/exhibitor-applications");
+    }
+  }, [raw, router]);
+
   const activeTab: AdminExhibitorTab = ADMIN_EXHIBITOR_TABS.includes(raw as AdminExhibitorTab)
     ? (raw as AdminExhibitorTab)
-    : "exhibitors";
+    : raw === "applications"
+      ? "exhibitor-applications"
+      : "exhibitors";
 
   return (
     <ExhibitorsPortal

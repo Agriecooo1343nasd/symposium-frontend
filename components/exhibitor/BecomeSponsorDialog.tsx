@@ -22,12 +22,10 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   profile: ExhibitorProfileDto | null | undefined;
-  /** Whether the applicant already holds an exhibitor booth (defaults the "keep booth" toggle on). */
-  hasBooth?: boolean;
   onSubmitted?: () => void;
 };
 
-export function BecomeSponsorDialog({ open, onOpenChange, profile, hasBooth = true, onSubmitted }: Props) {
+export function BecomeSponsorDialog({ open, onOpenChange, profile, onSubmitted }: Props) {
   const { session } = useAuth();
   const { symposiumId } = useSymposium();
   const { pricing } = useSponsorshipTierPricing(symposiumId || undefined);
@@ -41,7 +39,6 @@ export function BecomeSponsorDialog({ open, onOpenChange, profile, hasBooth = tr
     desiredTier: "gold" as DesiredTier,
     message: "",
   });
-  const [keepBooth, setKeepBooth] = useState(hasBooth);
 
   useEffect(() => {
     if (!open) return;
@@ -53,8 +50,7 @@ export function BecomeSponsorDialog({ open, onOpenChange, profile, hasBooth = tr
       desiredTier: "gold",
       message: "",
     });
-    setKeepBooth(hasBooth);
-  }, [open, profile?.companyName, profile?.sponsorName, session?.name, session?.email, hasBooth]);
+  }, [open, profile?.companyName, profile?.sponsorName, session?.name, session?.email]);
 
   const tierOptions: DesiredTier[] =
     pricing.length > 0
@@ -80,7 +76,8 @@ export function BecomeSponsorDialog({ open, onOpenChange, profile, hasBooth = tr
         contactPhone: form.contactPhone.trim(),
         desiredTier: form.desiredTier,
         message: form.message.trim() || undefined,
-        wantsExhibitorBooth: keepBooth,
+        wantsExhibitorBooth: true,
+        staffCount: profile?.staffPassQuota,
       });
       toast.success("Sponsorship application submitted — the secretariat will review it shortly.");
       onOpenChange(false);
@@ -176,18 +173,10 @@ export function BecomeSponsorDialog({ open, onOpenChange, profile, hasBooth = tr
             />
           </div>
 
-          <label className="flex items-start gap-2 text-sm rounded-lg border bg-secondary/40 px-3 py-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={keepBooth}
-              onChange={(e) => setKeepBooth(e.target.checked)}
-              className="h-4 w-4 mt-0.5"
-            />
-            <span>
-              Keep an exhibitor booth alongside my sponsorship
-              {profile?.boothNumber ? ` (currently ${profile.boothNumber})` : ""}
-            </span>
-          </label>
+          <p className="text-sm rounded-lg border bg-secondary/40 px-3 py-2 text-muted-foreground">
+            Your sponsorship tier includes an exhibitor booth on the floor
+            {profile?.boothNumber ? ` (you currently hold booth ${profile.boothNumber})` : ""}.
+          </p>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={createApplication.isPending}>

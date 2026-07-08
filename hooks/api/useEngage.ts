@@ -289,6 +289,9 @@ export function useUpdateSymposiumSettings() {
     mutationFn: (dto: UpdateSymposiumSettingsDto) => symposiumsService.updateSettings(symposiumId!, dto),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: queryKeys.symposiumSettings.detail(symposiumId ?? "") }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["sponsorship-tier-pricing"] });
+    },
   });
 }
 

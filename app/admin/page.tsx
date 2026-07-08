@@ -9,6 +9,8 @@ import { StatTile } from "@/components/layout/PortalShell";
 import { DAILY_REGS, CHECKINS } from "@/lib/mock-data";
 import { useAdminRegistrations, useFinanceSummary, useAdminSubmissions } from "@/hooks/api/useAdmin";
 import { useMediaAccreditationStats } from "@/hooks/api/useMediaAccreditation";
+import { useExhibitorApplicationStats, useSponsorshipApplicationStats } from "@/hooks/api/useExhibitor";
+import { useSymposiumId } from "@/hooks/api/useSymposium";
 import { submissionReviewStatus } from "@/lib/api/mappers/desk";
 import { useStore } from "@/hooks/use-store";
 import { getEventConfig } from "@/lib/platform-settings";
@@ -27,6 +29,9 @@ export default function AdminOverview() {
   const financeApi = useFinanceSummary();
   const { submissions } = useAdminSubmissions({ limit: 100 });
   const mediaStats = useMediaAccreditationStats();
+  const symposiumId = useSymposiumId();
+  const { stats: exhibitorAppStats } = useExhibitorApplicationStats(symposiumId || undefined);
+  const { data: sponsorshipAppStats } = useSponsorshipApplicationStats(symposiumId || undefined);
   const store = useStore();
   const event = getEventConfig();
   const [annOpen, setAnnOpen] = useState(false);
@@ -189,7 +194,8 @@ export default function AdminOverview() {
             <li className="flex justify-between"><span>Pending payments</span><Link href="/admin/finance" className="font-bold text-amber-900">{finance.pending.length} →</Link></li>
             <li className="flex justify-between"><span>Open sponsorship invoices</span><Link href="/admin/exhibitors/sponsors" className="font-bold text-amber-900">{(store.sponsorshipInvoices ?? []).filter((i) => i.status !== "paid").length} →</Link></li>
             <li className="flex justify-between"><span>Speaker applications</span><Link href="/admin/abstracts" className="font-bold text-amber-900">{pendingApps} →</Link></li>
-            <li className="flex justify-between"><span>Exhibitor applications</span><Link href="/admin/exhibitors/applications" className="font-bold text-amber-900">{store.organizationApplications.filter((a) => a.status === "pending").length} →</Link></li>
+            <li className="flex justify-between"><span>Exhibitor applications</span><Link href="/admin/exhibitors/exhibitor-applications" className="font-bold text-amber-900">{exhibitorAppStats?.pending ?? 0} →</Link></li>
+            <li className="flex justify-between"><span>Sponsorship applications</span><Link href="/admin/exhibitors/sponsorship-applications" className="font-bold text-amber-900">{sponsorshipAppStats?.pending ?? 0} →</Link></li>
             <li className="flex justify-between"><span>Media accreditation</span><Link href="/admin/media" className="font-bold text-amber-900">{mediaStats.data?.pending ?? 0} →</Link></li>
             <li className="flex justify-between"><span>Abstracts under review</span><Link href="/admin/abstracts" className="font-bold text-amber-900">{reviewAbs} →</Link></li>
           </ul>
