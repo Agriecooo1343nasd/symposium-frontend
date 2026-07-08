@@ -14,7 +14,6 @@ import type {
   UpsertCommitteeMemberDto,
   UpsertFaqDto,
   CreateMediaAccreditationAdminDto,
-  CreateMediaAccreditationAdminResultDto,
 } from "../dto";
 import { type PaginationParams, fetchPaginatedList, toPaginationQuery, toQueryParams, unwrapPaginated } from "../helpers";
 
@@ -116,7 +115,7 @@ export const cmsService = {
   },
   createMediaAccreditationAdmin(dto: CreateMediaAccreditationAdminDto) {
     return apiClient
-      .post<ApiResponse<CreateMediaAccreditationAdminResultDto>>("/cms/admin/media-accreditations", dto)
+      .post<ApiResponse<MediaAccreditationDto>>("/cms/admin/media-accreditations", dto)
       .then(unwrapApi);
   },
 };

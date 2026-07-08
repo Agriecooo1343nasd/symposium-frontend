@@ -2,6 +2,7 @@ import { apiClient, unwrapApi } from "../client";
 import type { ApiResponse } from "../types";
 import type {
   CreateSpeakerDto,
+  OnboardSpeakerDto,
   SpeakerDashboardDto,
   SpeakerDto,
   UpdateSpeakerDto,
@@ -41,6 +42,9 @@ export const speakersService = {
   },
   createAdmin(dto: CreateSpeakerDto) {
     return apiClient.post<ApiResponse<SpeakerDto>>("/speakers/admin", dto).then(unwrapApi);
+  },
+  onboardAdmin(dto: OnboardSpeakerDto) {
+    return apiClient.post<ApiResponse<SpeakerDto>>("/speakers/admin/onboard", dto).then(unwrapApi);
   },
   updateAdmin(id: string, dto: UpdateSpeakerDto) {
     return apiClient.patch<ApiResponse<SpeakerDto>>(`/speakers/admin/${id}`, dto).then(unwrapApi);

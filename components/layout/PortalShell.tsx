@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { AnnouncementBanner } from "@/components/admin/AnnouncementBanner";
 import { useAdminCommandPaletteOptional } from "@/components/admin/AdminCommandPaletteProvider";
 import { PortalNotesWidget } from "@/components/notes/PortalNotesWidget";
+import { UserAvatar } from "@/components/layout/UserAvatar";
 
 export type PortalNavItem = {
   to: string;
@@ -23,7 +24,7 @@ export type PortalNavItem = {
 export function PortalShell({ title, subtitle, nav, children }: { title: string; subtitle: string; nav: readonly PortalNavItem[]; children?: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const logout = useLogout();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -33,7 +34,8 @@ export function PortalShell({ title, subtitle, nav, children }: { title: string;
     await logout.mutateAsync();
     router.push("/login");
   };
-  const initials = session?.name?.split(" ").map((w) => w[0]).slice(0, 2).join("") ?? "";
+  const profileImage = user?.profileImageUrl ?? session?.avatar;
+  const displayName = session?.name ?? "";
 
   const crumbs = pathname.split("/").filter(Boolean);
   const activeItem = [...nav].reverse().find((n) => n.exact ? pathname === n.to : pathname.startsWith(n.to));
@@ -68,9 +70,12 @@ export function PortalShell({ title, subtitle, nav, children }: { title: string;
         </nav>
         <div className="p-3 border-t border-white/10">
           <div className="flex items-center gap-2 p-2 mb-2">
-            <div className="h-9 w-9 rounded-full bg-gold text-navy flex items-center justify-center font-serif font-bold text-sm flex-shrink-0">
-              {initials}
-            </div>
+            <UserAvatar
+              name={displayName}
+              imageUrl={profileImage}
+              className="h-9 w-9"
+              fallbackClassName="bg-gold text-navy text-sm"
+            />
             <div className="text-xs min-w-0">
               <div className="font-semibold truncate">{session?.name}</div>
               <div className="opacity-70 truncate">{session?.email}</div>
@@ -122,7 +127,12 @@ export function PortalShell({ title, subtitle, nav, children }: { title: string;
               <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-accent" />
             </Button>
             <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-border">
-              <div className="h-8 w-8 rounded-full gradient-navy text-white flex items-center justify-center text-xs font-serif font-bold">{initials}</div>
+              <UserAvatar
+                name={displayName}
+                imageUrl={profileImage}
+                className="h-8 w-8"
+                fallbackClassName="gradient-navy text-white text-xs"
+              />
               <div className="text-xs hidden md:block">
                 <div className="font-semibold leading-tight">{session?.name}</div>
                 <div className="text-muted-foreground text-[10px]">{subtitle}</div>

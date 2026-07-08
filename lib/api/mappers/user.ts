@@ -7,6 +7,7 @@ export function mapUserDto(dto: UserDto, permissions: string[] = []): AuthUser {
     email: dto.email,
     firstName: dto.firstName,
     lastName: dto.lastName,
+    profileImageUrl: dto.profileImageUrl,
     roles: dto.roles ?? [],
     permissions,
   };

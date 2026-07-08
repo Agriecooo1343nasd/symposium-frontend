@@ -144,6 +144,7 @@ export type SpeakerDto = {
   id: string;
   symposiumId: string;
   userId?: string | null;
+  registrationId?: string | null;
   name: string;
   title?: string | null;
   organization?: string | null;
@@ -410,9 +411,19 @@ export type CreateSpeakerDto = {
   isKeynote?: boolean;
   isFeatured?: boolean;
   category?: string;
+  /** Onboard portal access — creates/links user and assigns speaker role */
+  email?: string;
+  userId?: string;
+  sendInvitationEmail?: boolean;
+  createRegistration?: boolean;
+  ticketCategoryId?: string;
 };
 
-export type UpdateSpeakerDto = Partial<CreateSpeakerDto>;
+export type OnboardSpeakerDto = CreateSpeakerDto & {
+  email: string;
+};
+
+export type UpdateSpeakerDto = Partial<Omit<CreateSpeakerDto, "symposiumId" | "email" | "userId" | "sendInvitationEmail" | "createRegistration" | "ticketCategoryId">>;
 
 export type CreateAnnouncementDto = {
   symposiumId: string;
@@ -488,6 +499,7 @@ export type AdminCreateUserDto = {
   lastName: string;
   roleId?: string;
   symposiumId?: string;
+  sendInvitationEmail?: boolean;
 };
 
 export type AdminUpdateUserDto = Partial<
@@ -931,7 +943,7 @@ export type CreateMediaAccreditationAdminDto = {
   assignmentUrl?: string;
   /** When true, accreditation is approved on creation (default for desk walk-ins). */
   autoApprove?: boolean;
-  /** When true, backend sends set-password / welcome email (simulated until endpoint exists). */
+  /** When true, backend sends welcome email with portal instructions. */
   sendWelcomeEmail?: boolean;
   adminNotes?: string;
 };
@@ -1540,6 +1552,7 @@ export type AdminCreateGroupRegistrationDto = {
   representativePhone?: string;
   paymentStatus: AdminGroupPaymentStatus;
   delegates: AdminGroupDelegateDto[];
+  sendInvitationEmails?: boolean;
 };
 
 export type GroupRegistrationMemberResponseDto = {

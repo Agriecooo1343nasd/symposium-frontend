@@ -16,6 +16,7 @@ import { GroupPricingSummary } from "@/components/group/GroupPricingSummary";
 import type { GroupMemberInput } from "@/lib/group-registration";
 import type { AdminGroupDelegateDto, TicketCategoryDto } from "@/lib/api/dto";
 import { apiErrorMessage } from "@/lib/api/client";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { getServerGroupRegistrationSettings, GROUP_REGISTRATION_POLICY } from "@/lib/group-registration-policy";
 
@@ -44,6 +45,7 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange, desk = false
   const [groupSize, setGroupSize] = useState(minSize);
   const [groupMembers, setGroupMembers] = useState<GroupMemberInput[]>([]);
   const [status, setStatus] = useState<"comp" | "paid" | "pending">("comp");
+  const [sendInvitationEmails, setSendInvitationEmails] = useState(true);
   const [form, setForm] = useState({
     fullName: "",
     title: "",
@@ -65,6 +67,7 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange, desk = false
     setPicked(null);
     setForm({ fullName: "", title: "", org: "", country: countries[0] ?? "Rwanda", email: "", phone: "" });
     setStatus("comp");
+    setSendInvitationEmails(true);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -106,8 +109,13 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange, desk = false
         representativePhone: form.phone.trim() || undefined,
         paymentStatus: status,
         delegates,
+        sendInvitationEmails,
       });
-      toast.success(`Group ${group.groupCode} created · ${group.seatCount} seats`);
+      toast.success(
+        sendInvitationEmails
+          ? `Group ${group.groupCode} created · ${group.seatCount} seats · invitation emails queued`
+          : `Group ${group.groupCode} created · ${group.seatCount} seats`,
+      );
       onOpenChange(false);
       reset();
     } catch (err) {
@@ -165,6 +173,12 @@ export function ManualGroupRegistrationDialog({ open, onOpenChange, desk = false
                   <SelectItem value="pending">Pending payment</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex items-end">
+              <label className="flex items-center justify-between gap-3 text-sm w-full rounded-lg border px-3 py-2.5">
+                <span>Email portal invites to all members</span>
+                <Switch checked={sendInvitationEmails} onCheckedChange={setSendInvitationEmails} />
+              </label>
             </div>
           </div>
 

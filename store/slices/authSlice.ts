@@ -6,6 +6,7 @@ export type AuthUser = {
   email: string;
   firstName?: string;
   lastName?: string;
+  profileImageUrl?: string | null;
   roles: string[];
   permissions: string[];
 };

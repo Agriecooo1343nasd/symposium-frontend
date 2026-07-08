@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { useAdminUsers, useAuditLogs, useCreateAdminUser, useRoles, useUpdateAdminUser } from "@/hooks/api/useAdmin";
+import { useSymposiumId } from "@/hooks/api/useSymposium";
 import { userDisplayName } from "@/lib/api/mappers/user";
 import type { UserDto } from "@/lib/api/dto";
 import { toast } from "sonner";
@@ -22,6 +24,7 @@ function formatAuditTime(value: unknown): string {
 }
 
 export default function Page() {
+  const symposiumId = useSymposiumId();
   const { activeTab, onTabChange } = useAdminTabNavigation(["users", "invites", "roles", "audit"], "users");
   const { users, isLoading, isError } = useAdminUsers({ limit: 100 });
   const roles = useRoles();
@@ -36,6 +39,7 @@ export default function Page() {
     firstName: "",
     lastName: "",
     roleId: "",
+    sendInvitationEmail: true,
   });
 
   useAdminCommandAction({ "invite-user": () => setInviteOpen(true) });
@@ -49,12 +53,25 @@ export default function Page() {
         firstName: inviteForm.firstName.trim(),
         lastName: inviteForm.lastName.trim(),
         roleId: inviteForm.roleId || undefined,
+        symposiumId: symposiumId ?? undefined,
+        sendInvitationEmail: inviteForm.sendInvitationEmail,
       },
       {
         onSuccess: () => {
-          toast.success("User created");
+          toast.success(
+            inviteForm.sendInvitationEmail
+              ? `User created — invitation email sent to ${inviteForm.email.trim()}`
+              : "User created",
+          );
           setInviteOpen(false);
-          setInviteForm({ email: "", password: "", firstName: "", lastName: "", roleId: "" });
+          setInviteForm({
+            email: "",
+            password: "",
+            firstName: "",
+            lastName: "",
+            roleId: "",
+            sendInvitationEmail: true,
+          });
         },
         onError: (err) => toast.error(err instanceof Error ? err.message : "Create failed"),
       },
@@ -146,15 +163,15 @@ export default function Page() {
               <div>
                 <h2 className="font-serif font-bold text-lg">User onboarding</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  There is no separate email-invite API yet. Create an account with a temporary password and share
-                  credentials securely with the new team member. They can sign in and change their password from their
-                  profile.
+                  Create an account with a temporary password. When invitation email is enabled, the new user receives
+                  portal access instructions and a password-reset link — no need to share credentials manually.
                 </p>
               </div>
             </div>
             <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
               <li>Use a strong temporary password (at least 8 characters).</li>
               <li>Assign the correct role when creating finance, desk, speaker, or exhibitor accounts.</li>
+              <li>Turn on invitation email so the user can set their own password via the emailed link.</li>
               <li>Inactive accounts can be toggled off from the Users tab.</li>
             </ul>
             <Button className="gradient-blue text-accent-foreground" onClick={() => setInviteOpen(true)}>
@@ -253,6 +270,13 @@ export default function Page() {
                 </SelectContent>
               </Select>
             </div>
+            <label className="flex items-center justify-between gap-3 text-sm">
+              <span>Send invitation email</span>
+              <Switch
+                checked={inviteForm.sendInvitationEmail}
+                onCheckedChange={(v) => setInviteForm({ ...inviteForm, sendInvitationEmail: v })}
+              />
+            </label>
             <DialogFooter>
               <Button type="submit" disabled={createUser.isPending}>Create</Button>
             </DialogFooter>

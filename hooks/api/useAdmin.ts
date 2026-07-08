@@ -32,6 +32,7 @@ import type {
   CreateExhibitorDto,
   CreateSessionDto,
   CreateSpeakerDto,
+  OnboardSpeakerDto,
   CreateTicketCategoryDto,
   CreateTrackDto,
   DeskWalkInDto,
@@ -262,6 +263,14 @@ export function useCreateSpeaker() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (dto: CreateSpeakerDto) => speakersService.createAdmin(dto),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["speakers"] }),
+  });
+}
+
+export function useOnboardSpeaker() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: OnboardSpeakerDto) => speakersService.onboardAdmin(dto),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["speakers"] }),
   });
 }

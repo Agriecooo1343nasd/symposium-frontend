@@ -73,6 +73,13 @@ export default function Page() {
                     <div className="font-serif font-bold text-sm truncate">{s.name}</div>
                     <div className="text-xs text-muted-foreground truncate">{s.title}</div>
                     <div className="text-xs text-muted-foreground truncate">{s.organization}</div>
+                    <div className="text-[10px] font-semibold uppercase mt-1">
+                      {s.userId ? (
+                        <span className="text-green">Portal linked</span>
+                      ) : (
+                        <span className="text-amber-700 dark:text-amber-300">No portal account</span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3 pt-3 border-t">
