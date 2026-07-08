@@ -14,6 +14,9 @@ import { mapNotifications } from "@/lib/api/mappers/notification";
 import { mapSessions } from "@/lib/api/mappers/session";
 import { mapUserDto } from "@/lib/api/mappers/user";
 import { getAccessToken } from "@/lib/api/client";
+import { buildSessionFromUser } from "@/lib/auth/session";
+import { writeSession } from "@/lib/auth";
+import { rolesFromAccessToken } from "@/lib/auth/roles";
 import { permissionsFromAccessToken } from "@/lib/auth/roles";
 import type {
   CreateRefundRequestDto,
@@ -160,6 +163,8 @@ export function useUpdateProfile() {
       const permissions = token ? permissionsFromAccessToken(token) : [];
       dispatch(setUser(mapUserDto(user, permissions)));
       queryClient.setQueryData(queryKeys.users.me, user);
+      const roles = token ? rolesFromAccessToken(token) : user.roles ?? [];
+      writeSession(buildSessionFromUser(user, roles));
     },
   });
 }

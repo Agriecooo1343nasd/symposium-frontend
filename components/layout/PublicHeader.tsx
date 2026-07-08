@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLogout } from "@/hooks/api/useAuthSession";
 import { dashboardPathForRole } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/layout/UserAvatar";
 
 const NAV = [
   { to: "/about", label: "About" },
@@ -32,7 +33,7 @@ export function PublicHeader() {
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const logout = useLogout();
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export function PublicHeader() {
   const isHiddenPage = hiddenPrefixes.some((p) => pathname === p || pathname?.startsWith(p + "/"));
   if (isHiddenPage) return null;
 
-  const initials = session?.name?.split(" ").map((w) => w[0]).slice(0, 2).join("") ?? "";
+  const profileImage = user?.profileImageUrl ?? session?.avatar;
   const dashboardPath = session ? dashboardPathForRole(session.role) : "/dashboard";
 
   const handleSignOut = async () => {
@@ -96,9 +97,12 @@ export function PublicHeader() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 rounded-full pl-1.5 pr-3 py-1.5 border border-border bg-card hover:bg-secondary/60 transition-colors">
-                  <div className="h-7 w-7 rounded-full gradient-blue text-white flex items-center justify-center text-xs font-bold">
-                    {initials}
-                  </div>
+                  <UserAvatar
+                    name={session.name}
+                    imageUrl={profileImage}
+                    className="h-7 w-7"
+                    fallbackClassName="gradient-blue text-white text-xs"
+                  />
                   <div className="flex flex-col items-start leading-tight">
                     <span className="text-xs font-semibold text-foreground">{session.name.split(" ")[0]}</span>
                     <span className="text-[10px] text-muted-foreground capitalize">{session.role}</span>

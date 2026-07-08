@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { useCreateSpeaker, useUpdateSpeaker } from "@/hooks/api/useAdmin";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAdminTicketCategories, useCreateSpeaker, useUpdateSpeaker } from "@/hooks/api/useAdmin";
 import { useSymposiumId } from "@/hooks/api/useSymposium";
 import { useUploadFile } from "@/hooks/api/useFiles";
 import type { SpeakerDto } from "@/lib/api/dto";
@@ -21,6 +22,7 @@ type Props = {
 
 const EMPTY_FORM = {
   name: "",
+  email: "",
   title: "",
   organization: "",
   country: "",
@@ -28,12 +30,16 @@ const EMPTY_FORM = {
   photoUrl: "",
   isKeynote: false,
   isFeatured: false,
+  sendInvitationEmail: true,
+  createRegistration: true,
+  ticketCategoryId: "",
 };
 
 function speakerToForm(speaker?: SpeakerDto | null) {
   if (!speaker) return { ...EMPTY_FORM };
   return {
     name: speaker.name ?? "",
+    email: "",
     title: speaker.title ?? "",
     organization: speaker.organization ?? "",
     country: speaker.country ?? "",
@@ -41,16 +47,23 @@ function speakerToForm(speaker?: SpeakerDto | null) {
     photoUrl: speaker.photoUrl ?? "",
     isKeynote: speaker.isKeynote ?? false,
     isFeatured: speaker.isFeatured ?? false,
+    sendInvitationEmail: true,
+    createRegistration: true,
+    ticketCategoryId: "",
   };
 }
 
 export function AdminSpeakerFormDialog({ open, onOpenChange, speaker }: Props) {
   const symposiumId = useSymposiumId();
+  const { categories } = useAdminTicketCategories();
   const create = useCreateSpeaker();
   const update = useUpdateSpeaker();
   const uploadFile = useUploadFile();
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+
+  const activeCategories = categories.filter((t) => t.isActive);
+  const isEditing = Boolean(speaker);
 
   useEffect(() => {
     if (!open) return;
@@ -60,29 +73,68 @@ export function AdminSpeakerFormDialog({ open, onOpenChange, speaker }: Props) {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!symposiumId || !form.name.trim()) return toast.error("Name required");
-    const dto = {
-      symposiumId,
-      name: form.name.trim(),
-      title: form.title || undefined,
-      organization: form.organization || undefined,
-      country: form.country || undefined,
-      bio: form.bio || undefined,
-      photoUrl: form.photoUrl || undefined,
-      isKeynote: form.isKeynote,
-      isFeatured: form.isFeatured,
-    };
+
     const onDone = {
-      onSuccess: () => {
-        toast.success(speaker ? "Speaker updated" : "Speaker created");
+      onSuccess: (created?: SpeakerDto) => {
+        const invited = !isEditing && form.sendInvitationEmail && form.email.trim();
+        toast.success(
+          speaker
+            ? "Speaker updated"
+            : invited
+              ? `Speaker created — invitation sent to ${form.email.trim()}`
+              : "Speaker created",
+        );
+        if (!isEditing && created?.registrationId) {
+          toast.message("Complimentary registration linked", { duration: 4000 });
+        }
         onOpenChange(false);
       },
       onError: (err: Error) => toast.error(err.message),
     };
+
     if (speaker) {
-      update.mutate({ id: speaker.id, dto }, onDone);
-    } else {
-      create.mutate(dto, onDone);
+      update.mutate(
+        {
+          id: speaker.id,
+          dto: {
+            name: form.name.trim(),
+            title: form.title || undefined,
+            organization: form.organization || undefined,
+            country: form.country || undefined,
+            bio: form.bio || undefined,
+            photoUrl: form.photoUrl || undefined,
+            isKeynote: form.isKeynote,
+            isFeatured: form.isFeatured,
+          },
+        },
+        onDone,
+      );
+      return;
     }
+
+    const email = form.email.trim();
+    if (!email) {
+      return toast.error("Email is required to grant speaker portal access");
+    }
+
+    create.mutate(
+      {
+        symposiumId,
+        name: form.name.trim(),
+        email,
+        title: form.title || undefined,
+        organization: form.organization || undefined,
+        country: form.country || undefined,
+        bio: form.bio || undefined,
+        photoUrl: form.photoUrl || undefined,
+        isKeynote: form.isKeynote,
+        isFeatured: form.isFeatured,
+        sendInvitationEmail: form.sendInvitationEmail,
+        createRegistration: form.createRegistration,
+        ticketCategoryId: form.ticketCategoryId || undefined,
+      },
+      onDone,
+    );
   };
 
   return (
@@ -90,8 +142,25 @@ export function AdminSpeakerFormDialog({ open, onOpenChange, speaker }: Props) {
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{speaker ? "Edit speaker" : "Add speaker"}</DialogTitle>
+          {!isEditing && (
+            <p className="text-sm text-muted-foreground font-normal">
+              Creates the directory profile, links a login account, assigns the speaker role, and sends a portal invitation.
+            </p>
+          )}
         </DialogHeader>
         <form onSubmit={submit} className="space-y-3">
+          {isEditing && (
+            <div
+              className={`rounded-lg border px-3 py-2 text-sm ${
+                speaker?.userId ? "border-green/40 bg-green/5 text-green" : "border-amber-500/40 bg-amber-500/5 text-amber-800 dark:text-amber-200"
+              }`}
+            >
+              {speaker?.userId
+                ? "Portal account linked — speaker can sign in at /speaker."
+                : "No portal account linked. Profile edits only; re-create with email to onboard portal access."}
+            </div>
+          )}
+
           <div>
             <Label>Name *</Label>
             <Input
@@ -102,6 +171,21 @@ export function AdminSpeakerFormDialog({ open, onOpenChange, speaker }: Props) {
               required
             />
           </div>
+
+          {!isEditing && (
+            <div>
+              <Label>Email *</Label>
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="mt-1"
+                placeholder="e.g. speaker@organization.rw"
+                required
+              />
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Title</Label>
@@ -178,9 +262,53 @@ export function AdminSpeakerFormDialog({ open, onOpenChange, speaker }: Props) {
               <Switch checked={form.isFeatured} onCheckedChange={(c) => setForm({ ...form, isFeatured: c })} /> Featured
             </label>
           </div>
+
+          {!isEditing && (
+            <div className="space-y-3 rounded-xl border bg-secondary/30 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Portal onboarding</p>
+              <label className="flex items-center justify-between gap-3 text-sm">
+                <span>Send invitation email</span>
+                <Switch
+                  checked={form.sendInvitationEmail}
+                  onCheckedChange={(c) => setForm({ ...form, sendInvitationEmail: c })}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-3 text-sm">
+                <span>Create complimentary registration</span>
+                <Switch
+                  checked={form.createRegistration}
+                  onCheckedChange={(c) => setForm({ ...form, createRegistration: c })}
+                />
+              </label>
+              {form.createRegistration && activeCategories.length > 0 && (
+                <div>
+                  <Label>Pass category (optional)</Label>
+                  <Select
+                    value={form.ticketCategoryId || "__default__"}
+                    onValueChange={(v) =>
+                      setForm({ ...form, ticketCategoryId: v === "__default__" ? "" : v })
+                    }
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Default active pass" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__default__">Default active pass</SelectItem>
+                      {activeCategories.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="submit" className="gradient-blue text-accent-foreground" disabled={create.isPending || update.isPending}>
-              Save
+              {isEditing ? "Save" : create.isPending ? "Onboarding…" : "Add speaker"}
             </Button>
           </DialogFooter>
         </form>

@@ -122,7 +122,7 @@ export function AddMediaPersonDialog({ open, onOpenChange, addedBy = "admin" }: 
       if (result.simulated) {
         toast.success(`Media person added locally`, {
           description: result.welcomeEmailSent
-            ? `Simulated welcome email to ${form.email} — backend invite API not live yet.`
+            ? `Simulated welcome email to ${form.email} — API unavailable, using local fallback.`
             : undefined,
           duration: 6000,
         });
@@ -160,7 +160,7 @@ export function AddMediaPersonDialog({ open, onOpenChange, addedBy = "admin" }: 
           </DialogTitle>
           <p className="text-sm text-muted-foreground font-normal">
             Register a journalist manually — same details as the public media tab. Creates their accreditation and
-            (when the backend endpoint is live) sends a welcome email to set a password and access the portal.
+            optionally sends a welcome email with portal instructions.
           </p>
         </DialogHeader>
 

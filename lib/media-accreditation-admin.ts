@@ -19,8 +19,14 @@ export async function createMediaAccreditationAsAdmin(
   dto: CreateMediaAccreditationAdminDto,
 ): Promise<CreateMediaAccreditationAdminResultDto> {
   try {
-    const result = await cmsService.createMediaAccreditationAdmin(dto);
-    return { ...result, simulated: false };
+    const accreditation = await cmsService.createMediaAccreditationAdmin(dto);
+    return {
+      accreditation,
+      userCreated: false,
+      registrationCreated: false,
+      welcomeEmailSent: dto.sendWelcomeEmail !== false,
+      simulated: false,
+    };
   } catch (error) {
     if (isMissingAdminEndpoint(error)) {
       return mockCreateMediaAccreditationAdmin(dto);

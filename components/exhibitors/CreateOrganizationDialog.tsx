@@ -12,8 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ExhibitorPackageEstimator } from "@/components/apply/ExhibitorPackageEstimator";
 import { BoothMapPicker, type PickerBooth } from "@/components/shared/BoothMapPicker";
 import { useStore } from "@/hooks/use-store";
-import { useAdminTicketCategories } from "@/hooks/api/useAdmin";
-import { useCreateExhibitor } from "@/hooks/api/useAdmin";
+import { useAdminTicketCategories, useCreateExhibitor, useRoles } from "@/hooks/api/useAdmin";
 import { useSymposium } from "@/hooks/api/useSymposium";
 import {
   usePublicExhibitorPackages,
@@ -119,6 +118,7 @@ export function CreateOrganizationDialog({
   const queryClient = useQueryClient();
   const { categories: ticketPlans, isLoading: plansLoading } = useAdminTicketCategories();
   const createExhibitor = useCreateExhibitor();
+  const roles = useRoles();
   const { packages, isLoading: packagesLoading } = usePublicExhibitorPackages(symposiumId || undefined);
   const { pricing: tierPricing } = useSponsorshipTierPricing(symposiumId || undefined);
   const { booths } = useBooths(symposiumId);
@@ -142,6 +142,10 @@ export function CreateOrganizationDialog({
   });
 
   const activePackages = useMemo(() => packages.filter((p) => p.isActive), [packages]);
+  const exhibitorRoleId = useMemo(
+    () => roles.data?.find((r) => r.name.toLowerCase() === "exhibitor")?.id,
+    [roles.data],
+  );
   const resolvedPackageId = form.packageId || activePackages[0]?.id || "";
   const isExhibitor = form.participation === "exhibitor";
   const isSponsor = form.participation === "sponsor";
@@ -225,6 +229,9 @@ export function CreateOrganizationDialog({
       password: randomTempPassword(),
       firstName,
       lastName,
+      roleId: exhibitorRoleId,
+      symposiumId: symposiumId ?? undefined,
+      sendInvitationEmail: true,
     });
     return created.id;
   }
