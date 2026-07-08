@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Star, MessageSquare, CheckCircle2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +12,7 @@ import {
   submitSessionRating,
 } from "@/lib/session-ratings";
 import { useStore } from "@/hooks/use-store";
-import { canViewSessionMaterials } from "@/lib/access";
+import { useSessionMaterialsAccess } from "@/hooks/use-session-materials-access";
 import { getSession } from "@/lib/auth";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -25,7 +27,7 @@ type Props = {
 export function SessionRatingPanel({ session, compact }: Props) {
   useStore();
   const auth = getSession();
-  const canRate = canViewSessionMaterials();
+  const { canView: canRate, isAuthenticated } = useSessionMaterialsAccess();
   const ended = isSessionEnded(session.id);
   const existing = auth?.email ? getSessionRating(session.id, auth.email) : undefined;
   const summary = getSessionRatingSummary(session.id);
@@ -39,9 +41,15 @@ export function SessionRatingPanel({ session, compact }: Props) {
     return (
       <div className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">
         <p className="font-medium text-foreground">Rate this session after it ends</p>
-        <p className="mt-1">Sign in with a paid registration to leave feedback (FR-6.2).</p>
+        <p className="mt-1">
+          {isAuthenticated
+            ? "Complete your registration to leave feedback after the session ends."
+            : "Sign in with a paid registration to leave feedback (FR-6.2)."}
+        </p>
         <Button asChild size="sm" variant="outline" className="mt-3">
-          <Link href="/login">Sign in</Link>
+          <Link href={isAuthenticated ? "/register" : "/login"}>
+            {isAuthenticated ? "Complete registration" : "Sign in"}
+          </Link>
         </Button>
       </div>
     );
