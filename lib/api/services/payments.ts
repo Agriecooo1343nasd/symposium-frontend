@@ -1,4 +1,5 @@
 import { apiClient, unwrapApi } from "../client";
+import { PAYMENT_INITIATE_TIMEOUT_MS } from "../constants";
 import type { ApiResponse } from "../types";
 import type {
   BankTransferProformaDto,
@@ -12,7 +13,9 @@ import type {
 export const paymentsService = {
   initiate(dto: InitiatePaymentDto) {
     return apiClient
-      .post<ApiResponse<PaymentInitiateResponseDto>>("/payments/initiate", dto)
+      .post<ApiResponse<PaymentInitiateResponseDto>>("/payments/initiate", dto, {
+        timeout: PAYMENT_INITIATE_TIMEOUT_MS,
+      })
       .then(unwrapApi);
   },
   bankTransferProforma(dto: BankTransferProformaDto) {

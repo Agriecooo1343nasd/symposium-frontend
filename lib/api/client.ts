@@ -1,12 +1,12 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
-import { API_BASE_URL } from "./constants";
+import { API_BASE_URL, DEFAULT_API_TIMEOUT_MS } from "./constants";
 import type { ApiErrorBody, ApiResponse } from "./types";
 
 const baseURL = API_BASE_URL;
 
 export const apiClient = axios.create({
   baseURL,
-  timeout: 30_000,
+  timeout: DEFAULT_API_TIMEOUT_MS,
   headers: { "Content-Type": "application/json" },
   withCredentials: false,
 });
@@ -104,6 +104,9 @@ export function unwrapApi<T>(res: { data: ApiResponse<T> }): T {
 
 export function apiErrorMessage(error: unknown): string {
   if (axios.isAxiosError<ApiErrorBody>(error)) {
+    if (error.code === "ECONNABORTED" || /timeout/i.test(error.message)) {
+      return "This is taking longer than usual. If you already approved payment on your phone, check your dashboard in a moment before trying again.";
+    }
     const msg = error.response?.data?.message;
     if (Array.isArray(msg)) return msg.join(", ");
     if (typeof msg === "string") return msg;
