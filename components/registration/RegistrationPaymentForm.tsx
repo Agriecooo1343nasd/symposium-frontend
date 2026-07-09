@@ -98,10 +98,11 @@ export function RegistrationPaymentForm({
             disabled={submitting}
             onClick={() => handleMobilePay("mtn")}
           >
-            {submitting ? "Processing…" : "Pay with MTN MoMo"}
+            {submitting ? "Waiting for approval…" : "Pay with MTN MoMo"}
           </Button>
           <p className="text-xs text-muted-foreground">
-            You&apos;ll receive a prompt on your phone to authorize the payment.
+            You&apos;ll receive a prompt on your phone to authorize the payment. This can take up to 2 minutes —
+            keep this page open until you see a result.
           </p>
         </TabsContent>
 
@@ -113,8 +114,11 @@ export function RegistrationPaymentForm({
             disabled={submitting}
             onClick={() => handleMobilePay("airtel")}
           >
-            {submitting ? "Processing…" : "Pay with Airtel Money"}
+            {submitting ? "Waiting for approval…" : "Pay with Airtel Money"}
           </Button>
+          <p className="text-xs text-muted-foreground">
+            Approve the prompt on your phone. This can take up to 2 minutes — keep this page open.
+          </p>
         </TabsContent>
 
         <TabsContent value="card" className="mt-4">
